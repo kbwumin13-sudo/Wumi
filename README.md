@@ -7,12 +7,12 @@
 
 [![macOS](https://img.shields.io/badge/macOS-15%2B-111827?style=flat-square&logo=apple&logoColor=white)](#上手)
 [![Swift](https://img.shields.io/badge/Swift-6.2%2B-F05138?style=flat-square&logo=swift&logoColor=white)](Package.swift)
-[![Version](https://img.shields.io/badge/version-1.1.1-2563EB?style=flat-square)](#验证与边界)
+[![下载 Wumi 1.1.1](https://img.shields.io/badge/下载-Wumi_1.1.1_arm64_DMG-2563EB?style=flat-square&logo=github&logoColor=white)](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.1.1/Wumi-1.1.1-arm64.dmg)
 [![License](https://img.shields.io/badge/license-MIT-2563EB?style=flat-square)](LICENSE)
 
 **原生 macOS 文件管理器 · 多标签、多窗格、即时预览与闪电搜索**
 
-[上手](#上手) · [功能](#少切换几个窗口多留一点专注) · [开发文档](docs/构建与运行.md) · [反馈](https://github.com/kbwumin13-sudo/Wumi/issues)
+[下载 1.1.1 DMG](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.1.1/Wumi-1.1.1-arm64.dmg) · [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) · [安装](#上手) · [功能](#少切换几个窗口多留一点专注) · [开发文档](docs/构建与运行.md) · [反馈](https://github.com/kbwumin13-sudo/Wumi/issues)
 
 </div>
 
@@ -36,7 +36,20 @@
 
 ## 上手
 
-目前以源码形式提供，先在本机构建。目标平台为 **macOS 15+**；当前验证环境为 **Apple Silicon、Swift 6.4**。包清单要求 Swift tools 6.2+，需要包含对应 macOS SDK 的 Xcode 工具链。
+下载 [Wumi-1.1.1-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.1.1/Wumi-1.1.1-arm64.dmg)，适用于 **macOS 15+、Apple Silicon（arm64）**。这是已有 1.1.1 的首次 DMG 分发，没有新增功能代码。后续版本请从 [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) 选择对应资产。
+
+1. 打开 DMG，将 `Wumi.app` 拖到 `Applications`（应用程序）文件夹。
+2. 从「应用程序」打开 Wumi。
+3. 首次若被 Gatekeeper 拦截，在「系统设置 → 隐私与安全性」中找到此次拦截的提示，选择「仍要打开」，再按系统提示确认。
+
+此安装包仅使用 **ad-hoc 签名**，没有 Developer ID 签名，也未经 Apple 公证。首次访问受保护目录时，按系统提示或应用「设置 → 隐私与权限」授权。
+
+[1.1.1 发布说明与 SHA-256 校验方法](docs/releases/v1.1.1.md) · [安装与开发说明](docs/构建与运行.md)
+
+<details>
+<summary><strong>从源码构建</strong></summary>
+
+需要 Swift tools 6.2+ 及包含对应 macOS SDK 的 Xcode 工具链；既有本地验证环境为 Apple Silicon、Swift 6.4。
 
 ```sh
 git clone https://github.com/kbwumin13-sudo/Wumi.git
@@ -45,18 +58,20 @@ scripts/build-app.sh
 open build/Wumi.app
 ```
 
-默认构建 Release 版本。未配置签名证书时使用 ad-hoc 签名；需要在反复本机构建后保留隐私授权，可选择运行 `scripts/make-signing-cert.sh` 创建本地证书。首次访问受保护目录时，按系统提示或应用「设置 → 隐私与权限」授权。
+默认构建 Release 版本。脚本优先使用已有的本地自签名证书 `DirDesk Local Signing`，找不到时使用 ad-hoc 签名；需要在反复本机构建后保留隐私授权，可选择运行 `scripts/make-signing-cert.sh` 创建本地证书。本地证书与公开 DMG 的签名方式不同。
 
 更完整的签名、测试、截图与本地化说明见 [构建与运行](docs/构建与运行.md)。
 
+</details>
+
 ## 验证与边界
 
-2026-10-21，本地运行 **205 项 Core 测试，0 失败，4 项条件跳过**；本轮匿名化会话夹具后的解码回归也已通过。1.1.1 的历史窗口验收覆盖了 **65 项应用内回归**，包含文件操作、撤销、导航、排序、会话与文件夹大小。iCloud 上传、下载与云端文件打开曾在真实账号下验证。
+既有验收记录（2026-10-21）：**205 项 Core 测试，0 失败，4 项条件跳过**，匿名化会话夹具后的解码回归通过；1.1.1 的历史窗口验收覆盖了 **65 项应用内回归**，包含文件操作、撤销、导航、排序、会话与文件夹大小。iCloud 上传、下载与云端文件打开曾在真实账号下验证。本次 DMG 另经干净源码 Release 重新构建、完整性校验、只读挂载检查，并从安装包复制出的隔离副本通过了 65 项窗口内回归；实际从互联网下载后首次 Gatekeeper 授权流程未在另一台 Mac 验证。
 
-- 四项可选测试涉及真实 iCloud、十万项目录、全盘爬取与百万条索引，本轮没有执行。尚未逐项完成所有设置和交互的窗口验收。
+- 历史 Core 测试的四项条件跳过涉及真实 iCloud、十万项目录、全盘爬取与百万条索引。尚未逐项完成所有设置和交互的窗口验收。
 - 文件夹大小在后台统计；计算中显示进度，无权限项目显示不可用或已知下界。实际结果受目录权限与文件变化影响。
 - 超大目录和「所有子文件」目前最多一次载入 10 万项。索引存在容量与资源限制，不能将已有索引等同于全盘覆盖。
-- 当前提供本地构建方式，尚无 Developer ID 公证安装包；Intel Mac 与长期含索引的资源占用仍待验证。Pages、Keynote、Numbers 新建模板暂受限。
+- 此次 DMG 仅提供 arm64，不提供 Intel 安装包；仅 ad-hoc 签名，没有 Developer ID 签名或 Apple 公证。长期含索引的资源占用仍待验证。Pages、Keynote、Numbers 新建模板暂受限。
 
 <details>
 <summary><strong>工程结构与开发入口</strong></summary>
