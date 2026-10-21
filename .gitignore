@@ -1,0 +1,37 @@
+# SwiftPM and local application builds
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.dSYM/
+*.xcuserstate
+
+# Agent state, local acceptance evidence, and private reference material
+.omx/
+.codex/
+.claude/
+.agents/
+artifacts/
+docs/reference/
+docs/recon/
+docs/复刻清单.md
+scripts/recon/
+项目协作.md
+项目记忆/
+
+# Generated Python files and editor state
+__pycache__/
+*.py[cod]
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local credentials and signing material
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.key
+*.mobileprovision

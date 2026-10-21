@@ -1,0 +1,18 @@
+Checking Tagged Items	正在检查标签项目
+Delete Tag	删除标签
+Device Disconnected	设备已断开
+Go to Local Folder	前往本地文件夹
+Items with this tag appear here once Spotlight has found them.	Spotlight 找到带此标签的项目后，会显示在这里。
+No Recent Items	没有最近项目
+No Tagged Items	没有带此标签的项目
+This folder has no items to show.	这个文件夹里没有可显示的项目。
+Nothing was opened in this time range.	这段时间内没有打开过任何项目。
+No file you can open carries this tag right now.	目前没有可打开的文件带有这个标签。
+Reconnect	重新连接
+Retry	重试
+Spotlight took too long to answer. Try again in a moment.	Spotlight 响应超时，请稍后再试。
+Spotlight couldn't search for this tag.	Spotlight 无法搜索这个标签。
+Trash Requires Full Disk Access	废纸篓需要完全磁盘访问权限
+macOS denied access to this folder. Turn on Full Disk Access for DirDesk in Privacy & Security, then try again.	macOS 拒绝访问这个文件夹。请在"隐私与安全性"中为 DirDesk 打开"完全磁盘访问权限"，然后重试。
+macOS shows the Trash to DirDesk only after Full Disk Access is turned on.	只有为 DirDesk 打开"完全磁盘访问权限"后，macOS 才会让它显示废纸篓。
+“%@” can't be reached. Connect it again to bring this pane back, or switch to a folder on this Mac.	无法访问"%@"。重新连接后此窗格会恢复显示，也可以改为前往这台 Mac 上的文件夹。

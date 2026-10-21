@@ -1,0 +1,51 @@
+! (or NOT) leaves out what matches. Group conditions with parentheses.	!（或 NOT）会排除匹配的项目；可用圆括号给条件分组。
+A space (or AND) means every word has to appear in the same item's name.	空格（或 AND）表示同一项目的名称里要包含每一个词。
+Actions	操作
+Any	不限
+Basic Rules	基本规则
+Clear	清除
+Copy this expression	复制这条表达式
+Custom Date…	自定义日期…
+Date Range	日期范围
+Enable	启用
+Everything in Downloads and its subfolders except disk images.	“下载”及其子文件夹中除磁盘映像外的全部项目。
+Extensions are written without the dot; any of the listed ones matches.	扩展名不写点号，列出的扩展名符合其一即可。
+Filter Rules	过滤规则
+Find a Tag	查找标签
+Find Expressions or Examples	查找表达式或示例
+Finder Tags	Finder 标签
+Folders changed today.	今天修改过的文件夹。
+Items that carry both of these exact tags.	同时带有这两个标签（名称完全一致）的项目。
+Keep only files, or only folders.	只保留文件，或只保留文件夹。
+Kinds of files; write type: in front of each one.	按种类查找文件，每个种类都以 type: 开头。
+Lists items carrying any checked tag; names have to match exactly.	列出带有任一勾选标签的项目，标签名须完全一致。
+Match	匹配
+Modified: %@	修改日期: %@
+More kinds. type:text and type:office mean the same as type:doc.	其余种类；type:text、type:office 与 type:doc 作用相同。
+Names that start with Invoice and end in four digits, created this year.	今年创建、名称以 Invoice 开头且以四位数字结尾的项目。
+No Tags Found	未找到标签
+NOT is evaluated first, then OR, then AND. Add parentheses whenever you mix them.	先算 NOT，再算 OR，最后算 AND；混用时请加括号。
+Once edited, an expression can't be converted back into visual conditions. Return to the visual conditions from before your edits? The expression you typed can be brought back until this window closes.	表达式改动后无法再转换成可视化条件。回到改动前的可视化条件吗？刚才输入的表达式在关闭此窗口前仍可找回。
+Only the filters listed here are supported; any other filter shows an error.	这里列出的就是全部可用的过滤条件，其他写法会显示错误。
+Only what sits directly inside the folder.	只搜索直接位于该文件夹中的项目。
+Pinned, the window stays in front even while you use another app. Unpinned, clicking anywhere outside it closes it.	固定后，即使切换到其他 App，窗口也会留在最前面；取消固定后，点按窗口以外的任何地方都会关闭它。
+Ready	就绪
+Results don't update by themselves while you look through them. Click to search again.	结果不会随文件变化自动更新；点按可重新搜索。
+Search File Contents	搜索文件内容
+Search Mode	搜索方式
+Search Text	搜索文字
+Search Unavailable: %@	搜索不可用: %@
+Searches a folder and everything inside it. infolder: and parent: work the same; ~ is your home folder.	搜索该文件夹及其中的全部内容；infolder: 和 parent: 效果相同，~ 指你的个人文件夹。
+Short forms of type:audio, type:video, type:doc and type:app.	type:audio、type:video、type:doc 和 type:app 的简写。
+tag: finds tags whose name contains the value, tagexact: needs the whole name. Repeat either one to require several tags.	tag: 查找名称中含有该值的标签，tagexact: 要求完整名称一致；重复书写可要求同时具备多个标签。
+Tags: %@	标签: %@
+Text and Markdown files that contain FIXME.	包含 FIXME 的文本与 Markdown 文件。
+This Computer looks through every indexed folder DirDesk is allowed to read. A folder scope also looks inside its subfolders.	“这台电脑”会查找所有已编入索引、DirDesk 可以读取的文件夹；选择文件夹时也会查找其中的子文件夹。
+Type	类型
+Type a keyword or set a filter to start searching.	输入关键词，或设置筛选条件开始搜索。
+Type: %@	类型: %@
+Vacation pictures changed during the last seven days.	最近七天内修改过、名称含 vacation 的图片。
+Video or audio files bigger than 500 MB.	大于 500 MB 的视频或音频文件。
+Wildcards: * is any run of characters, ? exactly one, and ** any number of folders in a path.	通配符：* 代表任意一串字符，? 代表一个字符，** 在路径中代表任意层文件夹。
+Wrap phrases in straight double quotes, and write a filter's value right after its colon.	包含空格的短语要放进英文双引号里；过滤值直接写在冒号之后。
+| (or OR) is satisfied by either side.	|（或 OR）只要满足任意一边即可。

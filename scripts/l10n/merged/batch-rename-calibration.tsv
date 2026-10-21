@@ -1,0 +1,7 @@
+Check every new name here before any file is renamed.	在重命名任何文件之前，先在这里核对每个新名称。
+Pick rules above; each one works on the result of the previous one.	从上方选择规则，每条规则都基于上一条的结果。
+Some rules are still empty.	还有规则没有填写。
+The extension is left as it is.	扩展名不受影响。
+Position	位置
+Prefix and Suffix	前缀与后缀
+Start: %lld	起始编号：%lld

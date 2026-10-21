@@ -1,0 +1,69 @@
+# Keys passed to L() through variables (grouping titles, menu tables, template names).
+# check_strings.py treats them as used.
+Future
+Today
+Yesterday
+Previous 7 Days
+Previous 30 Days
+Unknown Date
+Unknown Size
+Less than 1 MB
+1 MB – 100 MB
+100 MB – 1 GB
+1 GB or Larger
+All Items
+Folders
+No Application
+No Tags
+No Extension
+Pinned Folders
+Icon View
+List View
+Column View
+Gallery View
+Name
+Kind
+Date Modified
+Date Created
+Date Last Opened
+Date Added
+Size
+Tags
+Extension
+No Grouping
+Application
+File Extension
+Creation Date
+Markdown
+Plain Text
+JSON
+Word Document
+Excel Spreadsheet
+PowerPoint Presentation
+CSV Spreadsheet
+Pages Document
+Keynote Presentation
+Numbers Spreadsheet
+Terminal
+Custom Template
+None
+Red
+Orange
+Yellow
+Green
+Blue
+Purple
+Gray
+# Pane locations (PaneLayout.paneLocations, localized in WorkspaceController.paneLocation)
+Left
+Right
+Top
+Bottom
+Middle
+Center
+Top Left
+Top Right
+Bottom Left
+Bottom Right
+Middle Left
+Middle Right

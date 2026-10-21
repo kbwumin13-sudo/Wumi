@@ -1,0 +1,220 @@
+Prefix	前缀
+Suffix	后缀
+Find and Replace	查找并替换
+Regular Expression	正则表达式
+Number Sequence	数字序列
+Lowercase	转为小写
+Uppercase	转为大写
+Add prefix: %@	添加前缀：%@
+Add suffix: %@	添加后缀：%@
+Replace “%@” with “%@”	将“%1$@”替换为“%2$@”
+Regular expression %@ → %@	正则表达式 %1$@ → %2$@
+Remove the extension	移除扩展名
+Change the extension to %@	将扩展名改为 %@
+Number at the beginning, starting at %lld	在开头编号，从 %lld 开始
+Number at the end, starting at %lld	在末尾编号，从 %lld 开始
+Invalid name	名称无效
+Duplicate destination	多个项目使用了同一目标名称
+The item is no longer available.	该项目已不存在。
+Invalid regular expression.	正则表达式无效。
+The selection contains %lld items; the limit is %lld.	所选内容包含 %1$lld 个项目，上限为 %2$lld 个。
+The transaction contains more items than a batch rename allows.	此次重命名的项目数超出了批量重命名的上限。
+The item is no longer available: %@	该项目已不存在：%@
+Destination already exists: %@	目标名称已存在：%@
+The batch rename plan is invalid.	批量重命名方案无效。
+The batch rename exceeded its time limit.	批量重命名超出了时间限制。
+The batch rename failed and could not be fully rolled back.	批量重命名失败，且未能完全恢复原来的名称。
+Saved batch rename presets or history could not be read.	无法读取已保存的批量重命名预设或历史记录。
+Batch rename presets could not be saved.	无法保存批量重命名预设。
+The batch rename history could not be saved.	无法保存批量重命名历史记录。
+Add a rule to see the new names.	添加规则后即可预览新名称。
+Complete every rule before renaming.	请先把每条规则填写完整，再进行重命名。
+Fix the name marked in red before renaming.	请先修正标红的名称，再进行重命名。
+Fix the %lld names marked in red before renaming.	请先修正 %lld 个标红的名称，再进行重命名。
+These rules do not change any names.	这些规则不会改变任何名称。
+Rules	规则链
+Each rule works on the result of the rule above it.	每条规则都在上一条规则的结果上继续处理。
+Add Rule	添加规则
+Presets	预设
+History	历史记录
+Recent Batch Renames	最近的批量重命名
+No rules yet. Use Add Rule to start.	还没有规则。点按“添加规则”开始。
+Preview	预览
+%lld to rename	%lld 个将重命名
+%lld unchanged	%lld 个不变
+%lld with problems	%lld 个有问题
+Rename To	改为
+Status	状态
+Unchanged	不变
+Renaming…	正在重命名…
+Move Up	上移
+Move Down	下移
+Remove Rule	删除规则
+Text to add	要添加的文字
+Find	查找
+Replace With	替换为
+Pattern	模式
+Replacement (use $1 for group 1)	替换内容（$1 表示第 1 组）
+New extension	新扩展名
+Leave empty to remove the extension.	留空则移除扩展名。
+The extension is not changed.	扩展名保持不变。
+Start	起始编号
+Digits: %lld	位数：%lld
+Separator	分隔符
+Beginning	开头
+End	末尾
+No saved presets	没有已保存的预设
+Apply Preset	应用预设
+Delete Preset	删除预设
+Save Preset	保存预设
+Preset Name	预设名称
+Save	保存
+Complete at least one rule to save a preset.	至少把一条规则填写完整，才能保存预设。
+The preset with this name will be updated.	将更新同名的预设。
+No batch rename history	没有批量重命名记录
+Renamed 1 item	已重命名 1 个项目
+Renamed %lld items	已重命名 %lld 个项目
+Undid the rename of 1 item	已撤销 1 个项目的重命名
+Undid the rename of %lld items	已撤销 %lld 个项目的重命名
+and %lld more	等另外 %lld 个
+Saved folder sync tasks could not be read.	无法读取已保存的文件夹同步任务。
+Folder sync settings could not be saved.	无法保存文件夹同步设置。
+Choose how to handle every conflict before syncing.	同步前，请为每个冲突选择处理方式。
+Automatic sync skipped this task because some conflicts need a decision.	有冲突需要你决定，自动同步已跳过此任务。
+The analysis was cancelled.	分析已取消。
+Enter a name for this sync preset.	请输入此同步任务的名称。
+The folder could not be found: %@	找不到文件夹：%@
+The folder could not be read. Check its permissions and connection: %@	无法读取文件夹，请检查权限和连接：%@
+The folder is not writable: %@	文件夹不可写入：%@
+Choose two different folders.	请选择两个不同的文件夹。
+One sync folder cannot be inside the other.	一个同步文件夹不能位于另一个之中。
+This folder contains too many items to sync safely.	此文件夹包含的项目过多，无法安全同步。
+There is not enough free space to complete this sync: %@ needed, %@ available.	可用空间不足，无法完成此次同步：需要 %1$@，可用 %2$@。
+The folder contents changed. Review the updated preview before syncing.	文件夹内容已变化。请查看更新后的预览，再进行同步。
+Update Right	更新右侧
+Update Left	更新左侧
+Update Both	更新两侧
+Copies new and changed items from the left folder to the right one. Items only on the right stay as they are.	将左侧文件夹中新增和修改的项目复制到右侧。只在右侧存在的项目保持不变。
+Copies new and changed items from the right folder to the left one. Items only on the left stay as they are.	将右侧文件夹中新增和修改的项目复制到左侧。只在左侧存在的项目保持不变。
+Copies changes in both directions. Items changed on both sides since the last sync become conflicts for you to decide.	双向复制更改。自上次同步后两侧都修改过的项目会列为冲突，由你决定如何处理。
+Changed in both folders since the last sync	自上次同步后两侧都有修改
+Different in each folder, and there is no earlier sync to compare with	两侧内容不同，且没有上次同步的记录可供比较
+A different kind of item in each folder	两侧的项目类型不同
+Names that differ only in letter case	名称仅大小写不同
+Keep Left	保留左侧
+Keep Right	保留右侧
+Daily	每天
+Weekly	每周
+Monthly	每月
+Automatic sync is off	未开启自动同步
+Daily at %@	每天 %@
+Weekly on %@ at %@	每周%1$@ %2$@
+Monthly on day %lld at %@	每月 %1$lld 日 %2$@
+Completed	已完成
+Completed with issues	已完成，但有问题
+Cancelled	已取消
+Failed	失败
+Needs attention	需要处理
+Never run	从未运行
+1 conflict needs a decision	1 个冲突需要你决定
+%lld conflicts need a decision	%lld 个冲突需要你决定
+Copied to left: %lld	复制到左侧：%lld
+Copied to right: %lld	复制到右侧：%lld
+Failed: %lld	失败：%lld
+Delete Task	删除任务
+“%@” and its run history will be removed. The files in its folders are not changed.	将移除“%@”及其运行记录。文件夹中的文件不受影响。
+Sync Tasks	同步任务
+Edit…	编辑…
+New Task	新建任务
+No Sync Tasks	没有同步任务
+Select a sync task	选择一个同步任务
+A sync task keeps two folders up to date with each other. It never deletes anything.	同步任务让两个文件夹彼此保持最新，不会删除任何内容。
+Running…	正在运行…
+Are You Sure You Want to Sync?	确定要同步吗？
+Sync	同步
+Left Folder	左侧文件夹
+Right Folder	右侧文件夹
+Preview Sync Details	预览同步详情
+Sync Now	立即同步
+Analyzing folder changes…	正在分析文件夹变化…
+Copy Left: %lld	复制到左侧：%lld
+Copy Right: %lld	复制到右侧：%lld
+Updates: %lld	更新：%lld
+Conflicts: %lld	冲突：%lld
+Updated files replace their older copies. Nothing is deleted.	更新的文件会替换旧版本，不会删除任何内容。
+Recent Runs	最近运行
+Preview the changes to see what will be copied, or sync now. Folder Sync adds and updates items but never deletes them.	可以先预览更改，查看会复制哪些内容，也可以立即同步。文件夹同步只会添加和更新项目，从不删除。
+Automatic	自动
+The folders are already in sync.	两个文件夹已经一致。
+Nothing needs to be copied.	没有需要复制的内容。
+Unchanged: %lld	未变化：%lld
+Skipped: %lld	跳过：%lld
+1 folder could not be read. Its contents are not included.	有 1 个文件夹无法读取，其内容未包含在内。
+%lld folders could not be read. Their contents are not included.	有 %lld 个文件夹无法读取，其内容未包含在内。
+%lld more conflicts are not listed. Use Apply to All to decide them.	另有 %lld 个冲突未列出，请使用“应用到全部”统一处理。
+Conflicts	冲突
+Apply to All	应用到全部
+Copy to Right	复制到右侧
+Copy to Left	复制到左侧
+Update in Right Folder	在右侧更新
+Update in Left Folder	在左侧更新
+Skipped	已跳过
+1 conflict still needs a decision.	还有 1 个冲突需要你决定。
+%lld conflicts still need a decision.	还有 %lld 个冲突需要你决定。
+Preview Again	重新预览
+Left: %@	左侧：%@
+Right: %@	右侧：%@
+Choose…	选择…
+Not present	不存在
+Symbolic link	符号链接
+Only in the left folder	仅在左侧文件夹中
+Only in the right folder	仅在右侧文件夹中
+The right folder has the newer copy	右侧文件夹中的版本较新
+The left folder has the newer copy	左侧文件夹中的版本较新
+Not changed since the last sync	自上次同步后未修改
+Syncing…	正在同步…
+%lld of %lld items	已完成 %1$lld / %2$lld 个项目
+%@ of %@	%1$@ / %2$@
+1 item could not be synced:	有 1 个项目无法同步：
+%lld items could not be synced:	有 %lld 个项目无法同步：
+Sync completed	同步完成
+Sync completed with issues	同步完成，但有问题
+Sync cancelled	同步已取消
+Sync failed	同步失败
+Try Again	重试
+New Folder Sync Task	新建文件夹同步任务
+Edit Folder Sync Task	编辑文件夹同步任务
+Task Name	任务名称
+Required	必填
+Direction	方向
+Options	选项
+Include Hidden Items	包含隐藏项目
+Allowed Modification Time Difference	允许的修改时间差异
+seconds	秒
+Files with the same size whose modification times differ by no more than this are treated as unchanged.	大小相同、修改时间相差不超过此值的文件视为未更改。
+Always match filename case	始终区分文件名大小写
+When off, each disk decides whether names that differ only in letter case are the same item.	关闭时，由各个磁盘决定仅大小写不同的名称是否指向同一项目。
+Filters	过滤规则
+Add Filter	添加过滤规则
+* matches any run of characters and ? matches one. Exclude rules win over include rules, and an excluded folder is skipped with everything in it.	* 匹配任意数量的字符，? 匹配一个字符。排除规则优先于包含规则；被排除的文件夹会连同其中的全部内容一起跳过。
+Automatic Sync	自动同步
+Frequency	频率
+Time	时间
+Weekday	星期
+Day of Month	日期
+In months without this day, the task runs on the last day of the month.	在没有这一天的月份，任务会在当月最后一天运行。
+Next Run	下次运行
+Automatic sync runs while DirDesk is open.	自动同步只在 DirDesk 打开时运行。
+A sync preset with this name already exists.	已存在同名的同步任务。
+Enter a task name and choose both folders.	请输入任务名称并选择两个文件夹。
+Not chosen	未选择
+Choose Sync Folder	选择同步文件夹
+Choose	选择
+Include	包含
+Exclude	排除
+File Name	文件名
+Relative Path	相对路径
+Remove Filter	移除过滤规则
+A sync task copies new and changed items between two folders, when you run it or on a schedule. It never deletes anything.	同步任务会在你手动运行或按计划运行时，在两个文件夹之间复制新增和修改的项目，从不删除任何内容。
+Open Folder Sync	打开文件夹同步
+Defaults for New Tasks	新任务的默认设置

@@ -1,0 +1,51 @@
+Dropped Text	拖入的文本
+Dropped Image	拖入的图片
+Dropped File	拖入的文件
+Web Link	网页链接
+File Transit has reached its item limit. Remove items to make room.	中转舱的项目数已到上限，请先移除一些项目再添加。
+There is no room left for imported content. Remove some dropped text, images, or links first.	存放拖入内容的空间已用完，请先移除一些拖入的文本、图片或链接。
+This item is too large to import into File Transit.	这个项目太大，无法导入中转舱。
+File Transit can’t hold this kind of item.	中转舱无法存放这类内容。
+Importing an item into File Transit failed.	有一项内容没能导入中转舱。
+That item has already left File Transit.	该项目已经不在中转舱里了。
+That stack has already left File Transit.	这一组已经不在中转舱里了。
+Nothing was removed recently.	最近没有移除任何项目。
+A newer DirDesk version saved this File Transit data. It is kept as is, so File Transit is read-only here.	这份中转舱数据由较新版本的 DirDesk 保存。为保持原样，中转舱在此版本中为只读。
+File Transit started empty because its saved data could not be read.	中转舱的存档无法读取，已从空白状态开始。
+Some File Transit records were damaged and have been left out.	部分中转舱记录已损坏，已将其略过。
+Part of the drop could not be added to File Transit.	拖入的内容中有一部分没能加入中转舱。
+Saving File Transit failed.	中转舱保存失败。
+The file for this item can’t be found.	找不到这个项目对应的文件。
+These items can’t be shared because their files are missing.	这些项目的文件已不存在，无法共享。
+Items whose files are missing were left out of sharing.	文件已不存在的项目未被共享。
+Copying to the Clipboard failed.	复制到剪贴板失败。
+Open a folder in a DirDesk window to export there.	请先在 DirDesk 窗口中打开一个文件夹，再导出到那里。
+Choose Export Destination	选择导出位置
+Pick a folder to receive copies of the File Transit items.	选一个文件夹，用来存放中转舱项目的副本。
+Export	导出
+Another export is still running.	上一次导出还没有完成。
+Export cancelled	导出已取消
+Not exported: %lld of %lld	未能导出：%1$lld / %2$lld
+Exported 1 item	已导出 1 个项目
+Exported %lld items	已导出 %lld 个项目
+None of these items could be readied for dragging.	这些项目都没能准备好拖出。
+Some items could not be readied for dragging and were left out.	部分项目没能准备好拖出，已将其略过。
+More Actions	更多操作
+Show Stack Items	展开整组
+Hide Stack Items	收起整组
+Remove stack from File Transit	从中转舱移除整组
+Export this item…	导出此项目…
+Copy to Clipboard	复制到剪贴板
+Export…	导出…
+Export Here	导出到此处
+Exports to “%@”	导出到“%@”
+Choose Export Destination…	选择导出位置…
+Export & Clear…	导出并清空…
+Drop to add to File Transit	松开即可放进中转舱
+Missing	文件缺失
+Locked	已锁定
+Drag this item out	拖出此项
+Drag this stack out	拖出整组
+Dragging out never moves the originals. A move drop takes unlocked items off the shelf; a copy drop keeps them.	拖出时原文件始终留在原处。以移动方式放下会把未锁定的项目移出中转舱，以复制方式放下则保留它们。
+Exporting…	正在导出…
+Exports every item, then removes the exported items that are not locked.	导出全部项目，然后把导出成功且未锁定的项目移出中转舱。

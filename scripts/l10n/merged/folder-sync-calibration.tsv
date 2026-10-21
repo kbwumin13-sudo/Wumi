@@ -1,0 +1,19 @@
+Sync Task Name	同步任务名称
+e.g. Documents Backup	例如：文稿备份
+Folder Path	文件夹路径
+Choose Folder	选择文件夹
+Choose a folder.	请选择文件夹。
+Choose both folders.	请选择两个文件夹。
+Folder not found.	找不到文件夹。
+Folder can't be read.	无法读取文件夹。
+Folder isn't writable.	文件夹不可写入。
+Which folder to update	要更新哪个文件夹
+Treat modification times up to	修改时间相差在
+seconds apart as the same.	秒以内时视为相同。
+All items are included.	包含所有项目。
+Day %lld	%lld 日
+Next run: %@	下次运行：%@
+Run Folder Sync	运行文件夹同步
+Continue	继续
+This sync task no longer exists.	此同步任务已不存在。
+The sync keeps running after you close this.	关闭后，同步仍会在后台继续。

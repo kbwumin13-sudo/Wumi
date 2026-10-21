@@ -1,0 +1,5 @@
+File operation redone	已重做文件操作
+File operation undone	已撤销文件操作
+Undo stopped: another item is now named “%@”.	撤销未执行：现在有另一个项目名为“%@”。
+Undo stopped: “%@” is no longer there.	撤销未执行：“%@”已不在原处。
+Undo stopped: “%@” was changed outside DirDesk.	撤销未执行：“%@”在 DirDesk 之外被修改过。

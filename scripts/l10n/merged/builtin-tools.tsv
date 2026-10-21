@@ -1,0 +1,234 @@
+Built-in Tools can process at most %lld items at once.	内置工具一次最多可处理 %lld 项。
+This tool works with image files only.	此工具仅适用于图片文件。
+This tool works with PDF files only.	此工具仅适用于 PDF 文件。
+This tool does not support the current selection.	此工具不支持当前选择。
+Not supported: %@	不支持：%@
+Select exactly one file.	请只选择一个文件。
+This operation requires at least %lld PDFs; received %lld.	此操作至少需要 %1$lld 个 PDF；实际收到 %2$lld 个。
+Process %lld items?	处理 %lld 项吗？
+A new copy is created for each item and the originals stay unchanged. You can cancel while the items are processed.	每一项都会生成新的副本，原文件保持不变。处理过程中可以随时取消。
+Tool operation cancelled	工具操作已取消
+Created “%@”	已创建“%@”
+%lld items processed	已处理 %lld 个项目
+Processing %lld of %lld…	正在处理第 %1$lld 项，共 %2$lld 项…
+Processing…	正在处理…
+Files are processed one at a time. Cancelling never changes the originals.	文件会逐个处理，取消不会改动原文件。
+Cancelling…	正在取消…
+1 item processed	已处理 1 个项目
+The file could not be processed	文件无法处理
+Some files could not be processed	部分文件无法处理
+Retry Failed Items	重试失败项目
+Reveal Outputs	显示输出文件
+%lld created · %lld failed	已创建 %1$lld 个 · 失败 %2$lld 个
+%lld not started	%lld 个未开始
+Finish or cancel the current tool operation first.	请先完成或取消当前工具操作。
+The source PDF is missing or unreadable: %@	源 PDF 缺失或无法读取：%@
+The file is not a valid PDF: %@	文件不是有效的 PDF：%@
+The PDF has no pages: %@	PDF 没有页面：%@
+The PDF is locked: %@	PDF 已锁定：%@
+The PDF permissions do not allow this operation: %@	PDF 权限不允许执行此操作：%@
+Page %lld is outside this %lld-page PDF.	第 %1$lld 页超出这个共 %2$lld 页的 PDF 范围。
+Pages %lld-%lld are outside this %lld-page PDF.	第 %1$lld-%2$lld 页超出这个共 %3$lld 页的 PDF 范围。
+“%@” is not a valid page range. Use one-based ranges such as 1-3, 5, 8-10.	“%@”不是有效的页面范围。请使用从 1 开始的页面范围，例如 1-3、5、8-10。
+Select at least one page.	请至少选择一页。
+This operation accepts at most %lld PDFs; received %lld.	此操作最多接受 %1$lld 个 PDF；实际收到 %2$lld 个。
+The operation contains %lld pages, exceeding the %lld-page limit.	操作包含 %1$lld 页，超过 %2$lld 页的上限。
+Page %lld would render with %lld pixels, above the limit of %lld. Choose a lower resolution.	第 %1$lld 页渲染后将有 %2$lld 个像素，超过 %3$lld 个像素的上限。请选择更低的分辨率。
+Choose a resolution between %lld and %lld DPI.	请选择 %1$lld 到 %2$lld DPI 之间的分辨率。
+The destination folder is unavailable or not writable: %@	目标文件夹不可用或不可写入：%@
+Not enough free space: %@ available, about %@ needed.	可用空间不足：剩余 %1$@，约需 %2$@。
+Could not write the PDF: %@	无法写入 PDF：%@
+The generated PDF failed validation: %@	生成的 PDF 未通过验证：%@
+Could not publish the completed PDF: %@	无法发布已完成的 PDF：%@
+Page ranges must not overlap.	页面范围不能重叠。
+The split value must be greater than zero and produce at least one file.	拆分值必须大于零，并且至少生成一个文件。
+At least one valid page must be selected for rotation.	请至少选择一个有效页面进行旋转。
+The source image is missing or unreadable: %@	源图片缺失或无法读取：%@
+The image is unsupported or damaged: %@	图片不受支持或已损坏：%@
+This operation does not support images with %lld frames.	此操作不支持包含 %lld 帧的图片。
+This operation would discard unsupported image data: %@.	此操作会丢弃不受支持的图片数据：%@。
+The source image format is not supported.	不支持源图片格式。
+The destination format is unavailable: %@	目标格式不可用：%@
+The crop rectangle is outside the image.	裁切区域超出了图片范围。
+Image quality must be between 0 and 1.	图片质量必须介于 0 和 1 之间。
+The image has %lld pixels, above the safe limit of %lld.	图片有 %1$lld 个像素，超过 %2$lld 个像素的安全上限。
+An item named “%@” already exists.	已存在名为“%@”的项目。
+The destination folder is not writable: %@	目标文件夹不可写入：%@
+Maximum image dimensions must be positive.	图片最大尺寸必须为正数。
+Watermark text and settings are invalid.	水印文字或设置无效。
+Image tools create a new file and cannot replace the source.	图片工具会创建新文件，不能替换原文件。
+No suitable foreground subject was detected.	未检测到合适的前景主体。
+Subject detection is unavailable: %@	主体识别不可用：%@
+The image does not contain readable location metadata.	图片中没有可读取的位置元数据。
+The PDF could not be created.	无法创建 PDF。
+Could not write the image: %@	无法写入图片：%@
+%lld × %lld px	%1$lld × %2$lld 像素
+%lld%%	%lld%%
+%lld°	%lld°
+Pages %lld–%lld	第 %1$lld–%2$lld 页
+1 page	1 页
+%lld pages	%lld 页
+%lld bytes	%lld 字节
+1 file	1 个文件
+%lld files	%lld 个文件
+1 image	1 张图片
+%lld images	%lld 张图片
+Free	自由
+Square (1:1)	正方形 (1:1)
+Standard (4:3)	标准 (4:3)
+Widescreen (16:9)	宽屏 (16:9)
+Choose the area to keep. A cropped copy is saved next to the original.	选择要保留的区域，裁剪后的副本会保存在原图旁边。
+Arrow keys move the frame by 1 px (Shift: 10 px). Hold Option to resize it.	方向键每次移动裁剪框 1 像素（按住 Shift 为 10 像素）；按住 Option 可调整大小。
+Reading image dimensions…	正在读取图片尺寸…
+Aspect ratio	宽高比
+Swap Width and Height	交换宽高
+Width	宽度
+Height	高度
+Source size: %lld × %lld pixels	源图片尺寸：%1$lld × %2$lld 像素
+Coordinates are pixels from the top-left corner of the image as it is displayed.	坐标以图片显示方向的左上角为原点，单位为像素。
+Reset Crop	重置裁切
+Interactive crop frame	交互式裁剪框
+X %lld, Y %lld, width %lld, height %lld	X %1$lld，Y %2$lld，宽 %3$lld，高 %4$lld
+Estimated output: %@ (%@)	预计输出：%1$@（%2$@）
+Save copies in another image format. The originals stay unchanged.	将图片另存为其他格式的副本，原文件保持不变。
+Each converted copy is saved next to its original with a new extension.	转换后的副本使用新的扩展名，保存在原文件旁边。
+Output format	输出格式
+Quality	质量
+Lower quality gives smaller files with more visible compression artifacts.	质量越低，文件越小，压缩痕迹也越明显。
+This output format does not use a lossy quality setting.	此输出格式不使用有损质量设置。
+JPEG has no transparency; transparent areas become white.	JPEG 不支持透明，透明区域会变成白色。
+%lld images will be converted. The estimate is for the image shown.	将转换 %lld 张图片，预估大小以当前预览的图片为准。
+Compressed from %@ to %@	已从 %1$@ 压缩至 %2$@
+not smaller than the original	未比原文件小
+Make images smaller by lowering quality or limiting their size.	降低质量或限制尺寸，让图片文件更小。
+Compressed copies keep the original format and are saved next to the originals.	压缩副本保持原格式，保存在原文件旁边。
+This format is lossless, so quality has little effect. Limit the dimensions to make it smaller.	此格式为无损格式，调整质量作用不大；限制尺寸才能明显变小。
+Limit maximum dimensions	限制最大尺寸
+%lld px	%lld 像素
+%lld images will be compressed. The estimate is for the image shown.	将压缩 %lld 张图片，预估大小以当前预览的图片为准。
+Dimensions are preserved.	将保留原始尺寸。
+Maximum width and height: %lld px	最大宽度和高度：%lld 像素
+Smaller images are never enlarged.	较小的图片不会被放大。
+Read the GPS position stored in the photo. Nothing is looked up online.	读取照片中记录的 GPS 位置，不进行任何联网查询。
+Read-only tool; no output file.	只读工具；不会生成输出文件。
+Copied	已复制
+Copy Coordinates	复制坐标
+Open in Maps	在地图中打开
+Reading location metadata…	正在读取位置元数据…
+Latitude	纬度
+Longitude	经度
+Altitude	海拔
+%.1f m	%.1f 米
+GPS Time	GPS 时间
+Accuracy	精度
+± %.0f m	± %.0f 米
+Image Direction	拍摄方向
+Speed	速度
+%.1f km/h	%.1f 公里/小时
+Coordinates	坐标
+Detect the main subject on this Mac and make everything else transparent.	在本机识别画面主体，并将其余部分变为透明。
+Saves a transparent PNG next to the original.	透明 PNG 会保存在原图旁边。
+Create Transparent PNG	创建透明 PNG
+Original	原图
+Result	结果
+Generating preview…	正在生成预览…
+Transparent result preview	透明结果预览
+Combine images into one PDF, one image per page, in the order shown.	按列表顺序将图片合成一个 PDF，每张图片一页。
+The PDF is saved next to the first image. The images stay unchanged.	PDF 保存在第一张图片旁边，图片本身保持不变。
+Page order	页面顺序
+Move Earlier	前移
+Move Later	后移
+Drag rows or use the buttons to change the page order.	拖动行或使用按钮调整页面顺序。
+Paper size	纸张大小
+A4 Portrait	A4 纵向
+A4 Landscape	A4 横向
+US Letter Portrait	US Letter 纵向
+US Letter Landscape	US Letter 横向
+Fit images to the page	使图片适合页面
+Allow enlarging smaller images	允许放大小尺寸图片
+File name	文件名
+If the name is taken, a number is added instead of replacing the existing file.	如果名称已被占用，会自动添加编号，不会替换已有文件。
+Each page takes the size of its image.	每页尺寸与对应图片一致。
+Images keep their natural size and are centered; anything beyond the paper edge is cut off.	图片保持原始尺寸并居中，超出纸张边缘的部分会被裁掉。
+Every image is scaled to fill the page width or height.	每张图片都会缩放至占满页面宽度或高度。
+Large images are scaled down to fit; small ones keep their size.	大图会缩小以适合页面，小图保持原尺寸。
+Merged	合并后的文档
+%lld PDFs merged	已合并 %lld 个 PDF
+Join the selected PDFs into one document in the order shown.	按列表顺序将所选 PDF 合并为一个文档。
+The merged PDF is saved next to the first file. The originals stay unchanged.	合并后的 PDF 保存在第一个文件旁边，原文件保持不变。
+%lld PDFs · %@ in total	%1$lld 个 PDF · 共 %2$@
+Drag rows or use the buttons to change the order.	拖动行或使用按钮调整顺序。
+All %lld pages will be rotated.	将旋转全部 %lld 页。
+%lld of %lld pages will be rotated.	将旋转 %2$lld 页中的 %1$lld 页。
+Turn some or all pages and save the result as a new PDF.	旋转部分或全部页面，并将结果另存为新的 PDF。
+The rotated copy is saved next to the original, which stays unchanged.	旋转后的副本保存在原文件旁边，原文件保持不变。
+Rotation	旋转角度
+90° Clockwise	顺时针 90°
+90° Counterclockwise	逆时针 90°
+180°	180°
+Pages (blank means all)	页面（留空表示全部）
+All pages	全部页面
+Use one-based ranges such as 1-3, 5, 8-10.	请使用从 1 开始的页面范围，例如 1-3、5、8-10。
+%@ → %@ (%lld%% smaller)	%1$@ → %2$@（减小 %3$lld%%）
+%@ → %@ (same size)	%1$@ → %2$@（大小不变）
+%@ → %@ (larger than the original)	%1$@ → %2$@（比原文件更大）
+Shrink the images inside PDFs and save compressed copies.	压缩 PDF 中的图片，并另存为压缩副本。
+The exact size is known only after compressing. An already optimized PDF can even grow; the original is always kept.	实际大小要压缩后才能确定。已经优化过的 PDF 甚至可能变大；原文件始终保留。
+%lld PDFs	%lld 个 PDF
+Compression preset	压缩预设
+Optimize images for screen	针对屏幕显示优化图片
+Optimize and convert images to JPEG	优化图片并转换为 JPEG
+Downsamples large images to screen resolution and keeps their current encoding.	将大图降到屏幕分辨率，并保留原有编码。
+Also re-encodes images as JPEG, which usually saves more space but can soften fine detail.	同时将图片重新编码为 JPEG，通常更省空间，但细节可能变得模糊。
+Exported %@	已导出 %@
+Save every page as a numbered PNG or JPEG image.	将每一页保存为带编号的 PNG 或 JPEG 图片。
+Images are written in page order into a new folder next to the PDF. The folder appears when all pages are done.	图片按页码顺序写入 PDF 旁边的新文件夹，全部页面完成后文件夹才会出现。
+Image format	图片格式
+Screen Reading (72 DPI)	屏幕阅读（72 DPI）
+Clear Sharing (150 DPI)	清晰分享（150 DPI）
+High-Quality Printing (300 DPI)	高清打印（300 DPI）
+%lld–%lld	%1$lld–%2$lld
+JPEG quality	JPEG 质量
+Page 1 becomes %@.	第 1 页将输出为 %@。
+Higher resolutions give sharper but larger images.	分辨率越高，图片越清晰，文件也越大。
+Page ranges	页面范围
+Every N pages	每 N 页
+Target file count	目标文件数
+Enter page ranges, such as 1-3, 5, 8-10.	请输入页面范围，例如 1-3、5、8-10。
+Created %@	已创建 %@
+Divide one PDF into several by page ranges, pages per file or number of files.	按页面范围、每份页数或文件数量，将一个 PDF 拆分为多个。
+The new PDFs are saved next to the original, which stays unchanged.	新的 PDF 保存在原文件旁边，原文件保持不变。
+Split method	拆分方式
+For example: 1-3, 5, 8-10	例如：1-3, 5, 8-10
+Use one-based ranges such as 1-3, 5, 8-10. Each range becomes one file.	请使用从 1 开始的页面范围，例如 1-3、5、8-10；每个范围生成一个文件。
+Pages per file	每个文件的页数
+Number of files	文件数量
+Planned files	计划生成的文件
+Planning exact output files…	正在规划准确的输出文件…
+Copy the pages you pick into a new PDF. The original stays unchanged.	将选中的页面复制到新的 PDF 中，原文件保持不变。
+Links, form fields, bookmarks and signatures may not carry over to the extracted pages.	链接、表单域、书签和签名可能不会保留到提取出的页面中。
+Select pages	选择页面
+Rendering page thumbnails…	正在生成页面缩略图…
+Deselect All	取消全选
+Only the first %lld pages are shown. Type ranges to pick later pages.	仅显示前 %lld 页；要选择后面的页面，请输入页面范围。
+Create one PDF per range	每个范围创建一个 PDF
+Page previews are unavailable. Type the pages to extract below.	无法显示页面预览，请在下方输入要提取的页面。
+Run Tool	运行工具
+Estimating output size…	正在估算输出大小…
+Estimate unavailable: %@	无法估算：%@
+Enter the watermark text.	请输入水印文字。
+Stamp text over images, centered once or repeated as a pattern.	在图片上添加文字水印，可居中放置一次或平铺重复。
+A watermarked copy of each of the %lld images is saved next to its original.	%lld 张图片的水印副本会分别保存在原图旁边。
+A watermarked copy is saved next to the original.	水印副本会保存在原图旁边。
+Live Preview — %@	实时预览 — %@
+Live Preview	实时预览
+Transformation result preview	转换结果预览
+Watermark Text	水印文字
+Centered	居中
+Tiled	平铺
+Angle	角度
+Opacity	不透明度
+Text Size	文字大小
+Spacing	间距
+Text Color	文字颜色
+Text size and spacing follow each image's shorter edge, so the watermark looks alike on large and small images.	文字大小和间距按每张图片的短边计算，大图和小图上的水印比例一致。

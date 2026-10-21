@@ -1,0 +1,196 @@
+{
+ "activeTabID": "984A90A3-24A6-4FB2-A7F6-4BB6913D197B",
+ "inspectorVisible": true,
+ "tabs": [
+  {
+   "isPinned": false,
+   "title": "01-排序与日期",
+   "layout": "single",
+   "panes": [
+    {
+     "searchText": "",
+     "selectedIdentities": [
+      {
+       "fileSystemDevice": 16777233,
+       "volumeIdentifier": "{length = 8, bytes = 0x6745640000000000}",
+       "fileSystemInode": 119695923,
+       "fallbackPath": "/Users/tester/demo/Fixtures/01-排序与日期/a.txt",
+       "resourceIdentifier": "{length = 16, bytes = 0x336a2207000000006745640000000000}"
+      }
+     ],
+     "viewConfiguration": {
+      "gridThumbnailScale": 1,
+      "mode": "list",
+      "columnBrowserWidths": {},
+      "sortAscending": true,
+      "showsHiddenFiles": false,
+      "foldersFirst": false,
+      "listColumnWidths": {},
+      "visibleListColumns": [
+       "name",
+       "modificationDate",
+       "size",
+       "kind",
+       "lastOpenedDate"
+      ],
+      "groupingMode": "none",
+      "usesNaturalNumericSorting": true,
+      "listThumbnailSize": 16,
+      "pinnedFolderPaths": [],
+      "columnWidth": 200,
+      "sortKey": "name"
+     },
+     "searchMode": "keyword",
+     "id": "6ECC9AD3-911C-42F0-BF55-C7C2CFA89D47",
+     "searchRecursively": true,
+     "accessGrantID": "AE9B82DA-985A-4B52-9D15-C002FA3F6EB0",
+     "history": {
+      "currentIndex": 32,
+      "entries": [
+       {
+        "directory": "file:///Users/tester/Desktop/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/.Trash/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Applications/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Documents/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Documents/Example/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Projects/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Projects/Example-%E7%A4%BA%E4%BE%8B/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Projects/Example-%E7%A4%BA%E4%BE%8B/outputs/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Projects/Example-%E7%A4%BA%E4%BE%8B/outputs/generated/",
+        "kind": "directory"
+       },
+       {
+        "kind": "recent",
+        "recent": {
+         "endDate": 814110529.152968,
+         "period": "week",
+         "startDate": 814110529.152968
+        }
+       },
+       {
+        "directory": "file:///Users/Shared/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Pictures/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Downloads/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Desktop/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Movies/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/Music/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Projects/",
+        "kind": "directory"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/02-%E6%96%87%E6%A1%A3/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/01-%E6%8E%92%E5%BA%8F%E4%B8%8E%E6%97%A5%E6%9C%9F/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Fixtures/03-%E5%9B%BE%E7%89%87/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Fixtures/",
+        "kind": "directory"
+       },
+       {
+        "directory": "file:///Users/tester/demo/Fixtures/05-%E5%8E%8B%E7%BC%A9%E5%8C%85/",
+        "kind": "directory"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/05-%E5%8E%8B%E7%BC%A9%E5%8C%85/src/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/03-%E5%9B%BE%E7%89%87/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/01-%E6%8E%92%E5%BA%8F%E4%B8%8E%E6%97%A5%E6%9C%9F/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/02-%E6%96%87%E6%A1%A3/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/08-%E5%A4%A7%E7%9B%AE%E5%BD%95/"
+       },
+       {
+        "kind": "directory",
+        "directory": "file:///Users/tester/demo/Fixtures/01-%E6%8E%92%E5%BA%8F%E4%B8%8E%E6%97%A5%E6%9C%9F/"
+       }
+      ]
+     }
+    }
+   ],
+   "activePaneID": "6ECC9AD3-911C-42F0-BF55-C7C2CFA89D47",
+   "splitRatios": [],
+   "id": "984A90A3-24A6-4FB2-A7F6-4BB6913D197B"
+  }
+ ],
+ "id": "D1DDECC0-0000-4000-8000-000000000001"
+}

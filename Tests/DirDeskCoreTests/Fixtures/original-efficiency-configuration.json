@@ -1,0 +1,490 @@
+{
+ "contextMenuCommands": [
+  "open",
+  "openWith",
+  "openInNewTab",
+  "separatorOpen",
+  "trash",
+  "separatorDestructive",
+  "getInfo",
+  "rename",
+  "compress",
+  "duplicate",
+  "makeAlias",
+  "quickLook",
+  "separatorEdit",
+  "copy",
+  "share",
+  "tags",
+  "separatorLocation",
+  "builtInTools",
+  "openTerminal",
+  "openEditor",
+  "extract",
+  "extractTo",
+  "invertSelection",
+  "cut",
+  "copyTo",
+  "sendTo",
+  "copyPath",
+  "reveal",
+  "bookmarks",
+  "checksum",
+  "batchRename",
+  "paneTransfer"
+ ],
+ "externalTools": [
+  {
+   "name": "Terminal",
+   "bundleIdentifier": "com.apple.Terminal",
+   "id": "37E8FC87-87E2-4D03-98FA-898D1311E113",
+   "isDefault": true,
+   "sortOrder": 0,
+   "kind": "terminal",
+   "applicationPath": "/System/Applications/Utilities/Terminal.app"
+  }
+ ],
+ "fileTemplates": [
+  {
+   "isDefault": true,
+   "builtInKind": "markdown",
+   "datePosition": "beforeName",
+   "contents": "",
+   "name": "Markdown",
+   "sortOrder": 0,
+   "id": "D1DDECC0-0000-4000-8000-000000000101",
+   "fileNamePattern": "Untitled.md"
+  },
+  {
+   "isDefault": false,
+   "builtInKind": "plainText",
+   "datePosition": "beforeName",
+   "contents": "",
+   "name": "Plain Text",
+   "sortOrder": 1,
+   "id": "D1DDECC0-0000-4000-8000-000000000102",
+   "fileNamePattern": "Untitled.txt"
+  },
+  {
+   "isDefault": false,
+   "builtInKind": "jsonFile",
+   "datePosition": "beforeName",
+   "contents": "{\n}\n",
+   "name": "JSON",
+   "sortOrder": 2,
+   "id": "D1DDECC0-0000-4000-8000-000000000107",
+   "fileNamePattern": "Untitled.json"
+  },
+  {
+   "isDefault": false,
+   "builtInKind": "wordDocument",
+   "datePosition": "beforeName",
+   "contents": "",
+   "name": "Word Document",
+   "sortOrder": 3,
+   "id": "D1DDECC0-0000-4000-8000-000000000103",
+   "fileNamePattern": "Untitled.docx"
+  },
+  {
+   "isDefault": false,
+   "builtInKind": "excelSpreadsheet",
+   "datePosition": "beforeName",
+   "contents": "",
+   "name": "Excel Spreadsheet",
+   "sortOrder": 4,
+   "id": "D1DDECC0-0000-4000-8000-000000000104",
+   "fileNamePattern": "Untitled.xlsx"
+  },
+  {
+   "isDefault": false,
+   "builtInKind": "powerPointPresentation",
+   "datePosition": "beforeName",
+   "contents": "",
+   "name": "PowerPoint Presentation",
+   "sortOrder": 5,
+   "id": "D1DDECC0-0000-4000-8000-000000000105",
+   "fileNamePattern": "Untitled.pptx"
+  },
+  {
+   "isDefault": false,
+   "builtInKind": "csvSpreadsheet",
+   "datePosition": "beforeName",
+   "contents": "",
+   "name": "CSV Spreadsheet",
+   "sortOrder": 6,
+   "id": "D1DDECC0-0000-4000-8000-000000000106",
+   "fileNamePattern": "Untitled.csv"
+  }
+ ],
+ "shortcuts": [
+  "copy",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "c"
+  },
+  "search",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "f"
+  },
+  "openTerminal",
+  {
+   "modifiers": [
+    "option",
+    "cmd"
+   ],
+   "key": "t"
+  },
+  "iconView",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "1"
+  },
+  "nextPane",
+  {
+   "modifiers": [
+    "control"
+   ],
+   "key": "tab"
+  },
+  "moveToTrash",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "delete"
+  },
+  "quickLook",
+  {
+   "modifiers": [],
+   "key": "space"
+  },
+  "addBookmark",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "d"
+  },
+  "columnView",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "3"
+  },
+  "pasteAndMove",
+  {
+   "key": "v",
+   "modifiers": [
+    "option",
+    "cmd"
+   ]
+  },
+  "invertSelection",
+  {
+   "key": "i",
+   "modifiers": [
+    "shift",
+    "cmd"
+   ]
+  },
+  "newFolder",
+  {
+   "key": "n",
+   "modifiers": [
+    "shift",
+    "cmd"
+   ]
+  },
+  "copyPath",
+  {
+   "modifiers": [
+    "shift",
+    "cmd"
+   ],
+   "key": "u"
+  },
+  "rename",
+  {
+   "modifiers": [],
+   "key": "return"
+  },
+  "editPath",
+  {
+   "modifiers": [
+    "shift",
+    "cmd"
+   ],
+   "key": "g"
+  },
+  "newTab",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "t"
+  },
+  "toggleInspector",
+  {
+   "modifiers": [
+    "option",
+    "cmd"
+   ],
+   "key": "i"
+  },
+  "navigateForward",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "]"
+  },
+  "batchRename",
+  {
+   "modifiers": [
+    "control",
+    "cmd"
+   ],
+   "key": "r"
+  },
+  "openSelection",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "o"
+  },
+  "reopenClosedTab",
+  {
+   "modifiers": [
+    "cmd",
+    "shift"
+   ],
+   "key": "t"
+  },
+  "openEditor",
+  {
+   "modifiers": [
+    "option",
+    "cmd"
+   ],
+   "key": "e"
+  },
+  "newWindow",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "n"
+  },
+  "removeDuplicateTabs",
+  {
+   "modifiers": [
+    "shift",
+    "cmd"
+   ],
+   "key": "k"
+  },
+  "previousPane",
+  {
+   "modifiers": [
+    "shift",
+    "control"
+   ],
+   "key": "tab"
+  },
+  "listView",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "2"
+  },
+  "globalQuickSearch",
+  {
+   "modifiers": [],
+   "key": "dd"
+  },
+  "navigateBack",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "["
+  },
+  "newFile",
+  {
+   "modifiers": [
+    "cmd",
+    "option"
+   ],
+   "key": "n"
+  },
+  "paste",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "v"
+  },
+  "navigateUp",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "up"
+  },
+  "imageView",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "4"
+  },
+  "cut",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "x"
+  },
+  "closeTab",
+  {
+   "modifiers": [
+    "cmd"
+   ],
+   "key": "w"
+  },
+  "duplicate",
+  {
+   "modifiers": [
+    "cmd",
+    "shift"
+   ],
+   "key": "d"
+  }
+ ],
+ "workspacePreferences": {
+  "bookmarkBarBackground": "paleBlue",
+  "interfaceFontSize": 13,
+  "hiddenSidebarBuiltInLocations": [],
+  "iconGridScale": 1,
+  "dateColorTheme": "light",
+  "showsToolbarLabels": false,
+  "previewsFolders": true,
+  "listDensity": "standard",
+  "floatingBallDoubleClickAction": "up",
+  "expandsFloatingBallOnHover": true,
+  "fileTransitDockEdge": "top",
+  "dragHoverExpansionDelay": 0.45,
+  "remembersWindowGeometry": true,
+  "floatingBallTransparency": 0.35,
+  "enabledFloatingBallActions": [
+   "selectAll",
+   "back",
+   "forward",
+   "up"
+  ],
+  "pinnedFolderPaths": [],
+  "removableDeviceBehavior": "ask",
+  "showsFileTransitMenuBarItem": true,
+  "backspaceKeyAction": "ignore",
+  "showsDateAgeColors": true,
+  "showsFileTransitWindowShortcut": true,
+  "shiftDragReversesOperation": true,
+  "showsDiskFreeSpace": true,
+  "fileTransitPanelOpacity": 0.8,
+  "floatingBallActionOrder": [
+   "back",
+   "forward",
+   "up",
+   "selectAll",
+   "compressAll",
+   "collectAll",
+   "compressFolder",
+   "collectFolder",
+   "refresh",
+   "copyPath"
+  ],
+  "listThumbnailCategories": [
+   "images",
+   "multimedia",
+   "other"
+  ],
+  "namedWorkspaceSwitchBehavior": "openInNewTab",
+  "fileTransitDockUsesAutomaticPlacement": true,
+  "usesColoredToolbarIcons": true,
+  "previewsArchives": true,
+  "showsDateAgeStyle": true,
+  "filenameTruncation": "middle",
+  "hiddenSidebarModules": [],
+  "archiveDirectBrowseSizeLimitMB": 512,
+  "showsBookmarksAndWorkspaceBar": true,
+  "defaultExpandedSidebarModules": [
+   "locations",
+   "builtIn",
+   "commonPaths"
+  ],
+  "usesNaturalNumericSorting": true,
+  "showsOperationTips": true,
+  "sidebarItemOrder": {},
+  "usesMouseButtonsForHistoryNavigation": true,
+  "usesColoredSidebarIcons": true,
+  "showsQuickCapsule": true,
+  "showsContextMenuIcons": true,
+  "bookmarkBarCustomRGB": 16185852,
+  "fileSizeUnit": "decimal",
+  "appearance": "system",
+  "hiddenSidebarBuiltInItems": [],
+  "enterKeyAction": "rename",
+  "sidebarModuleOrder": [
+   "builtIn",
+   "commonPaths",
+   "locations",
+   "bookmarks",
+   "tags"
+  ],
+  "enablesFileTransitIsland": true,
+  "opensItemsWithSingleClick": false,
+  "showsGitStatus": true
+ },
+ "enabledBuiltInTools": [
+  "pdfMerge",
+  "imageRotateLeft",
+  "imageConvert",
+  "imageWatermark",
+  "imageViewLocation",
+  "pdfCompress",
+  "pdfExportImages",
+  "imageCrop",
+  "imagesCreatePDF",
+  "imageRemoveLocationMetadata",
+  "pdfSplit",
+  "pdfExtractPages",
+  "collectIntoFolder",
+  "dissolveFolder",
+  "pdfRotatePages",
+  "imageCompress",
+  "imageRemoveBackground",
+  "imageRotateRight"
+ ],
+ "toolbarCommands": [
+  "viewMode",
+  "newFolder",
+  "newFile",
+  "terminal",
+  "copyPath",
+  "sort",
+  "grouping"
+ ],
+ "disabledShortcutCommands": [],
+ "secondaryShortcuts": [],
+ "schemaVersion": 32
+}

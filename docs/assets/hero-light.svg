@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="380" viewBox="0 0 1280 380">
+<defs><radialGradient id="glow"><stop stop-color="#2164ee" stop-opacity=".16"/><stop offset="1" stop-color="#2164ee" stop-opacity="0"/></radialGradient><linearGradient id="blue" x2="1" y2="1"><stop stop-color="#6da9ff"/><stop offset="1" stop-color="#2355e7"/></linearGradient></defs>
+<rect width="1280" height="380" rx="28" fill="#f4f7fc"/>
+<ellipse cx="1060" cy="180" rx="340" ry="260" fill="url(#glow)"/>
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+<text x="64" y="64" fill="#53647e" font-size="13" letter-spacing="3">A NATIVE macOS FILE MANAGER</text>
+<text x="60" y="168" fill="#101b32" font-size="88" font-weight="750" letter-spacing="-5">Wumi</text>
+<text x="64" y="223" fill="#101b32" font-size="28" font-weight="500">把文件，放回顺手的位置。</text>
+<text x="65" y="264" fill="#53647e" font-size="18">A little more room for your files.</text>
+<path d="M65 301h555" stroke="#d9e3f3"/>
+<text x="65" y="335" fill="#53647e" font-size="13" letter-spacing="1.5">TABS  /  MULTIPLE PANES  /  QUICK PREVIEWS</text>
+</g>
+<g transform="translate(855 78) rotate(-6 120 112)">
+<rect x="-10" y="22" width="254" height="220" rx="34" fill="#2164ee" opacity=".05"/>
+<rect width="240" height="216" rx="32" fill="url(#blue)"/>
+<rect x="33" y="38" width="174" height="142" rx="17" fill="white" opacity=".97"/>
+<path d="M79 38v142" stroke="#d5e3ff" stroke-width="3"/>
+<rect x="45" y="58" width="20" height="5" rx="2.5" fill="#7ba6f9"/>
+<rect x="45" y="75" width="20" height="5" rx="2.5" fill="#b2cdfb"/>
+<rect x="45" y="92" width="20" height="5" rx="2.5" fill="#b2cdfb"/>
+<path d="M98 86q0-6 6-6h25l9 10h42q6 0 6 6v43q0 7-7 7h-74q-7 0-7-7z" fill="#4384f5"/>
+<path d="M98 103h88v36q0 7-7 7h-74q-7 0-7-7z" fill="#77afff"/>
+</g></svg>

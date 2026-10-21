@@ -1,0 +1,175 @@
+Advanced Search	高级搜索
+Combined with the filters above.	与上方的筛选条件同时生效。
+%lld of %lld conditions	%1$lld / %2$lld 个条件
+The search updates as you edit. Hiding this panel keeps the conditions until you close the window.	编辑时会自动更新搜索。隐藏此面板后，条件会保留到关闭窗口为止。
+Match All Conditions	满足以下全部条件
+Match Any Condition	满足以下任一条件
+Condition Matching	条件组合方式
+Exclude Group	排除此组
+Add Condition	添加条件
+Add Group	添加条件组
+Remove Group	删除条件组
+Add a condition to narrow the search by name, contents, size, date, folder, tag or regular expression.	添加条件，可按名称、内容、大小、日期、文件夹、标签或正则表达式缩小搜索范围。
+Condition Group	条件组
+Disable Condition	停用条件
+Enable Condition	启用条件
+Condition	条件
+Comparison	比较
+Remove Condition	删除条件
+Condition Value	条件值
+Separate extensions with semicolons; an item matches any of them.	用分号分隔多个扩展名，匹配其中任意一个即可。
+and	至
+Range End	范围终点
+Size Unit	大小单位
+Folder Location	文件夹位置
+Choose…	选择…
+Name or Path	名称或路径
+File Contents	文件内容
+File Size	文件大小
+Regular Expression	正则表达式
+Contains	包含
+Equals	等于
+Starts With	开头是
+Ends With	结尾是
+After	晚于
+Greater Than	大于
+Before	早于
+Less Than	小于
+On or After	当天或之后
+At Least	不小于
+On or Before	当天或之前
+At Most	不大于
+Between	介于
+Include Subfolders	包含子文件夹
+Direct Children Only	仅直接子项
+Folder and Direct Files	文件夹及直属文件
+Text in the file	文件中的文字
+Tag Name	标签名称
+Choose	选择
+Search Results	搜索结果
+Reveal in DirDesk	在 DirDesk 中显示
+Send to File Transit	发送到文件中转舱
+Words	关键词
+Separate words with spaces to find names that contain all of them, in any order.	用空格分隔多个词，查找名称中同时包含这些词的项目，顺序不限。
+Wildcards	通配符
+* stands for any run of characters and ? for exactly one; a pattern with wildcards has to match the whole name. In a path, ** spans any number of folders.	* 代表任意数量的字符，? 代表一个字符；含通配符的模式必须匹配整个名称。在路径中，** 可跨越任意层文件夹。
+Combining Conditions	组合条件
+OR or | accepts either side, NOT or ! leaves matches out, and parentheses group conditions. NOT is applied first, then OR, then AND.	OR 或 | 表示满足任一侧即可，NOT 或 ! 用于排除匹配项，括号用于分组。优先级依次为 NOT、OR、AND。
+Quotes and Values	引号与取值
+Wrap phrases with spaces or operators in English double quotes. A filter's value follows its colon directly; semicolons list alternatives.	包含空格或运算符的短语请用英文双引号括起来。筛选器的值紧跟在冒号之后；用分号列出多个候选值。
+Paths	路径
+A word with a slash matches names along the path: /name/ is a whole name, name/ the end of one, /name the start of one. Add /** to list everything inside a folder.	含斜杠的词会匹配路径上的名称：/name/ 表示完整名称，name/ 表示名称结尾，/name 表示名称开头。末尾加 /** 可列出文件夹中的全部内容。
+infolder: (or parent:) searches a folder and its subfolders; nosubfolders: only what is directly inside. ~ stands for your home folder.	infolder:（或 parent:）搜索文件夹及其子文件夹；nosubfolders: 只搜索直接位于其中的项目。~ 代表你的个人文件夹。
+Kinds and Extensions	种类与扩展名
+ext: matches extensions; type: picks a category such as image, video, audio, doc, spreadsheet, archive or code. file: and folder: keep only files or only folders.	ext: 匹配扩展名；type: 选择类别，例如 image、video、audio、doc、spreadsheet、archive 或 code。file: 和 folder: 只保留文件或只保留文件夹。
+Compare with >, >=, <, <=, = or != and write ranges as 10KB..2MB. Units are B, KB, MB, GB, TB and PB (1 KB = 1000 bytes). empty, tiny, small, medium, large, huge and gigantic name preset ranges.	可用 >、>=、<、<=、= 或 != 比较，范围写作 10KB..2MB。单位为 B、KB、MB、GB、TB 和 PB（1 KB = 1000 字节）。empty、tiny、small、medium、large、huge 和 gigantic 代表预设的大小范围。
+dm: is the modification date and dc: the creation date. Use today, yesterday, pastweek, thismonth or lastyear, dates written as YYYY-MM-DD, comparisons and ranges.	dm: 表示修改日期，dc: 表示创建日期。可使用 today、yesterday、pastweek、thismonth 或 lastyear，也可使用 YYYY-MM-DD 格式的日期、比较和范围。
+content: finds text stored literally in files. It does not read text inside PDF or Word documents, and a smaller scope makes it faster.	content: 查找以原文形式存储在文件中的文字，不会读取 PDF 或 Word 文档中的文字；搜索范围越小，速度越快。
+regex: tests the item name with a regular expression and follows Match Case.	regex: 用正则表达式匹配项目名称，并遵循“区分大小写”设置。
+tag: finds items with a Finder tag whose name contains the value; list several with semicolons.	tag: 查找 Finder 标签名称包含该值的项目；多个值用分号分隔。
+Match Case	区分大小写
+case: makes the next word or group, or on its own the whole search, case-sensitive; nocase: does the opposite.	case: 让后面的词或分组区分大小写，单独使用时作用于整个搜索；nocase: 的作用相反。
+PDF files over 1 MB changed in the last seven days	最近七天内修改过、大于 1 MB 的 PDF 文件
+Images in Pictures changed in the past month	“图片”文件夹中近一个月修改过的图像
+Markdown and text files that contain TODO	包含 TODO 的 Markdown 和文本文件
+Everything in Documents except ZIP archives	“文稿”中除 ZIP 压缩包以外的全部内容
+Video or audio files larger than 100 MB	大于 100 MB 的视频或音频文件
+Folders created this year	今年创建的文件夹
+Search Expression Help	搜索表达式说明
+Find Syntax or Examples	查找语法或示例
+Examples	示例
+Click an example to search with it.	点按示例即可用它进行搜索。
+Search with this expression	用此表达式搜索
+Restore Visual Conditions?	恢复可视化条件？
+Changes made to the expression can't be turned back into visual conditions. You can return to the visual conditions you had before, or keep editing the expression.	对搜索表达式的修改无法转换回可视化条件。你可以恢复之前的可视化条件，或继续编辑搜索表达式。
+Restore Visual Conditions	恢复可视化条件
+Keep Editing Expression	继续编辑搜索表达式
+Choose a folder to search.	请选择要搜索的文件夹。
+Choose fewer folders to search.	请减少要搜索的文件夹。
+Choose a folder or enter an absolute path.	请选择文件夹或输入绝对路径。
+The search folder does not exist	搜索文件夹不存在
+One of the selected folders is no longer available.	所选文件夹中有一个已不可用。
+Sent to File Transit	已发送到文件中转舱
+Move “%@” to the Trash?	要将“%@”移到废纸篓吗？
+Move %lld items to the Trash?	要将 %lld 个项目移到废纸篓吗？
+You can put items back from the Trash, or choose Undo right away.	你可以从废纸篓中放回这些项目，也可以立即选择“撤销”。
+Index is not ready	索引尚未就绪
+Indexed: %lld	已索引：%lld
+Loading Search Index…	正在载入搜索索引…
+Building Search Index…	正在建立搜索索引…
+Updating in the background · Search is available	正在后台更新 · 可以搜索
+Index resource limit reached. Choose fewer watched folders.	已达到索引资源上限。请减少监控的文件夹。
+Search index unavailable	搜索索引不可用
+The search index could not be saved.	无法保存搜索索引。
+Only supported filters are listed. Unknown filters report an error.	仅支持列出的筛选器，未知筛选器会报错。
+Missing value	缺少值
+Invalid regular expression.	正则表达式无效。
+Enter a nonnegative file size.	请输入不小于 0 的文件大小。
+Enter a date as YYYY-MM-DD.	请按 YYYY-MM-DD 格式输入日期。
+The end of the range must not be before the start.	范围终点不能早于起点。
+Unknown file type	未知文件类型
+Complete or disable the empty condition.	请填写或停用空白条件。
+Choose a comparison for this condition.	请为此条件选择比较方式。
+Use at most 32 conditions and 4 group levels.	最多使用 32 个条件和 4 层条件组。
+Index Status	索引状态
+Rebuild Index	重建索引
+The index starts the first time you open Lightning Search, or when you rebuild it here.	首次打开闪电搜索时，或在此处重建索引时，才会开始建立索引。
+Folders that could not be read: %lld	无法读取的文件夹：%lld
+macOS kept DirDesk out of these folders, so their contents are not in the index.	macOS 阻止了 DirDesk 访问这些文件夹，因此其中的内容不在索引中。
+Updating Search Index…	正在更新搜索索引…
+Search index is ready	搜索索引已就绪
+Search index is partly built	搜索索引仅部分建立
+One folder per line as an absolute path; ~ stands for your home folder. Saving different folders rebuilds the index. Folders macOS does not let DirDesk read are skipped.	每行输入一个文件夹的绝对路径，~ 代表你的个人文件夹。保存不同的文件夹后会重建索引。macOS 不允许 DirDesk 读取的文件夹会被跳过。
+Watched folders	监控路径
+Ignored folders	忽略路径
+Ignored folders are left out of the index together with everything inside them.	忽略的文件夹及其中的全部内容都不会被索引。
+Revert	还原
+Save	保存
+Add Folder…	添加文件夹…
+Saved. The index is being rebuilt.	已保存，正在重建索引。
+Saved. The new folders are used when the index starts.	已保存，开始建立索引时将使用新的文件夹。
+Use + to add folders.	请使用 + 添加文件夹。
+Enter valid absolute folder paths, one per line.	请输入有效的文件夹绝对路径，每行一个。
+Privacy	隐私
+Indexing reads folders such as Desktop, Documents and Downloads, so macOS may ask once for each of them. With Full Disk Access, DirDesk is not interrupted by these requests and can update the index as soon as it opens.	建立索引需要读取“桌面”、“文稿”和“下载”等文件夹，macOS 可能会为每个文件夹询问一次。授予“完全磁盘访问权限”后，DirDesk 不会再被这些请求打断，并能在启动时立即更新索引。
+Results come from a direct scan of the folder while the search index is being built. They refresh when the index is ready.	搜索索引建立期间，结果来自对该文件夹的直接扫描；索引就绪后会自动刷新。
+Search File Names	搜索文件名称
+Visual	可视化
+Search Expression	搜索表达式
+Keep this window above other windows, even while you use another app.	让此窗口始终位于其他窗口之上，使用其他 App 时也保持可见。
+Keep Search on Top	固定搜索窗口
+Files & Folders	文件和文件夹
+Only files or only folders.	仅文件或仅文件夹。
+Matches any selected type.	匹配任一所选类型。
+Any Size	不限大小
+Any Time	不限时间
+Past Week	近一周
+Past Month	近一个月
+This Year	今年
+Advanced (%lld)	高级（%lld）
+Reset Filters	重置筛选
+Video	视频
+Audio	音频
+Spreadsheets	电子表格
+Presentations	演示文稿
+Archives	压缩包
+Code	代码
+Items with any of the selected tags match.	带有任一所选标签的项目都会匹配。
+Edit as Expression	编辑为搜索表达式
+Search Scope	搜索范围
+This Computer	这台电脑
+Current Folder	当前文件夹
+Current Workspace	当前工作区
+Selected Folder	指定文件夹
+Refresh Search Results	刷新搜索结果
+Watched folders that macOS lets DirDesk read, including subfolders.	监控路径中 macOS 允许 DirDesk 读取的文件夹，包含子文件夹。
+%lld folders	%lld 个文件夹
+Search for files and folders	搜索文件和文件夹
+Type part of a name or choose filters. Double-click a result to go to its location.	输入名称的一部分或选择筛选条件。双击结果可跳转到其所在位置。
+Searching…	正在搜索…
+Choose folders in Lightning Search settings.	请在闪电搜索设置中选择文件夹。
+Matching items appear as soon as the index is ready.	索引就绪后会立即显示匹配的项目。
+Double-click to go to the file's location	双击跳转到文件所在位置
+Showing the first %lld results.	仅显示前 %lld 个结果。
+%lld results · %lld ms	%1$lld 个结果 · %2$lld 毫秒
+Too many search windows are open. Close another search window and try again.	打开的搜索窗口过多。请关闭其他搜索窗口后再试。

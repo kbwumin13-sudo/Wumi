@@ -1,0 +1,152 @@
+Advanced Features	高级功能
+Shortcuts	快捷键
+New Files	新建文件
+Sort numbers in file names in order	按文件名中的数字顺序排序
+Color Mode	颜色模式
+Show exact dates and times	显示具体日期和时间
+List row spacing	列表行间距
+File icon size	文件图标大小
+Double-click blank space	双击空白处
+How to open files and folders	打开文件和文件夹的方式
+Wait before opening a folder while dragging	拖住文件多久后展开文件夹
+Show subfolders when pointing at a path arrow	鼠标移到路径箭头时显示子文件夹
+Folder permissions	文件夹权限
+Installed Edition	安装版本
+Open Floating Files from the chosen trigger position	移到触发位置时打开文件浮窗
+Search tools or extensions	搜索工具或扩展功能
+Clear Search	清除搜索
+This page was restored to its defaults.	本页已恢复为默认值。
+All settings were restored to their defaults.	所有设置均已恢复为默认值。
+Switches every DirDesk window and menu to the chosen language right away. Controls drawn by macOS keep the system language.	所选语言会立即应用到 DirDesk 的全部窗口和菜单；由 macOS 绘制的控件仍沿用系统语言。
+When macOS opens a folder with its default app, DirDesk opens it instead. Some “Show in Finder” actions still use Finder; turning this off gives folders back to the previous app.	macOS 用默认程序打开文件夹时改由 DirDesk 接手。部分“在 Finder 中显示”操作仍会交给 Finder；关闭后文件夹交还给原来的程序。
+Browsing	浏览
+When on, folders you re-sorted or regrouped by hand open the same way next time. When off, saved choices stay stored but are neither recorded nor applied.	开启后，手动改过排序或分组的文件夹下次打开时保持原样。关闭后已有记录仍会保留，但不再新增，也不再套用。
+Compares numbers in names by value, so File 2 comes before File 10.	按数值大小比较名称里的数字，因此 File 2 会排在 File 10 前面。
+Show sizes in decimal units (1 KB = 1,000 bytes) or binary units (1 KiB = 1,024 bytes).	文件大小可按十进制（1 KB = 1000 字节）或二进制（1 KiB = 1024 字节）显示。
+Decimal	十进制
+Binary	二进制
+Windows reopen at the size and place you left them. When off, new windows use the default frame.	窗口再次打开时回到上次的尺寸和位置；关闭后，新窗口按默认尺寸和位置出现。
+Ask first, or go straight to a two-pane workspace for moving files between this Mac and the device.	可以先询问，也可以直接进入双栏工作区，方便在这台 Mac 和设备之间搬运文件。
+Open a saved workspace in its own tab, or let it take over the current tab.	已保存的工作区可以在单独的标签页中打开，也可以直接占用当前标签页。
+The folder a new DirDesk window starts in. “Last location” reopens the active pane of the tab you used last; if that folder is gone, Desktop opens instead.	新的 DirDesk 窗口从这里开始浏览。“上次关闭前的位置”会回到最后使用的标签页里的当前窗格；该文件夹不存在时改为打开桌面。
+Used by folders that have no remembered order. A sort you change on the fly is dropped when you leave the folder.	适用于没有记住排序方式的文件夹。临时切换的排序在离开文件夹后不会保留。
+Sort direction	排序方向
+With Follow System, DirDesk changes between light and dark together with your Mac.	选择“跟随系统”时，DirDesk 会和 Mac 一起在浅色与深色之间切换。
+Use colored icons in the toolbar and its More menu. Turn off for the plain icons.	工具栏和“更多”菜单使用彩色图标；关闭后改用普通图标。
+Tint the favorites bar with a soft preset, or pick Custom to choose your own color. Presets adjust themselves for Dark Mode.	给收藏栏换一种柔和的预置底色，或选“自定义”自行取色。预置颜色会自动适应深色模式。
+Shows bookmarks and the workspace menu along the top of the file area.	在文件区域顶部显示书签和工作区菜单。
+Show the full date and time instead of wording such as “5 minutes ago”. When off, dates from the last two hours appear as relative times.	显示完整的日期和时间，不使用“5 分钟前”之类的说法。关闭后，两小时以内的日期以相对时间显示。
+Sets the text size in the sidebar, file views, path bar, and Floating Files.	设定侧边栏、文件视图、路径栏和文件浮窗中的文字大小。
+Changes the row height; every file column stays visible.	只改变行高，所有文件列照常显示。
+Pick which part of an overlong name stays visible in icon and gallery views.	在图标视图和画廊视图中，文件名过长时保留哪一部分。
+Resizes file icons in icon view. The grid rearranges itself as the window gets wider or narrower.	调整图标视图里文件图标的大小，窗口变宽或变窄时网格会自动重排。
+Unchecked types show the icon of the app that opens them. Document thumbnails start out turned off.	未勾选的类型改用其默认应用的图标；文档缩略图默认不开启。
+Shades dates softly by how long ago they were. The date and time format itself does not change.	按日期距今的远近铺上柔和底色，日期和时间的写法保持不变。
+Use the arrows to reorder toolbar actions, or move actions between the toolbar and the More menu.	用箭头调整工具栏操作的顺序，或在工具栏与“更多”菜单之间移动操作。
+Accent color	系统强调色
+Check what the sidebar shows and use the arrows to set the order. Hiding something never deletes files, bookmarks, or tags.	勾选侧边栏里要显示的内容，用箭头排列顺序。隐藏任何一项都不会删掉文件、书签或标签。
+Groups checked as expanded open that way in new windows, and changes also apply to the current window. Collapsing a group in the sidebar itself leaves this default alone.	勾选“默认展开”的分组会在新窗口中展开，改动也会同步到当前窗口；直接在侧边栏里折叠分组不会改动这个默认值。
+Lists files and folders you opened recently so you can get back to them.	列出最近打开过的文件和文件夹，方便回到它们。
+Holds files for a while so you can copy or move them together later.	先把文件暂放在一起，稍后统一复制或移动。
+Opens the shared folder right from the sidebar.	直接从侧边栏打开共享文件夹。
+Pick the shortcuts inside Built-in. Hiding the whole group keeps these choices.	选择“内置”分组里的快捷入口；整组隐藏后这些选择依然保留。
+Folder shortcuts you add or remove yourself, such as Desktop or Downloads.	由你自行增删的文件夹快捷入口，例如桌面或下载。
+Choose which of these five places appear under Locations. Connected disks and saved servers always appear.	选择这五个位置中哪些出现在“位置”分组里；已连接的磁盘和保存的服务器始终显示。
+Browse the folders and items you bookmarked.	浏览你加入书签的文件夹和项目。
+Find files by their Finder tags.	通过 Finder 标签查找文件。
+Double-clicking empty space takes you to the parent folder or back to the previous location.	双击空白区域时，前往父文件夹或回到上一个浏览位置。
+Plays one system alert sound when a DirDesk file operation fails. Keyboard navigation stays silent.	DirDesk 的文件操作失败时播放一次系统提示音；键盘导航不会发出声音。
+After Copy or Cut, the result appears briefly next to the item count in the status bar.	复制或剪切之后，结果会在状态栏的项目数旁边短暂显示。
+Open files and folders with a single click or a double-click.	用单击或双击来打开文件和文件夹。
+Set Enter to rename the selected item or to open it.	设定 Enter 键用来重命名所选项目，还是打开它。
+Leave Backspace unused, or use it to go to the enclosing folder.	让 Backspace 键不起作用，或用它回到上层文件夹。
+Go up one level	返回上一级
+The side buttons of your mouse go back and forward in the active pane.	用鼠标侧键在当前窗格中后退和前进。
+How long a dragged item has to rest on a folder before that folder opens.	拖动的项目需要在文件夹上停留多久，该文件夹才会展开。
+%.2f s	%.2f s
+Dropping into another DirDesk folder moves items on the same disk and copies them to a different disk. Hold Shift once you reach the target to swap Move and Copy.	在 DirDesk 内拖放到其他文件夹时，同盘为移动、跨盘为复制；到达目标后按住 Shift 即可互换移动与复制。
+Rest the pointer on an arrow in the path bar to list the subfolders of that folder.	指针停在路径栏的箭头上，即可列出该文件夹的子文件夹。
+This edition runs with your macOS account permissions. macOS may ask before DirDesk opens protected folders.	此版本使用你的 macOS 账户权限运行；打开受保护的文件夹前，macOS 可能会先征求同意。
+Local	本地版
+This check is an estimate; System Settings shows the actual permission. Reopen DirDesk after you change it.	这里的检测只是估计，实际授权以“系统设置”为准；更改权限后请重新打开 DirDesk。
+File names, paths, metadata, previews, and the file operations you request are all handled on this Mac.	文件名、路径、元数据、预览以及你发起的文件操作，全部在这台 Mac 上处理。
+DirDesk never uploads file data and has no analytics, ads, accounts, or cloud sync.	DirDesk 从不上传文件数据，也没有分析统计、广告、账户或云同步。
+Bookmarks and favorites only help you navigate; they do not change which folders macOS lets DirDesk open.	书签和收藏只用于导航，不会改变 macOS 允许 DirDesk 打开哪些文件夹。
+Click the record button and press a key combination, or type a shortcut, then click Apply.	点击录制按钮后按下组合键，或直接输入快捷键，再点“应用”。
+Shortcut	快捷键
+Archives larger than this have to be extracted before you can look inside.	大于此值的压缩包需要先解压，才能查看里面的内容。
+%lld MB	%lld MB
+Marks Git changes in file views and in previews.	在文件视图和预览中标出 Git 改动。
+Shows a floating ball in the middle of the right edge of every pane.	在每个分栏右边缘的中部显示悬浮球。
+At 0 the ball is solid; higher values make it more see-through.	为 0 时悬浮球完全不透明，数值越大越通透。
+What a double-click on the floating ball does in its pane.	双击悬浮球时，在它所在的分栏里执行的操作。
+Point at the ball to bring up its buttons. When off, you can still double-click the ball or right-click it for the menu.	指针移到悬浮球上会展开按钮；关闭后仍可双击悬浮球，或右键打开菜单。
+Check the buttons to show and arrange their order. Whole-folder actions include hidden items only when the pane shows hidden items.	勾选要显示的按钮并排好顺序。作用于整个文件夹的操作，只有在分栏显示隐藏项目时才会包含它们。
+Move the pointer, or files you are dragging, to the position chosen below to open Floating Files. When off, the menu bar icon and the keyboard shortcut still open it.	把指针或正在拖动的文件移到下面选定的位置，就会打开文件浮窗；关闭后仍可通过菜单栏图标或快捷键打开。
+Click the icon in the menu bar to open Floating Files, or drop files onto it.	点按菜单栏中的图标即可打开文件浮窗，也可以把文件拖放到图标上。
+Open Floating Files from the top of the screen or from the middle of its left or right edge.	从屏幕顶部，或屏幕左、右边缘的中部打开文件浮窗。
+Higher values make the Floating Files background more solid. When Reduce Transparency is on in macOS, this has no effect and text and buttons stay legible.	数值越高，文件浮窗的背景越不透明。macOS 开启“减少透明度”时此项不起作用，文字和按钮依然清晰。
+Pick a template to edit its name, default file name, and starting contents.	选中模板后，可编辑它的名称、默认文件名和初始内容。
+Template added. Edit it, then choose Save Template.	模板已添加。编辑后请选择“保存模板”。
+Default Icon	默认图标
+Add Date or Time	添加日期或时间
+Initial contents (optional)	初始内容（可选）
+Use Text Content	使用文本内容
+New files from this template start as an empty document of this type.	用此模板新建的文件是该类型的空白文档。
+Choose the apps that open a terminal or edit files. Each type keeps its own default app.	选择用来打开终端和编辑文件的应用，每种类型各有一个默认应用。
+Add Tool…	添加工具…
+Tool Type	工具类型
+Remove Tool	移除工具
+Save Tool	保存工具
+Enter a tool name.	请输入工具名称。
+Choose an application before saving this tool.	保存此工具前请选择一个应用。
+The selected application is missing or is not a valid Mac app.	所选应用不存在，或不是有效的 Mac 应用。
+External tool saved.	外部工具已保存。
+Pick the file tools that show up in the context menu.	勾选要出现在右键菜单中的文件工具。
+No Matching Tools	没有匹配的工具
+Available on this Mac	可在此 Mac 上使用
+PDF	PDF
+Move Selected Items into New Folder	将所选项目收进新文件夹
+JPG · PNG · HEIC · TIFF · other images	JPG · PNG · HEIC · TIFF · 其他图片
+Files and folders	文件和文件夹
+Saves a copy turned to the left and keeps the image metadata.	另存一份向左转过的副本，图片元数据保持不变。
+Saves a copy turned to the right and keeps the image metadata.	另存一份向右转过的副本，图片元数据保持不变。
+Crops one image to a rectangle you draw and saves the result as a copy.	按你框出的矩形裁剪单张图片，并把结果另存为副本。
+Converts images to JPEG, PNG, HEIC, or TIFF.	把图片转成 JPEG、PNG、HEIC 或 TIFF 格式。
+Lowers image quality or dimensions and previews the result before saving.	降低图片质量或尺寸，保存前可先预览效果。
+Stamps centered or tiled text on images with a live preview.	在图片上叠加居中或平铺的文字，并实时预览。
+Finds the subject on this Mac and saves it as a transparent PNG.	在本机识别画面主体，输出背景透明的 PNG。
+Combines the selected images into one PDF in the order they are shown.	把所选图片按当前显示顺序合成一个 PDF。
+Puts the selected items into a new folder; Undo moves them back.	把所选项目放进一个新文件夹，撤销即可移回原处。
+Moves a folder's contents up one level, keeping both items when names clash; Undo brings the folder back.	把文件夹里的内容移到上一级，重名时两份都保留；撤销可恢复该文件夹。
+Splits a PDF by page ranges, pages per file, or number of files.	按页码范围、每份页数或份数拆分 PDF。
+Copies the pages you choose into a new PDF.	把选定的页面复制到新的 PDF 中。
+Joins PDFs in the order they are selected and shown.	按选择和显示的顺序把多个 PDF 合在一起。
+Rotates the chosen pages or the whole document and saves a new PDF.	旋转选定页面或整份文档，另存为新的 PDF。
+Shrinks the images embedded in a PDF and leaves the original untouched.	缩小 PDF 中嵌入的图片，原文件保持不动。
+Saves every page as a numbered PNG or JPEG image.	把每一页存成带编号的 PNG 或 JPEG 图片。
+Reads the coordinates stored in a photo without going online and lets you copy them.	不联网读取照片里记录的坐标，并可复制。
+Saves a copy with the embedded location data removed.	另存一份去掉了内嵌位置信息的副本。
+Output: a rotated copy next to the original.	输出：原文件旁的旋转副本。
+Output: a cropped copy next to the original.	输出：原文件旁的裁剪副本。
+Output: a converted copy next to the original.	输出：原文件旁的转换副本。
+Output: a compressed copy next to the original.	输出：原文件旁的压缩副本。
+Output: a watermarked copy next to the original.	输出：原文件旁的加水印副本。
+Output: a transparent PNG next to the original.	输出：原文件旁的透明 PNG。
+Output: one PDF in the same folder, in selection order.	输出：同一文件夹中按选择顺序生成的一个 PDF。
+Moves the original items and never overwrites existing ones.	移动的是原项目，不会覆盖已有项目。
+Output: several PDFs in the same folder with names that do not collide.	输出：同一文件夹中名称互不冲突的多个 PDF。
+Output: a PDF of the extracted pages next to the original.	输出：原文件旁由提取页面组成的 PDF。
+Output: a merged PDF in the same folder.	输出：同一文件夹中的合并 PDF。
+Output: a rotated PDF copy next to the original.	输出：原文件旁的旋转 PDF 副本。
+Output: a compressed PDF copy next to the original.	输出：原文件旁的压缩 PDF 副本。
+Output: one folder beside the PDF that holds every page image.	输出：PDF 旁的一个文件夹，里面是全部页面图片。
+Read-only; no file is written.	只读，不会写入任何文件。
+Output: a cleaned copy next to the original.	输出：原文件旁的去位置信息副本。
+Applying a preset brings back its actions and their order. You can still change them afterwards.	套用预设会恢复它包含的操作和顺序，之后仍可再调整。
+Shows an icon beside each action in the context menu.	在右键菜单的每个操作旁显示图标。
+Drag to Reorder	拖动以调整顺序
+Create Archive	创建压缩文件
+Share	共享
+Support	支持
+When you report a problem, include the version information below.	报告问题时，请附上下面的版本信息。
