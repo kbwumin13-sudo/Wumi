@@ -116,29 +116,52 @@ enum KeyCodeNames {
 @MainActor
 final class GlobalHotKey {
     static let shared = GlobalHotKey()
-    private var reference: EventHotKeyRef?
-    private var handlerInstalled = false
-    private var action: (() -> Void)?
+    enum Action: UInt32 { case floatingFiles = 1, search = 2 }
+    private var references: [Action: EventHotKeyRef] = [:]
+    private var actions: [Action: () -> Void] = [:]
+    private var handler: EventHandlerRef?
+    private(set) var errors: [Action: OSStatus] = [:]
 
-    func register(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
-        unregister()
-        self.action = action
-        if !handlerInstalled {
+    @discardableResult
+    func register(_ identifier: Action = .floatingFiles, keyCode: UInt32, modifiers: UInt32,
+                  action: @escaping () -> Void) -> OSStatus {
+        unregister(identifier)
+        if handler == nil {
             var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-            InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
+            let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+                guard let event else { return OSStatus(eventNotHandledErr) }
+                var hotKey = EventHotKeyID()
+                let result = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                                               nil, MemoryLayout<EventHotKeyID>.size, nil, &hotKey)
+                guard result == noErr, hotKey.signature == OSType(0x4444_534B),
+                      let key = Action(rawValue: hotKey.id) else { return OSStatus(eventNotHandledErr) }
                 DispatchQueue.main.async {
-                    MainActor.assumeIsolated { GlobalHotKey.shared.action?() }
+                    MainActor.assumeIsolated { GlobalHotKey.shared.actions[key]?() }
                 }
                 return noErr
-            }, 1, &spec, nil, nil)
-            handlerInstalled = true
+            }, 1, &spec, nil, &handler)
+            guard status == noErr else { errors[identifier] = status; return status }
         }
-        let id = EventHotKeyID(signature: OSType(0x4444_534B), id: 1) // 'DDSK'
-        RegisterEventHotKey(keyCode, modifiers, id, GetApplicationEventTarget(), 0, &reference)
+        let id = EventHotKeyID(signature: OSType(0x4444_534B), id: identifier.rawValue)
+        var reference: EventHotKeyRef?
+        let status = RegisterEventHotKey(keyCode, modifiers, id, GetApplicationEventTarget(), 0, &reference)
+        errors[identifier] = status == noErr ? nil : status
+        if status == noErr, let reference {
+            references[identifier] = reference
+            actions[identifier] = action
+        }
+        return status
     }
 
-    func unregister() {
-        if let reference { UnregisterEventHotKey(reference) }
-        reference = nil
+    func unregister(_ identifier: Action = .floatingFiles) {
+        if let reference = references.removeValue(forKey: identifier) { UnregisterEventHotKey(reference) }
+        actions.removeValue(forKey: identifier)
+        errors.removeValue(forKey: identifier)
+    }
+
+    func shutdown() {
+        for identifier in Array(references.keys) { unregister(identifier) }
+        if let handler { RemoveEventHandler(handler) }
+        handler = nil
     }
 }

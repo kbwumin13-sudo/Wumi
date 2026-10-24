@@ -46,7 +46,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .floatingBall: L("Floating Ball")
         case .fileTransit: L("Floating Files")
         case .folderSync: L("Folder Sync")
-        case .lightningSearch: L("Lightning Search")
+        case .lightningSearch: L("Miji Search")
         case .newFiles: L("New Files")
         case .externalTools: L("External Tools")
         case .builtInTools: L("Built-in Tools")

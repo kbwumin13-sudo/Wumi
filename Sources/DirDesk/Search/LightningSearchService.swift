@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import Darwin
 import DirDeskCore
+import MijiCore
 
 /// A flag shared with background work (search cancellation, shutdown). Safe to read from any thread.
 final class LightningFlag: @unchecked Sendable {
@@ -21,49 +22,57 @@ final class LightningFlag: @unchecked Sendable {
     }
 }
 
-/// Owns the Lightning Search index and engine for the whole app and publishes the index status.
-///
-/// Crawling the disk reads Desktop, Documents and Downloads, which makes macOS ask for access. The
-/// index therefore starts at launch only when Full Disk Access is already granted, and otherwise the first
-/// time Lightning Search opens. Index objects are created off the main thread because resolving watched
-/// paths can touch protected folders.
+private final class PendingMijiHost: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: MijiIndexHost?
+    func store(_ host: MijiIndexHost) { lock.lock(); value = host; lock.unlock() }
+    func remove(_ host: MijiIndexHost) { lock.lock(); if value === host { value = nil }; lock.unlock() }
+    func take() -> MijiIndexHost? { lock.lock(); defer { lock.unlock() }; let host = value; value = nil; return host }
+}
+
+/// Wumi's single Miji index host. UI sessions share the backend, never a second full-disk index.
 @MainActor
 final class LightningSearchService: ObservableObject {
     static let shared = LightningSearchService()
-
     static let watchedFoldersKey = "dirdesk-lightning-watched-v1"
     static let ignoredFoldersKey = "dirdesk-lightning-ignored-v1"
-    /// The original's defaults: the whole startup disk, minus other volumes, caches, logs and system scratch space.
     static let defaultWatchedFolders = ["/"]
     static let defaultIgnoredFolders = [
         "/Volumes", "~/Library/CloudStorage", "~/Library/Biome", "~/Library/Caches", "~/Library/Logs", "~/Library/Metadata",
         "/Library/Caches", "/System/Library/Caches", "/private/var", "/private/tmp",
     ]
-    /// Rows listed per search; further matches are only counted.
+    static let mappedFoldersKey = "dirdesk-miji-folders-mapped-v1"
+    static let indexingPreferencesKey = "dirdesk-miji-indexing-v1"
+    @Published private(set) var indexingPreferences: IndexingPreferences
+    @Published private(set) var roots: [IndexedRoot] = []
     static let resultLimit = 20_000
-
     @Published private(set) var status = LightningIndexStatus()
-    /// The index has been asked to start: it loads its snapshot or crawls, then keeps watching for changes.
     @Published private(set) var isStarted = false
-    /// Changes whenever a new index object is installed (first start, changed folders).
     @Published private(set) var indexGeneration = 0
     @Published private(set) var watchedFolders: [String]
     @Published private(set) var ignoredFolders: [String]
-    /// nil until the first check has finished.
     @Published private(set) var hasFullDiskAccess: Bool?
-
-    private(set) var index: LightningIndex?
-    private(set) var engine: LightningSearchEngine?
+    private(set) var engine: MijiSearchBackend?
+    private var host: MijiIndexHost?
+    private let setupQueue = DispatchQueue(label: "wumi.miji.host", qos: .utility)
     private let shutdownFlag = LightningFlag()
-    /// Cancels background work of the current index once it is replaced.
     private var indexFlag = LightningFlag()
+    private let pendingHost = PendingMijiHost()
+    private var catalogRefresh: Task<Void, Never>?
 
     private init() {
         let defaults = UserDefaults.standard
+        indexingPreferences = defaults.data(forKey: Self.indexingPreferencesKey).flatMap { try? JSONDecoder().decode(IndexingPreferences.self, from: $0) } ?? IndexingPreferences()
         watchedFolders = defaults.stringArray(forKey: Self.watchedFoldersKey) ?? Self.defaultWatchedFolders
         ignoredFolders = defaults.stringArray(forKey: Self.ignoredFoldersKey) ?? Self.defaultIgnoredFolders
     }
-
+    nonisolated static var databaseURL: URL {
+        if let path = UserDefaults.standard.string(forKey: "WumiSearchDatabase"), !path.isEmpty {
+            return URL(fileURLWithPath: expandingTilde(path))
+        }
+        return ApplicationSupport.directory.appendingPathComponent("DirDesk/Miji/index.sqlite")
+    }
+    nonisolated static var isReadOnly: Bool { UserDefaults.standard.bool(forKey: "WumiSearchReadOnly") }
     /// `~/Library/Application Support/DirDesk/LightningIndex/index.snapshot`.
     nonisolated static var snapshotURL: URL {
         ApplicationSupport.directory.appendingPathComponent("DirDesk/LightningIndex/index.snapshot")
@@ -84,10 +93,14 @@ final class LightningSearchService: ObservableObject {
         return path
     }
 
-    // MARK: Lifecycle
-
-    /// Call at launch: starts the index only when Full Disk Access is granted, so no privacy prompt appears.
     func startIfAllowed() {
+        if Self.isReadOnly {
+            // This opt-in harness prepares its scratch catalog before loading the host.
+            if UserDefaults.standard.string(forKey: "DirDeskSnapshotAction") == "mijiAcceptance" { return }
+            ensureStarted()
+            return
+        }
+        guard !UserDefaults.standard.bool(forKey: "DirDeskSnapshotHidden") else { return }
         Task {
             let granted = await Self.checkFullDiskAccess()
             hasFullDiskAccess = granted
@@ -95,99 +108,104 @@ final class LightningSearchService: ObservableObject {
         }
     }
 
-    /// Starts the index if it is not running yet: it loads the saved snapshot or crawls the watched folders.
     func ensureStarted() {
-        // Hidden snapshot runs (see `DebugSnapshot`) only render windows; crawling would make macOS ask a
-        // throwaway copy for access to Desktop, Documents and Downloads.
-        guard !isStarted, !UserDefaults.standard.bool(forKey: "DirDeskSnapshotHidden") else { return }
-        launch(rebuild: false)
-    }
-
-    /// Crawls the watched folders again. The current index stays searchable while the new one is built.
-    func rebuildIndex() {
-        guard !isBusy else { return }
-        guard let index, isStarted else {
-            launch(rebuild: true)
-            return
+        guard !isStarted, !shutdownFlag.isSet else { return }
+        if UserDefaults.standard.bool(forKey: "DirDeskSnapshotHidden") {
+            guard Self.isReadOnly, UserDefaults.standard.string(forKey: "WumiSearchDatabase") != nil else { return }
         }
-        engine?.discardTemporaryIndexes()
-        Self.rebuild(index, cancel: indexFlag, shutdown: shutdownFlag)
+        launch()
     }
-
-    /// A crawl or snapshot load is running and the index cannot be searched yet.
     var isBusy: Bool {
-        if isStarted, index == nil { return true }
-        switch status.stage {
-        case .indexing, .loadingSnapshot: return true
-        default: return false
+        if isStarted, engine == nil { return true }
+        switch status.stage { case .indexing, .loadingSnapshot: return true; default: return false }
+    }
+    func rebuildIndex() {
+        guard !Self.isReadOnly else { return }
+        guard let host else { ensureStarted(); return }
+        engine?.discardTemporaryIndexes()
+        host.rebuildIndex()
+    }
+    func shutdown() {
+        guard !shutdownFlag.isSet else { return }
+        let hosts = detachHosts()
+        setupQueue.sync { hosts.forEach { $0.shutdown() } }
+    }
+    func stopForTermination(completion: @escaping () -> Void) {
+        let hosts = detachHosts()
+        setupQueue.async {
+            hosts.forEach { $0.shutdown() }
+            // AppKit waits in a nested run loop for terminateLater. A test or menu
+            // can call terminate from a main-queue block, so enqueue on the run loop.
+            RunLoop.main.perform(inModes: [.default, .modalPanel, .eventTracking], block: completion)
         }
     }
-
-    /// Call from `applicationWillTerminate`: stops watching and saves the index for the next launch.
-    func shutdown() {
-        shutdownFlag.set()
-        indexFlag.set()
-        guard let index else { return }
-        index.stop()
-        // An unfinished first crawl has nothing worth saving; a snapshot of it would load as an empty index.
-        if index.status.stage.isSearchable { try? index.saveSnapshot() }
+    private func detachHosts() -> [MijiIndexHost] {
+        shutdownFlag.set(); indexFlag.set()
+        catalogRefresh?.cancel(); catalogRefresh = nil
+        host?.onStatus = nil
+        host?.onCatalogChange = nil
+        let hosts = [host, pendingHost.take()].compactMap { $0 }
+        host = nil; engine = nil
+        return hosts
     }
-
-    private func launch(rebuild: Bool) {
-        isStarted = true
-        indexFlag.set()
-        let cancel = LightningFlag()
-        indexFlag = cancel
-        let configuration = Self.configuration(watched: watchedFolders, ignored: ignoredFolders)
-        let snapshot = Self.snapshotURL
+    private func launch(updateRoots: Bool = false) {
+        catalogRefresh?.cancel(); catalogRefresh = nil
+        isStarted = true; indexFlag.set()
+        let cancel = LightningFlag(); indexFlag = cancel
+        let previous = host; previous?.onStatus = nil
+        host = nil; engine = nil; status = LightningIndexStatus(stage: .loadingSnapshot)
+        let target = Self.databaseURL, readOnly = Self.isReadOnly
+        let watched = watchedFolders.map(Self.expandingTilde)
+        let ignored = (UserDefaults.standard.bool(forKey: Self.mappedFoldersKey) ? ignoredFolders.map(Self.expandingTilde) : []) + [Self.snapshotURL.deletingLastPathComponent().path]
+        let preferences = indexingPreferences
+        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/miji-extract")
         let shutdown = shutdownFlag
-        Task {
-            let index = await Task.detached(priority: .utility) {
-                LightningIndex(configuration: configuration, snapshotURL: snapshot)
-            }.value
+        let handoff = pendingHost
+        setupQueue.async { [weak self] in
+            previous?.shutdown()
             guard !cancel.isSet, !shutdown.isSet else { return }
-            install(index)
-            if rebuild {
-                Self.rebuild(index, cancel: cancel, shutdown: shutdown)
-            } else {
-                index.start()
+            do {
+                let new = try MijiIndexHost(databaseURL: target, readOnly: readOnly, ignoredPaths: ignored, extractionWorker: helper)
+                guard !cancel.isSet, !shutdown.isSet else { new.shutdown(); return }
+                handoff.store(new)
+                guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
+                try new.start(watchedFolders: watched, ignoredFolders: ignored, updateRoots: updateRoots, preferences: preferences)
+                let roots = try new.roots()
+                guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
+                Task { @MainActor [weak self] in
+                    guard let self, !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
+                    handoff.remove(new)
+                    self.host = new; self.engine = new.engine; self.status = new.status; self.roots = roots
+                    self.indexGeneration += 1
+                    new.onCatalogChange = { [weak self, weak observedHost = new] in
+                        Task { @MainActor in
+                            guard let self, let observedHost, self.host === observedHost, self.catalogRefresh == nil else { return }
+                            self.catalogRefresh = Task { [weak self] in
+                                try? await Task.sleep(for: .milliseconds(400))
+                                guard !Task.isCancelled, let self, self.host === observedHost else { return }
+                                self.catalogRefresh = nil
+                                self.indexGeneration += 1
+                            }
+                        }
+                    }
+                    new.onStatus = { [weak self, weak observedHost = new] status in
+                        Task { @MainActor in
+                            // Every observer of the service redraws on a publish, so skip repeats.
+                            guard let self, let observedHost, self.host === observedHost, self.status != status else { return }
+                            self.status = status
+                        }
+                    }
+                }
+            } catch {
+                handoff.take()?.shutdown()
+                Task { @MainActor [weak self] in
+                    guard let self, !cancel.isSet, !shutdown.isSet else { return }
+                    self.status = LightningIndexStatus(stage: .failed(error.localizedDescription), lastError: error.localizedDescription)
+                    self.isStarted = false
+                }
             }
         }
     }
-
-    private nonisolated static func rebuild(_ index: LightningIndex, cancel: LightningFlag, shutdown: LightningFlag) {
-        DispatchQueue.global(qos: .utility).async {
-            let result = index.rebuild(isCancelled: { cancel.isSet || shutdown.isSet })
-            guard result.stage.isSearchable, !cancel.isSet, !shutdown.isSet else { return }
-            try? index.saveSnapshot()
-            guard !cancel.isSet else { return }
-            // Restarts the change stream from the new crawl.
-            index.startWatching()
-        }
-    }
-
-    private func install(_ newIndex: LightningIndex) {
-        if let old = index {
-            old.statusHandler = nil
-            old.stop()
-        }
-        index = newIndex
-        engine = LightningSearchEngine(index: newIndex)
-        let token = ObjectIdentifier(newIndex)
-        newIndex.statusHandler = { _ in
-            Task { @MainActor in LightningSearchService.shared.indexStatusChanged(token) }
-        }
-        status = newIndex.status
-        indexGeneration += 1
-    }
-
-    private func indexStatusChanged(_ token: ObjectIdentifier) {
-        guard let index, ObjectIdentifier(index) == token else { return }
-        let current = index.status
-        if current != status { status = current }
-    }
-
-    // MARK: Folders
 
     enum FolderListError: Error, Equatable {
         case invalidPath, empty
@@ -207,16 +225,35 @@ final class LightningSearchService: ObservableObject {
         return .success(paths)
     }
 
-    /// Saves the folder lists. Changed lists replace the index; a running index rebuilds right away.
     func updateFolders(watched: [String], ignored: [String]) {
-        guard watched != watchedFolders || ignored != ignoredFolders else { return }
-        watchedFolders = watched
-        ignoredFolders = ignored
+        guard watched != watchedFolders || ignored != ignoredFolders || !UserDefaults.standard.bool(forKey: Self.mappedFoldersKey) else { return }
+        UserDefaults.standard.set(true, forKey: Self.mappedFoldersKey)
+        watchedFolders = watched; ignoredFolders = ignored
         UserDefaults.standard.set(watched, forKey: Self.watchedFoldersKey)
         UserDefaults.standard.set(ignored, forKey: Self.ignoredFoldersKey)
-        guard isStarted else { return }
-        // The snapshot was written for the old folders; the new index cannot use it and crawls instead.
-        launch(rebuild: true)
+        if isStarted { launch(updateRoots: true) }
+    }
+
+    func updateIndexingPreferences(_ value: IndexingPreferences) {
+        indexingPreferences = value
+        if let data = try? JSONEncoder().encode(value) { UserDefaults.standard.set(data, forKey: Self.indexingPreferencesKey) }
+        host?.configure(value)
+    }
+    func refreshRoots() {
+        guard let current = host else { return }
+        setupQueue.async { [weak self] in
+            let roots = (try? current.roots()) ?? []
+            Task { @MainActor in guard let self, self.host === current else { return }; self.roots = roots }
+        }
+    }
+    func setRootEnabled(id: String, enabled: Bool) {
+        host?.setRootEnabled(id: id, enabled: enabled) { [weak self] error in
+            Task { @MainActor in
+                guard let self else { return }
+                if let error { self.status.lastError = error.localizedDescription }
+                self.refreshRoots()
+            }
+        }
     }
 
     // MARK: Full Disk Access

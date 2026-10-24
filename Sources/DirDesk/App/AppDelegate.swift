@@ -17,6 +17,7 @@ final class WatcherHub {
         for controller in delegate.controllers {
             for pane in controller.model.allPanes { paths.formUnion(pane.watchedPaths) }
         }
+        for pane in DesktopCoordinator.shared.desktopPanes { paths.formUnion(pane.watchedPaths) }
         if FloatingFilesController.shared.isVisible { paths.formUnion(FloatingFilesController.shared.pane.watchedPaths) }
         watcher.watch(paths)
     }
@@ -25,6 +26,7 @@ final class WatcherHub {
         guard let delegate else { return }
         var panes = delegate.controllers.flatMap { $0.model.allPanes }
         panes.append(FloatingFilesController.shared.pane)
+        panes.append(contentsOf: DesktopCoordinator.shared.desktopPanes)
         for pane in panes {
             for path in paths where pane.watchedPaths.contains(path) { pane.directoryChanged(path) }
         }
@@ -58,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     func applicationDidFinishLaunching(_ notification: Notification) {
         watcherHub.delegate = self
         windows.appDelegate = self
+        FileOpenRouter.delegate = self
         AppModel.shared.applyAppearance()
         rebuildMainMenuIfNeeded(force: true)
         NSApp.servicesProvider = ServiceProvider(delegate: self)
@@ -68,6 +71,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         FloatingFilesController.shared.appDelegate = self
         DeviceCoordinator.shared.install(delegate: self)
         registerFloatingFilesShortcut()
+        GlobalSearchController.shared.install()
+        DesktopCoordinator.shared.install(delegate: self)
+        GlobalSearchController.shared.$configuration.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in
+            StatusItemController.shared.install(delegate: self)
+        }.store(in: &cancellables)
+        DesktopCoordinator.shared.$isEnabled.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in
+            StatusItemController.shared.install(delegate: self)
+        }.store(in: &cancellables)
         HotZoneController.shared.install()
         FileFloatingStore.shared.$configuration.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in
             self?.registerFloatingFilesShortcut()
@@ -94,7 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         // Full Screen in an image preview opens the file in Super Preview; an archive entry clicked in the inspector
         // opens its archive there with that entry shown.
         NotificationCenter.default.publisher(for: .dirDeskShowSuperPreview).receive(on: RunLoop.main).sink { [weak self] note in
-            guard let url = note.object as? URL, let controller = self?.activeController ?? self?.controllers.first else { return }
+            guard let url = note.object as? URL, let self else { return }
+            let controller = self.activeController ?? self.controllers.first ?? self.newWindow(directory: url.deletingLastPathComponent())
             let entry = note.userInfo?["archiveEntry"] as? String
             Task {
                 guard let item = await Task.detached(operation: { DirectoryLoader.item(at: url) }).value else { return }
@@ -111,14 +123,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !isTerminating else { return .terminateLater }
         isTerminating = true
         controllers.forEach { $0.model.saveNow() }
         WorkspaceSessionStore.shared.flush()
         FileTransitStore.shared.flush()
-        return .terminateNow
+        LightningSearchService.shared.stopForTermination { sender.reply(toApplicationShouldTerminate: true) }
+        return .terminateLater
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        DesktopCoordinator.shared.shutdown()
+        GlobalSearchController.shared.shutdown()
+        GlobalHotKey.shared.shutdown()
         // Keeps the Lightning Search index snapshot so the next launch can search right away.
         LightningSearchService.shared.shutdown()
     }
@@ -138,21 +155,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         guard !urls.isEmpty else { return }
         if controllers.isEmpty { newWindow(directory: nil) }
         guard let controller = activeController else { return }
-        for url in urls.prefix(50) {
+        for url in urls.prefix(50).map(FileOpenRouter.resolvedFileURL) {
             var isDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { continue }
-            if isDirectory.boolValue && !(try? url.resourceValues(forKeys: [.isPackageKey]).isPackage == true)! {
+            if isDirectory.boolValue && (try? url.resourceValues(forKeys: [.isPackageKey]).isPackage) != true {
                 controller.newTab(directory: url)
             } else {
                 controller.newTab(directory: url.deletingLastPathComponent())
                 controller.model.activePane.select(urls: [url])
             }
         }
-        controller.window?.makeKeyAndOrderFront(nil)
-        activateApp()
+        FileOpenRouter.present(controller)
     }
 
     func registerFloatingFilesShortcut() {
+        guard !UserDefaults.standard.bool(forKey: "DirDeskSnapshotHidden") else { return }
         let configuration = FileFloatingStore.shared.configuration
         if configuration.shortcutEnabled {
             GlobalHotKey.shared.register(keyCode: configuration.shortcutKey, modifiers: configuration.shortcutModifiers) {
@@ -273,6 +290,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc func connectToServerAction(_ sender: Any?) { activeController.map { showConnectToServer(controller: $0) } }
     @objc func closePaneAction(_ sender: Any?) { activeController?.model.activeTab.closeActivePane() }
     @objc func lightningSearchAction(_ sender: Any?) { showLightningSearch(scope: activeController?.model.activePane.currentDirectory) }
+    @objc func advancedSearchAction(_ sender: Any?) {
+        windows.showAdvancedSearch(scope: activeController?.model.activePane.currentDirectory, controller: activeController)
+    }
     @objc func revealInFinderAction(_ sender: Any?) { activeController?.revealInFinder() }
     @objc func selectAllItemsAction(_ sender: Any?) { activeController?.model.activePane.selectAll() }
     @objc func toggleSidebarAction(_ sender: Any?) { activeController?.toggleSidebarFromTitlebar() }

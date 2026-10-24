@@ -121,6 +121,7 @@
 "AirDrop is unavailable." = "無法使用 AirDrop。";
 "Alias" = "替身";
 "Aliases Created" = "已製作替身";
+"All" = "全部";
 "All Bookmarks" = "所有書籤";
 "All Items" = "所有項目";
 "All Subfiles of %@" = "%@ 的所有子檔案";
@@ -176,6 +177,7 @@
 "Automatic sync is off" = "未開啟自動同步";
 "Automatic sync runs while Wumi is open." = "自動同步只在 Wumi 開啟時執行。";
 "Automatic sync skipped this task because some conflicts need a decision." = "有衝突需要你決定，自動同步已略過此任務。";
+"Automatically index external volumes" = "自動索引外接磁碟";
 "Available Locally" = "本機可用";
 "Available actions" = "可用的動作";
 "Available on this Mac" = "可在此 Mac 上使用";
@@ -205,6 +207,7 @@
 "Bottom Right" = "右下";
 "Bring All to Front" = "全部移至最上層";
 "Browse the folders and items you bookmarked." = "瀏覽你加入書籤的檔案夾和項目。";
+"Browse, preview and organize desktop files. Show the system desktop at any time from the menu bar." = "瀏覽、預覽及整理桌面檔案。可隨時從選單列顯示系統桌面。";
 "Browsing" = "瀏覽";
 "Building Search Index…" = "正在建立搜尋索引…";
 "Building Search Index… %lld items" = "正在建立搜尋索引…已收錄 %lld 個項目";
@@ -285,16 +288,19 @@
 "Close Current Pane" = "關閉目前的窗格";
 "Close Floating Ball" = "關閉懸浮球";
 "Close Pane" = "關閉窗格";
+"Close Search" = "關閉搜尋";
 "Close Tab" = "關閉標籤頁";
 "Close Tabs to the Right" = "關閉右側的標籤頁";
 "Code" = "程式碼";
 "Collapse All" = "全部收合";
+"Collapse Collection" = "收合收納區";
 "Collapse Folder" = "收合檔案夾";
 "Collapsed" = "已收合";
 "Collect All Items in Current Folder into New Folder" = "將目前檔案夾的所有項目收進新檔案夾";
 "Collect Performance Diagnostics" = "收集效能診斷資料";
 "Collect Selected Items into New Folder" = "將所選項目收進新檔案夾";
 "Collecting Diagnostics" = "正在收集診斷資料";
+"Collection Name" = "收納區名稱";
 "Collection runs for 60 seconds: reproduce the slowdown or high CPU use meanwhile. You can close Settings while it runs." = "採集會持續 60 秒，期間請重現卡頓或 CPU 佔用過高的情況；採集時可以關閉設定視窗。";
 "Color %lld" = "顏色 %lld";
 "Color Mode" = "外觀模式";
@@ -434,6 +440,10 @@
 "Delete Workspace?" = "要刪除工作區嗎？";
 "Descending" = "遞減";
 "Desktop" = "桌面";
+"Desktop Files" = "桌面檔案";
+"Desktop Management" = "桌面管理";
+"Desktop Search" = "桌面搜尋";
+"Desktop access is required. Allow access in Privacy & Security, then retry." = "需要桌面存取權限。請在「隱私權與安全性」中允許存取，然後重試。";
 "Destination already exists" = "目標名稱已存在";
 "Destination already exists: %@" = "目標名稱已存在：%@";
 "Detached HEAD" = "分離的 HEAD";
@@ -449,6 +459,7 @@
 "Dimensions are preserved." = "將保留原始尺寸。";
 "Direct Children Only" = "僅限直接子項目";
 "Disable Shortcut" = "停用快速鍵";
+"Dismiss" = "關閉";
 "Display" = "顯示器";
 "Display Name (Optional)" = "顯示名稱（選填）";
 "Dissolve Folder" = "解散檔案夾";
@@ -532,6 +543,7 @@
 "Excel Spreadsheet" = "Excel 試算表";
 "Exclude" = "排除";
 "Exclude Group" = "排除此群組";
+"Existing indexed text is retained when content extraction or offline results are turned off." = "關閉內容擷取或離線結果後，已索引的文字仍會保留。";
 "Expand All" = "全部展開";
 "Expand Folder" = "展開檔案夾";
 "Expanded" = "已展開";
@@ -661,6 +673,7 @@
 "Green" = "綠色";
 "Green: 1 day to less than 7 days" = "綠色：1 天至不到 7 天";
 "Grid Thumbnail Size" = "格狀縮圖大小";
+"Group by Type" = "依類型分組";
 "Groups checked as expanded open that way in new windows, and changes also apply to the current window. Collapsing a group in the sidebar itself leaves this default alone." = "勾選為展開的群組會在新視窗中以展開狀態打開，變更也會套用到目前的視窗。直接在側邊欄中收合群組不會改變此預設值。";
 "Height" = "高度";
 "Help" = "輔助說明";
@@ -701,7 +714,10 @@
 "Include" = "包含";
 "Include Hidden Items" = "包含隱藏項目";
 "Include Subfolders" = "包含子檔案夾";
+"Include hidden files" = "包含隱藏檔案";
 "Independent implementation for personal use. All features are available; there is no trial or subscription." = "供個人使用的獨立實作。所有功能皆可使用，沒有試用期或訂閱。";
+"Index document contents" = "索引文件內容";
+"Index document contents on external volumes" = "索引外接磁碟上的文件內容";
 "Index is not ready" = "索引尚未就緒";
 "Index resource limit reached. Choose fewer watched folders." = "已達到索引資源上限。請減少監看的檔案夾。";
 "Indexed: %lld" = "已索引：%lld";
@@ -739,6 +755,7 @@
 "Keep Open" = "保持開啟";
 "Keep Right" = "保留右側";
 "Keep Search on Top" = "搜尋視窗保持最上層";
+"Keep desktop management and global search available after signing in." = "登入後即可使用桌面管理和全域搜尋。";
 "Keep only files, or only folders." = "只保留檔案，或只保留檔案夾。";
 "Keyboard Shortcuts" = "鍵盤快速鍵";
 "Keyboard and Pointer" = "鍵盤與指標";
@@ -776,6 +793,7 @@
 "Lists items carrying any checked tag; names have to match exactly." = "列出帶有任一勾選標籤的項目；標籤名稱必須完全相符。";
 "Live Preview" = "即時預覽";
 "Live result" = "即時結果";
+"Loading Desktop…" = "正在載入桌面…";
 "Loading Search Index…" = "正在載入搜尋索引…";
 "Local" = "本機版";
 "Local status · submodule contents not scanned" = "本機狀態 · 未掃描子模組內容";
@@ -790,6 +808,7 @@
 "Make Alias" = "製作替身";
 "Manage Bookmarks" = "管理書籤";
 "Manage Bookmarks…" = "管理書籤…";
+"Manage Desktop Files with Wumi" = "使用 Wumi 管理桌面檔案";
 "Manage Workspaces…" = "管理工作區…";
 "Manual Saving (Static)" = "手動儲存（靜態）";
 "Markdown" = "Markdown";
@@ -810,6 +829,7 @@
 "Middle" = "中間";
 "Middle Left" = "左中";
 "Middle Right" = "右中";
+"Miji Search" = "覓跡搜尋";
 "Minimize" = "縮到最小";
 "Missing" = "檔案遺失";
 "Missing and future dates have no color." = "缺少的日期和未來的日期不會上色。";
@@ -838,6 +858,8 @@
 "Move the pointer, or files you are dragging, to the position chosen below to open Floating Files. When off, the menu bar icon and the keyboard shortcut still open it." = "將指標或拖移中的檔案移到下方選擇的位置，即可打開檔案浮窗。關閉時，仍可透過選單列圖像和快速鍵打開。";
 "Move to" = "移動到";
 "Move to %@" = "搬移到「%@」";
+"Move to Collection" = "移至收納區";
+"Move to Display: %@" = "移至顯示器：%@";
 "Move to More" = "移到「更多」";
 "Move to Trash" = "丟到垃圾桶";
 "Move to “%@”" = "搬移到「%@」";
@@ -852,6 +874,7 @@
 "Music" = "音樂";
 "NOT is evaluated first, then OR, then AND. Add parentheses whenever you mix them." = "先計算 NOT，接著是 OR，最後是 AND。混用時請加上括號。";
 "Name" = "名稱";
+"Name, pinyin, document text and OCR share one local index across Wumi, the desktop and Floating Files." = "Wumi、桌面和檔案浮窗共用一個本機索引，支援名稱、拼音、文件內文和 OCR 搜尋。";
 "Names that differ only in letter case" = "名稱只有大小寫不同";
 "Names that start with Invoice and end in four digits, created this year." = "今年建立、名稱以 Invoice 開頭並以四位數字結尾的項目。";
 "Navigate" = "導覽";
@@ -860,6 +883,7 @@
 "New" = "新增";
 "New Bookmark Folder" = "新增書籤檔案夾";
 "New Bookmark Folder…" = "新增書籤檔案夾…";
+"New Collection" = "新增收納區";
 "New Extension" = "新副檔名";
 "New File" = "新增檔案";
 "New File Templates" = "新增檔案樣板";
@@ -868,6 +892,7 @@
 "New Folder Sync Task" = "新增檔案夾同步任務";
 "New Subfolder" = "新增子檔案夾";
 "New Tab" = "新增標籤頁";
+"New Text File" = "新增文字檔案";
 "New Window" = "新增視窗";
 "New extension" = "新副檔名";
 "New files from this template start as an empty document of this type." = "以此樣板新增的檔案，會是該類型的空白文件。";
@@ -923,6 +948,7 @@
 "OK" = "好";
 "Off" = "關閉";
 "Office NAS" = "辦公室 NAS";
+"Offline" = "離線";
 "Older entries were dropped after the log reached 512 errors." = "記錄達到 512 筆錯誤後，較舊的項目已被捨棄。";
 "On" = "開啟";
 "On Disk" = "磁碟佔用";
@@ -935,6 +961,7 @@
 "One folder per line as an absolute path; ~ stands for your home folder. Saving different folders rebuilds the index. Folders macOS does not let Wumi read are skipped." = "每行輸入一個檔案夾的絕對路徑，~ 代表你的個人專屬檔案夾。儲存不同的檔案夾後會重建索引。macOS 不允許 Wumi 讀取的檔案夾會被略過。";
 "One of the selected folders is no longer available." = "所選檔案夾中有一個已無法使用。";
 "One sync folder cannot be inside the other." = "同步檔案夾不能位於另一個同步檔案夾之中。";
+"Online" = "線上";
 "Only ZIP archives can be password-protected." = "只有 ZIP 壓縮檔可以設定密碼。";
 "Only folders can be added to Common Paths." = "只有檔案夾可以加入常用路徑。";
 "Only in the left folder" = "僅存在於左側檔案夾";
@@ -952,7 +979,10 @@
 "Open Floating Files from the top of the screen or from the middle of its left or right edge." = "從螢幕頂端，或螢幕左右邊緣的中間打開檔案浮窗。";
 "Open Folder" = "打開檔案夾";
 "Open Lightning Search with Command-F or by pressing D twice. Conditions picked from the menus and queries you type run on the same search engine." = "按下 Command-F 或連按兩次 D 即可打開閃電搜尋。從選單選擇的條件和你輸入的查詢，都由同一個搜尋引擎執行。";
+"Open Lightning Search with a global shortcut" = "使用全域快速鍵打開閃電搜尋";
 "Open Location" = "打開位置";
+"Open Login Items Settings" = "打開登入項目設定";
+"Open Miji Search with a global shortcut" = "使用全域快捷鍵開啟覓跡搜尋";
 "Open Privacy Settings" = "打開隱私權設定";
 "Open With" = "打開檔案的應用程式";
 "Open Workspace" = "打開工作區";
@@ -967,6 +997,7 @@
 "Open in Terminal" = "在終端機中打開";
 "Open in Wumi" = "在 Wumi 中打開";
 "Open on hover" = "指標停留時打開";
+"Open with Default Application" = "使用預設應用程式打開";
 "Opens after the pointer stays in the hot zone this long; dragging files in opens it right away." = "指標在觸發區域停留這麼久後打開；拖著檔案進入時立即打開。";
 "Opens the shared folder right from the sidebar." = "直接從側邊欄打開共享檔案夾。";
 "Operation error sound" = "操作錯誤提示音";
@@ -976,6 +1007,7 @@
 "Original" = "原始影像";
 "Original image size" = "原始影像大小";
 "Originals are not moved." = "原始檔案不會被搬移。";
+"Other Files" = "其他檔案";
 "Other file types" = "其他檔案類型";
 "Other…" = "其他…";
 "Output format" = "輸出格式";
@@ -1104,6 +1136,8 @@
 "Recent Batch Renames" = "最近的批次重新命名";
 "Recent Error Logs" = "最近的錯誤記錄";
 "Recent items could not be loaded." = "無法載入最近使用的項目。";
+"Recognize image text on external volumes" = "辨識外接磁碟上的圖片文字";
+"Recognize text in images (OCR)" = "辨識圖片文字（OCR）";
 "Reconnect" = "重新連線";
 "Record Shortcut" = "錄製快速鍵";
 "Records CPU, memory, wakeups, disk activity and main-thread responsiveness for 60 seconds while you reproduce a slowdown. You can close Settings meanwhile. The report holds no file names, contents or clipboard data and is only saved where you choose." = "在你重現效能緩慢的情況時，連續 60 秒記錄 CPU、記憶體、喚醒次數、磁碟活動和主執行緒回應情形。記錄期間可以關閉「設定」。報告不含檔案名稱、內容或剪貼板資料，且只會儲存在你選擇的位置。";
@@ -1124,6 +1158,7 @@
 "Remove" = "移除";
 "Remove All Tags" = "移除所有標籤";
 "Remove Background" = "移除背景";
+"Remove Collection" = "移除收納區";
 "Remove Condition" = "移除條件";
 "Remove Context Menu Action" = "移除快速選單動作";
 "Remove Duplicate Tabs" = "移除重複的標籤頁";
@@ -1143,6 +1178,7 @@
 "Removes duplicate single-pane folder tabs in all windows; pinned and multi-pane tabs stay." = "移除所有視窗中重複的單一窗格檔案夾標籤頁；已固定和多窗格的標籤頁會保留。";
 "Rename" = "重新命名";
 "Rename Bookmark" = "重新命名書籤";
+"Rename Collection" = "重新命名收納區";
 "Rename Tab" = "重新命名標籤頁";
 "Rename To" = "新名稱";
 "Rename Workspace" = "重新命名工作區";
@@ -1181,6 +1217,7 @@
 "Retry" = "重試";
 "Retry Failed Items" = "重試失敗的項目";
 "Return opens the item; clicking outside closes the preview." = "按下 Return 鍵可打開項目；按一下預覽以外的區域可關閉預覽。";
+"Return to reveal · Space to preview" = "Return 定位 · 空白鍵預覽";
 "Reveal Outputs" = "顯示輸出檔案";
 "Reveal in Finder" = "在 Finder 中顯示";
 "Reveal in Wumi" = "在 Wumi 中顯示";
@@ -1212,6 +1249,7 @@
 "Save the current tab from the Workspaces menu to create one." = "從「工作區」選單儲存目前的標籤頁即可建立。";
 "Saved batch rename presets or history could not be read." = "無法讀取已儲存的批次重新命名預設組合或記錄。";
 "Saved folder sync tasks could not be read." = "無法讀取已儲存的檔案夾同步任務。";
+"Saved. Restart your Mac to apply this folder application change." = "已儲存。請重新啟動 Mac，讓資料夾預設應用程式的變更生效。";
 "Saved. The index is being rebuilt." = "已儲存，正在重建索引。";
 "Saved. The new folders are used when the index starts." = "已儲存，開始建立索引時會使用新的檔案夾。";
 "Saves a copy turned to the left and keeps the image metadata." = "另存一份向左旋轉的副本，並保留影像後設資料。";
@@ -1229,11 +1267,14 @@
 "Search File Names" = "搜尋檔案名稱";
 "Search Mode" = "搜尋模式";
 "Search Results" = "搜尋結果";
+"Search Scope" = "搜尋範圍";
 "Search Settings" = "搜尋設定";
 "Search Text" = "搜尋文字";
 "Search Unavailable: %@" = "無法搜尋：%@";
+"Search files" = "搜尋檔案";
 "Search index unavailable" = "無法使用搜尋索引";
 "Search loaded files" = "搜尋已載入的檔案";
+"Search names, pinyin, documents and image text" = "搜尋名稱、拼音、文件內文和圖片文字";
 "Search tools or extensions" = "搜尋工具或副檔名";
 "Searches a folder and everything inside it. infolder: and parent: work the same; ~ is your home folder." = "搜尋檔案夾及其中的所有內容。infolder: 和 parent: 的作用相同；~ 代表你的個人專屬檔案夾。";
 "Searching…" = "正在搜尋…";
@@ -1268,6 +1309,7 @@
 "Shades dates softly by how long ago they were. The date and time format itself does not change." = "依日期距今的時間長短，以柔和的顏色標示，日期和時間格式本身不會改變。";
 "Share" = "分享";
 "Shared Folder" = "共享檔案夾";
+"Shared Local Index" = "共用本機索引";
 "Share…" = "分享…";
 "Short forms of type:audio, type:video, type:doc and type:app." = "type:audio、type:video、type:doc 和 type:app 的簡寫。";
 "Shortcut" = "快速鍵";
@@ -1284,6 +1326,7 @@
 "Show Side Preview" = "顯示側邊預覽";
 "Show Stack Items" = "展開整組";
 "Show Subfolders" = "顯示子檔案夾";
+"Show System Desktop" = "顯示系統桌面";
 "Show and Arrange Sidebar Items" = "顯示並排列側邊欄項目";
 "Show context menu icons" = "顯示快速選單圖像";
 "Show copy and cut feedback" = "顯示拷貝和剪下的結果";
@@ -1292,12 +1335,15 @@
 "Show floating ball buttons on hover" = "指標停留時顯示懸浮球按鈕";
 "Show in Locations only" = "僅在「位置」中顯示";
 "Show in Wumi" = "在 Wumi 中顯示";
+"Show indexed files from offline volumes" = "顯示離線磁碟上已索引的檔案";
+"Show macOS Desktop" = "顯示 macOS 桌面";
 "Show names with toolbar icons" = "工具列圖像同時顯示名稱";
 "Show sizes in decimal units (1 KB = 1,000 bytes) or binary units (1 KiB = 1,024 bytes)." = "以十進位單位（1 KB = 1,000 位元組）或二進位單位（1 KiB = 1,024 位元組）顯示大小。";
 "Show subfolders in %@" = "顯示「%@」中的子檔案夾";
 "Show subfolders when pointing at a path arrow" = "指標移到路徑箭頭時顯示子檔案夾";
 "Show the Floating Files icon in the menu bar" = "在選單列顯示檔案浮窗圖像";
 "Show the full date and time instead of wording such as “5 minutes ago”. When off, dates from the last two hours appear as relative times." = "顯示完整的日期和時間，而非「5 分鐘前」之類的說法。關閉時，過去兩小時內的日期會以相對時間顯示。";
+"Showing %lld results" = "顯示 %lld 個結果";
 "Showing the first %lld results." = "只顯示前 %lld 個結果。";
 "Shown in Toolbar" = "顯示在工具列";
 "Shows a floating ball in the middle of the right edge of every pane." = "在每個窗格右側邊緣的中間顯示懸浮球。";
@@ -1312,6 +1358,7 @@
 "Size Unavailable" = "大小無法取得";
 "Size Unit" = "大小單位";
 "Skip" = "略過";
+"Skip development caches" = "略過開發快取";
 "Skipped" = "已略過";
 "Skipped: %lld" = "已略過：%lld";
 "Slowest Main-Thread Response" = "主執行緒最慢回應";
@@ -1344,6 +1391,7 @@
 "Standard" = "標準";
 "Standard (4:3)" = "標準（4:3）";
 "Start Collection" = "開始收集";
+"Start Wumi at login" = "登入時啟動 Wumi";
 "Start: %lld" = "起始編號：%lld";
 "Starts With" = "開頭是";
 "Startup folder" = "啟動時打開的檔案夾";
@@ -1438,6 +1486,7 @@
 "The item is no longer available." = "該項目已無法使用。";
 "The item is no longer available: %@" = "該項目已無法使用：%@";
 "The left folder has the newer copy" = "左側檔案夾中的版本較新";
+"The managed desktop uses a static background. System widgets, dynamic wallpaper and Finder Stacks are available on the system desktop." = "受管理的桌面使用靜態背景。系統小工具、動態背景圖片和 Finder 堆疊可在系統桌面使用。";
 "The operation contains %lld pages, exceeding the %lld-page limit." = "此操作包含 %lld 頁，超過 %lld 頁的上限。";
 "The operation could not be completed." = "無法完成操作。";
 "The path could not be opened." = "無法打開此路徑。";
@@ -1449,6 +1498,7 @@
 "The right folder has the newer copy" = "右側檔案夾中的版本較新";
 "The search folder does not exist" = "搜尋的檔案夾不存在";
 "The search index could not be saved." = "無法儲存搜尋索引。";
+"The search shortcut is already in use. Choose another shortcut or open search from the menu bar." = "搜尋快速鍵已被使用。請選擇其他快速鍵，或從選單列打開搜尋。";
 "The search updates as you edit. Hiding this panel keeps the conditions until you close the window." = "搜尋會在你編輯時更新。隱藏此面板後，條件會保留到你關閉視窗為止。";
 "The selected application is missing or is not a valid Mac app." = "所選的應用程式不存在，或不是有效的 Mac App。";
 "The selected bookmark no longer exists." = "所選的書籤已不存在。";
@@ -1481,6 +1531,7 @@
 "This archive is too large to extract safely." = "此壓縮檔太大，無法安全解壓縮。";
 "This bookmark is currently unavailable." = "此書籤目前無法使用。";
 "This check is an estimate; System Settings shows the actual permission. Reopen Wumi after you change it." = "此檢查僅為估計，實際權限以「系統設定」為準。更改後請重新打開 Wumi。";
+"This device is offline. Its indexed information is still available." = "此裝置已離線，仍可查看已建立索引的資訊。";
 "This edition runs with your macOS account permissions. macOS may ask before Wumi opens protected folders." = "此版本以你的 macOS 帳號權限執行。Wumi 打開受保護的檔案夾之前，macOS 可能會先詢問你。";
 "This folder contains too many items to sync safely." = "此檔案夾包含的項目過多，無法安全同步。";
 "This folder has no items to show." = "此檔案夾中沒有可顯示的項目。";
@@ -1551,6 +1602,7 @@
 "Unpin Tab" = "取消固定標籤頁";
 "Unstaged" = "未暫存";
 "Unsupported environment variable: %@" = "不支援的環境變數：%@";
+"Untitled.txt" = "未命名.txt";
 "Untracked" = "未追蹤";
 "Up One Level" = "上一層";
 "Update Both" = "更新兩側";
@@ -1581,6 +1633,7 @@
 "Version" = "版本";
 "Video" = "影片";
 "Video or audio files bigger than 500 MB." = "大於 500 MB 的影片或音訊檔案。";
+"Videos" = "影片";
 "View" = "顯示方式";
 "View Mode" = "顯示方式";
 "View Photo Location" = "檢視照片位置";
@@ -1627,6 +1680,7 @@
 "Wrap phrases in straight double quotes, and write a filter's value right after its colon." = "請用半形雙引號括住詞組，並將篩選器的值直接寫在冒號之後。";
 "Write Only" = "只能寫入";
 "Wumi Default" = "Wumi 預設";
+"Wumi Desktop" = "Wumi 桌面";
 "Wumi Help" = "Wumi 輔助說明";
 "Wumi never uploads file data and has no analytics, ads, accounts, or cloud sync." = "Wumi 從不上傳檔案資料，也沒有分析統計、廣告、帳號或雲端同步。";
 "X %lld, Y %lld, width %lld, height %lld" = "X %lld，Y %lld，寬 %lld，高 %lld";
@@ -1650,6 +1704,7 @@
 "iCloud Drive" = "iCloud 雲碟";
 "macOS could not open this server address." = "macOS 無法打開此伺服器位址。";
 "macOS denied access to this folder. Turn on Full Disk Access for Wumi in Privacy & Security, then try again." = "macOS 拒絕取用此檔案夾。請在「隱私權與安全性」中為 Wumi 開啟「完整磁碟取用權限」，然後再試一次。";
+"macOS did not confirm the default folder application change." = "macOS 未確認預設檔案夾應用程式的變更。";
 "macOS handles sign-in. Passwords are never saved by Wumi." = "由 macOS 處理登入，Wumi 絕不會儲存密碼。";
 "macOS mounts FTP servers read-only: you can browse and copy files, not upload or change them." = "macOS 會以唯讀方式掛載 FTP 伺服器：你可以瀏覽和拷貝檔案，但無法上傳或修改。";
 "macOS shows the Trash to Wumi only after Full Disk Access is turned on." = "只有在開啟「完整磁碟取用權限」後，macOS 才會讓 Wumi 顯示垃圾桶。";

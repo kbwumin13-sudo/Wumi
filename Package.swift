@@ -9,6 +9,7 @@ let package = Package(
         .executable(name: "DirDesk", targets: ["DirDesk"]),
         .library(name: "DirDeskCore", targets: ["DirDeskCore"]),
     ],
+    dependencies: [.package(path: "Vendor/Miji")],
     targets: [
         .target(
             name: "CArchive",
@@ -16,18 +17,18 @@ let package = Package(
         ),
         .target(
             name: "DirDeskCore",
-            dependencies: ["CArchive"],
+            dependencies: ["CArchive", .product(name: "MijiCore", package: "Miji")],
             swiftSettings: [.swiftLanguageMode(.v5)],
             linkerSettings: [.linkedLibrary("sqlite3"), .linkedLibrary("z")]
         ),
         .executableTarget(
             name: "DirDesk",
-            dependencies: ["DirDeskCore"],
+            dependencies: ["DirDeskCore", .product(name: "MijiCore", package: "Miji")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
             name: "DirDeskCoreTests",
-            dependencies: ["DirDeskCore"],
+            dependencies: ["DirDeskCore", .product(name: "MijiCore", package: "Miji")],
             resources: [.copy("Fixtures")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

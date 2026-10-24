@@ -1,0 +1,395 @@
+{
+  "source": "kbwumin13-sudo/miji local worktree",
+  "head": "2b97bd2ec0aeab241d17c8352d99fff1ddac2ec5",
+  "captured_at": "2026-10-21T12:40:27.061037+08:00",
+  "status_porcelain": " M Sources/MijiApp/MijiApp.swift\n M Sources/MijiCore/FileScanner.swift\n M Sources/MijiCore/IncrementalIndexState.swift\n M Sources/MijiCore/IndexService.swift\n M Sources/MijiCore/NameMetadata.swift\n M Sources/MijiCore/NameSearchEngine.swift\n M Sources/MijiCore/NameSnapshotCache.swift\n M Sources/MijiCore/SearchDatabase.swift\n M Tests/MijiCoreTests/IndexServiceTests.swift\n M Tests/MijiCoreTests/NameSearchEngineTests.swift\n M Tests/MijiCoreTests/NameSnapshotCacheTests.swift\n M Tests/MijiCoreTests/ScannerTests.swift\n M Vendor/OilFind/Sources/OilFindCore/CompactNameIndex.swift\n M resources/Info.plist\n?? Sources/MijiApp/SearchKeyAction.swift\n?? Tests/MijiAppTests/SearchKeyActionTests.swift\n?? Tests/MijiCoreTests/DeduplicatedNameIndexTests.swift\n?? Tests/MijiCoreTests/LegacyNameCacheTests.swift\n?? Tests/MijiCoreTests/LightIndexingTests.swift\n?? Tests/MijiCoreTests/MetadataWriteTests.swift\n?? Vendor/OilFind/Sources/OilFindCore/DeduplicatedNameIndex.swift\n",
+  "files": [
+    {
+      "path": "LICENSE",
+      "bytes": 1071,
+      "sha256": "a126ce4fff084b047a92ce4872e7a77a688b6632affd02cb22ccc45c6bb125e3",
+      "head_sha256": "a126ce4fff084b047a92ce4872e7a77a688b6632affd02cb22ccc45c6bb125e3",
+      "provenance": "HEAD",
+      "destination": "LICENSE",
+      "adapted": false
+    },
+    {
+      "path": "Package.swift",
+      "bytes": 1089,
+      "sha256": "dc5fd78af4ae2877b266922f534bb1069e8582fce2c939d1df7cad2007742a54",
+      "head_sha256": "dc5fd78af4ae2877b266922f534bb1069e8582fce2c939d1df7cad2007742a54",
+      "provenance": "HEAD",
+      "destination": "Package.swift",
+      "adapted": true
+    },
+    {
+      "path": "Sources/CContentIndex/include/CContentIndex.h",
+      "bytes": 413,
+      "sha256": "25d68ee51841edb24f69285cd4468e2be0718707f46d2dca7d62ee0ea9b7f128",
+      "head_sha256": "25d68ee51841edb24f69285cd4468e2be0718707f46d2dca7d62ee0ea9b7f128",
+      "provenance": "HEAD",
+      "destination": "Sources/CContentIndex/include/CContentIndex.h",
+      "adapted": false
+    },
+    {
+      "path": "Sources/CContentIndex/tokenizer.c",
+      "bytes": 3522,
+      "sha256": "deaeccccdfcf90fedbe1aa255089f1598b65f7e9c5b79be8b9114c2896b63053",
+      "head_sha256": "deaeccccdfcf90fedbe1aa255089f1598b65f7e9c5b79be8b9114c2896b63053",
+      "provenance": "HEAD",
+      "destination": "Sources/CContentIndex/tokenizer.c",
+      "adapted": false
+    },
+    {
+      "path": "Sources/CSQLite/module.modulemap",
+      "bytes": 80,
+      "sha256": "bbfe59a972a3e8e09e347c04bc22c0eacd2544881af8a4b6068bfc30b38466e8",
+      "head_sha256": "bbfe59a972a3e8e09e347c04bc22c0eacd2544881af8a4b6068bfc30b38466e8",
+      "provenance": "HEAD",
+      "destination": "Sources/CSQLite/module.modulemap",
+      "adapted": false
+    },
+    {
+      "path": "Sources/CSQLite/shim.h",
+      "bytes": 21,
+      "sha256": "b052d8e561e942f97b503033ecd2eaa2b35213bdbf374983efe9e68eabdfc024",
+      "head_sha256": "b052d8e561e942f97b503033ecd2eaa2b35213bdbf374983efe9e68eabdfc024",
+      "provenance": "HEAD",
+      "destination": "Sources/CSQLite/shim.h",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCLI/main.swift",
+      "bytes": 9241,
+      "sha256": "e286167e2f19674c0d9227fe845711d666c67c1aecc9a8b9bf0ed1d9553710aa",
+      "head_sha256": "e286167e2f19674c0d9227fe845711d666c67c1aecc9a8b9bf0ed1d9553710aa",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCLI/main.swift",
+      "adapted": true
+    },
+    {
+      "path": "Sources/MijiCore/ContentCodec.swift",
+      "bytes": 6786,
+      "sha256": "43149dca7109aced99652695c60754d288a3613eafba2634630a915390dc254b",
+      "head_sha256": "43149dca7109aced99652695c60754d288a3613eafba2634630a915390dc254b",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/ContentCodec.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Extraction/ArchiveDocuments.swift",
+      "bytes": 18975,
+      "sha256": "c821cfb232fdbb8d87cc092188e5dcbbbca5a621f6d6ee881530330f5bf655c8",
+      "head_sha256": "c821cfb232fdbb8d87cc092188e5dcbbbca5a621f6d6ee881530330f5bf655c8",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Extraction/ArchiveDocuments.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Extraction/ContentExtractor.swift",
+      "bytes": 8721,
+      "sha256": "bb987073883baa174827c73bd7e29fdf0c63be022aef8e868f3f30ff66fdc123",
+      "head_sha256": "bb987073883baa174827c73bd7e29fdf0c63be022aef8e868f3f30ff66fdc123",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Extraction/ContentExtractor.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Extraction/ExtractionSupport.swift",
+      "bytes": 9925,
+      "sha256": "cf08d6bddc259d359530be274271dfb11e667cc801505db64662cb516eb51433",
+      "head_sha256": "cf08d6bddc259d359530be274271dfb11e667cc801505db64662cb516eb51433",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Extraction/ExtractionSupport.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Extraction/IsolatedContentExtractor.swift",
+      "bytes": 2714,
+      "sha256": "a74ab45ecece9ff1b9c9c02125b6732247cf44b0c532b549c7ea11dafdcd0f7e",
+      "head_sha256": "a74ab45ecece9ff1b9c9c02125b6732247cf44b0c532b549c7ea11dafdcd0f7e",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Extraction/IsolatedContentExtractor.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Extraction/TextDocuments.swift",
+      "bytes": 10388,
+      "sha256": "73745a15ff1a17a1b791985f80dc18e9a66ff9d8ec22804275392e58e549fc73",
+      "head_sha256": "73745a15ff1a17a1b791985f80dc18e9a66ff9d8ec22804275392e58e549fc73",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Extraction/TextDocuments.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Extraction/VisionDocuments.swift",
+      "bytes": 10959,
+      "sha256": "e027eb3904e9078d9f883cf594727668310ab9102e30acac9d417338fce4b163",
+      "head_sha256": "e027eb3904e9078d9f883cf594727668310ab9102e30acac9d417338fce4b163",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Extraction/VisionDocuments.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/FileScanner.swift",
+      "bytes": 15407,
+      "sha256": "db23e2b7bab4a68e8051063533150899c157d1c8e34062203885533ab45ee630",
+      "head_sha256": "11e20e0c2932a10413f8164f136253af71c97b0c10373c08a4611591bf50a6e8",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/FileScanner.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/FileSignature.swift",
+      "bytes": 3007,
+      "sha256": "1057013a133d3c4225b3321aa86b6761727081c0b2b2134ea7b190c7b6a5e43b",
+      "head_sha256": "1057013a133d3c4225b3321aa86b6761727081c0b2b2134ea7b190c7b6a5e43b",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/FileSignature.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/FileWatcher.swift",
+      "bytes": 5073,
+      "sha256": "db6a57a286573bcfea4903906ad395de51e903c72c50c364c2bd6ffe1b9ba0ab",
+      "head_sha256": "db6a57a286573bcfea4903906ad395de51e903c72c50c364c2bd6ffe1b9ba0ab",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/FileWatcher.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/IncrementalIndexState.swift",
+      "bytes": 5932,
+      "sha256": "1661f15e181ab8656daaa99cbd51ec46717556cc1bdd2cf98dc60066ee0f76fa",
+      "head_sha256": "513415f2a259231ac8d1e5c898e533871b65c6ff62274d67cce36e041462e9f8",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/IncrementalIndexState.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/IndexMigration.swift",
+      "bytes": 13178,
+      "sha256": "c59a26cb8ff70965475cb973a7427712d98d3e5afbad73118c69a241a542d636",
+      "head_sha256": "c59a26cb8ff70965475cb973a7427712d98d3e5afbad73118c69a241a542d636",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/IndexMigration.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/IndexService.swift",
+      "bytes": 26219,
+      "sha256": "b5e0aa166c0af7bdd401131a5294ee749b70eaea9c185b11a316c9815e1d8d0f",
+      "head_sha256": "8a3da16e01ac1c5e647511b4efce4c39d803657e79e1c1c819c11aa7114ebbc7",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/IndexService.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/Models.swift",
+      "bytes": 6388,
+      "sha256": "7bb6d24e5b050ffa571d853c7b096dd3422e952c504da21ee7b91fd3b84f5e98",
+      "head_sha256": "7bb6d24e5b050ffa571d853c7b096dd3422e952c504da21ee7b91fd3b84f5e98",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/Models.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/NameMetadata.swift",
+      "bytes": 6102,
+      "sha256": "fb2f7c38e64e8581a2b99f04356f0f074c6542e53d5d440f334799d27d0d642f",
+      "head_sha256": "4d5695702af9f3fd8cf43baf255f878dfa4e084958c5fd3d7f6a9c3c16cb0412",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/NameMetadata.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/NameSearchEngine.swift",
+      "bytes": 17911,
+      "sha256": "a1ecd7396aeb5d1c9c15740f9e2d05840c879440e80ff3e2437faa23443d8560",
+      "head_sha256": "763535d2e54c8d4d13bae53e00b198442675d5c52eb078cb4e6a94cc9b6b5abc",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/NameSearchEngine.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/NameSnapshotCache.swift",
+      "bytes": 8689,
+      "sha256": "31c5304dc6d8981f107f4f9b6c2a75b7337b69888544de2259f6a62cb93080c0",
+      "head_sha256": "f3952bd81a30e3673212611763144e614bc8b330622d6853ad9177fc09bdc883",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/NameSnapshotCache.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/QueryParser.swift",
+      "bytes": 3636,
+      "sha256": "7175d51dcbface05b25d14100ead58e4944c0c3d68b65fef2c2b8b14b662fe1c",
+      "head_sha256": "7175d51dcbface05b25d14100ead58e4944c0c3d68b65fef2c2b8b14b662fe1c",
+      "provenance": "HEAD",
+      "destination": "Sources/MijiCore/QueryParser.swift",
+      "adapted": false
+    },
+    {
+      "path": "Sources/MijiCore/SearchDatabase.swift",
+      "bytes": 46839,
+      "sha256": "b1939948aaf2bcbd51b81a8f868ab4e48b471dd96b72ab6086d072de646e9070",
+      "head_sha256": "74a0b707d27e9a253216a7e21682bf5c5caab1b081bb406246cd05d8f2077dd1",
+      "provenance": "modified",
+      "destination": "Sources/MijiCore/SearchDatabase.swift",
+      "adapted": false
+    },
+    {
+      "path": "Tests/MijiCoreTests/ContentCodecTests.swift",
+      "bytes": 10083,
+      "sha256": "9407d50b4e18991219156d16ed2bc3690c4fa90bd215cbb0c02b0f513a52ceb6",
+      "head_sha256": "9407d50b4e18991219156d16ed2bc3690c4fa90bd215cbb0c02b0f513a52ceb6",
+      "provenance": "HEAD",
+      "destination": "Tests/MijiCoreTests/ContentCodecTests.swift",
+      "adapted": false
+    },
+    {
+      "path": "Tests/MijiCoreTests/DatabaseTests.swift",
+      "bytes": 33140,
+      "sha256": "12f9a2aaecce35631c7ffe104b3a06939f75f79e50ae47505394479db29022c7",
+      "head_sha256": "12f9a2aaecce35631c7ffe104b3a06939f75f79e50ae47505394479db29022c7",
+      "provenance": "HEAD",
+      "destination": "Tests/MijiCoreTests/DatabaseTests.swift",
+      "adapted": false
+    },
+    {
+      "path": "Tests/MijiCoreTests/DeduplicatedNameIndexTests.swift",
+      "bytes": 19321,
+      "sha256": "d4f5d66ebb31f057ad7a5517fd29f9c705bb58310981cd3df155fa07fb0f69be",
+      "head_sha256": null,
+      "provenance": "untracked",
+      "destination": "Tests/MijiCoreTests/DeduplicatedNameIndexTests.swift",
+      "adapted": false
+    },
+    {
+      "path": "Tests/MijiCoreTests/MetadataWriteTests.swift",
+      "bytes": 10835,
+      "sha256": "32313bff09897d6b4f4701dd991ac2b4f806e32e7f6b5a42eb94e3ef5dc9b247",
+      "head_sha256": null,
+      "provenance": "untracked",
+      "destination": "Tests/MijiCoreTests/MetadataWriteTests.swift",
+      "adapted": false
+    },
+    {
+      "path": "Tests/MijiCoreTests/NameSearchEngineTests.swift",
+      "bytes": 36514,
+      "sha256": "c8f6b2e57aa7c5b52361759f46d9cdf234613b85f11ca56028d640bb39a127ce",
+      "head_sha256": "59587f9264f8961df3ca27b97491d2ee6a68a57667e7bfe7621cb45030e0d9be",
+      "provenance": "modified",
+      "destination": "Tests/MijiCoreTests/NameSearchEngineTests.swift",
+      "adapted": false
+    },
+    {
+      "path": "Tests/MijiCoreTests/NameSnapshotCacheTests.swift",
+      "bytes": 7196,
+      "sha256": "e2fb1a8d5345c41fd640d1f7dab40a5b61bbdf490fdd29a5b987ac5ccc4b098c",
+      "head_sha256": "a020b5f72434519688159aaf7392f474933ca06747b0760ba57f5de657fb5bb2",
+      "provenance": "modified",
+      "destination": "Tests/MijiCoreTests/NameSnapshotCacheTests.swift",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/LICENSE",
+      "bytes": 1069,
+      "sha256": "58812edfd7eacc4396b64739c1591de41a6f4bf0cb9c5a82d1ef7b804a045d2c",
+      "head_sha256": "58812edfd7eacc4396b64739c1591de41a6f4bf0cb9c5a82d1ef7b804a045d2c",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/LICENSE",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/COilFind/bloom.c",
+      "bytes": 2756,
+      "sha256": "fc05484cd6136618849675b7fde402f947f7df7a69f3f1b26aacef4703a1dccd",
+      "head_sha256": "fc05484cd6136618849675b7fde402f947f7df7a69f3f1b26aacef4703a1dccd",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/COilFind/bloom.c",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/COilFind/coilfind.c",
+      "bytes": 16665,
+      "sha256": "0ec751732841c3569e6ab81d66c9a55c5042ba73524db922d6c4c134f24dcb8d",
+      "head_sha256": "0ec751732841c3569e6ab81d66c9a55c5042ba73524db922d6c4c134f24dcb8d",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/COilFind/coilfind.c",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/COilFind/include/coilfind.h",
+      "bytes": 4783,
+      "sha256": "35089fb700d6cba58ea1bad9af2a849a17c3b2e80af4d61962f41ff74dbae4b8",
+      "head_sha256": "35089fb700d6cba58ea1bad9af2a849a17c3b2e80af4d61962f41ff74dbae4b8",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/COilFind/include/coilfind.h",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/COilFind/include/miji_names.h",
+      "bytes": 1966,
+      "sha256": "25a8131f4d972c10757a899d8745806060e14cb3c99f53d8a10219bc2392b50c",
+      "head_sha256": "25a8131f4d972c10757a899d8745806060e14cb3c99f53d8a10219bc2392b50c",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/COilFind/include/miji_names.h",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/COilFind/include/module.modulemap",
+      "bytes": 66,
+      "sha256": "1dbaca22d58e61bd5e945b06ce7243b018930f8edb4f6baf4eadada562733d2d",
+      "head_sha256": "1dbaca22d58e61bd5e945b06ce7243b018930f8edb4f6baf4eadada562733d2d",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/COilFind/include/module.modulemap",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/COilFind/miji_names.c",
+      "bytes": 6117,
+      "sha256": "dc1f868ad77819c1ffa9662978d98c9d8ff263e03584a4772050ee6f2adccda3",
+      "head_sha256": "dc1f868ad77819c1ffa9662978d98c9d8ff263e03584a4772050ee6f2adccda3",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/COilFind/miji_names.c",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/OilFindCore/CompactNameIndex.swift",
+      "bytes": 14494,
+      "sha256": "570c8ec2cd85ac4182f39418310a0510ec838c06eae9455e11e068c235a47e70",
+      "head_sha256": "eb837e381dc85e3cb2cd3d9d073318505113756c7e99aa146e067fa3fbd8a63f",
+      "provenance": "modified",
+      "destination": "Vendor/OilFind/Sources/OilFindCore/CompactNameIndex.swift",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/OilFindCore/DeduplicatedNameIndex.swift",
+      "bytes": 12122,
+      "sha256": "60d0c4df5623931e61f4e54b3f1082d279fa1df2e99672c3a93304b63ef072ab",
+      "head_sha256": null,
+      "provenance": "untracked",
+      "destination": "Vendor/OilFind/Sources/OilFindCore/DeduplicatedNameIndex.swift",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/Sources/OilFindCore/Pinyin.swift",
+      "bytes": 2808,
+      "sha256": "fbedf5a73127b3414ed22bde05fe4e7890480395e0dfe8b0c4014864e61ad1b6",
+      "head_sha256": "fbedf5a73127b3414ed22bde05fe4e7890480395e0dfe8b0c4014864e61ad1b6",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/Sources/OilFindCore/Pinyin.swift",
+      "adapted": false
+    },
+    {
+      "path": "Vendor/OilFind/UPSTREAM.md",
+      "bytes": 9199,
+      "sha256": "cf6ab91b03051a529e697e0b1ccc4287f3c2b782bc44b2e2d8b9cba3bb0b5d47",
+      "head_sha256": "cf6ab91b03051a529e697e0b1ccc4287f3c2b782bc44b2e2d8b9cba3bb0b5d47",
+      "provenance": "HEAD",
+      "destination": "Vendor/OilFind/UPSTREAM.md",
+      "adapted": false
+    }
+  ]
+}

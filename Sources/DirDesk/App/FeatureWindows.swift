@@ -77,21 +77,20 @@ final class FeatureWindows {
         window.makeKeyAndOrderFront(nil)
     }
 
-    /// Results reveal their item in the active pane (double-click / Return) or open it (⌘Return).
+    /// Ordinary search is Miji's original panel, including Wumi's folder context.
     func showLightningSearch(scope: URL?, controller: WorkspaceController?) {
+        GlobalSearchController.shared.show(scope: scope)
+    }
+
+    /// The existing condition editor remains available from Miji's filter menu.
+    func showAdvancedSearch(scope: URL?, controller: WorkspaceController?) {
         let workspace = controller?.model.activeTab.panes.compactMap(\.currentDirectory) ?? []
         LightningSearchPresenter.show(scope: scope, workspace: workspace) { [weak self] url, reveal in
             guard reveal else {
-                NSWorkspace.shared.open(url)
+                FileOpenRouter.open(url)
                 return
             }
-            guard let target = self?.appDelegate?.activeController ?? self?.appDelegate?.controllers.first else {
-                self?.appDelegate?.openExternally([url])
-                return
-            }
-            target.navigateActivePane(to: url.deletingLastPathComponent())
-            target.activePane.select(urls: [url])
-            target.window?.makeKeyAndOrderFront(nil)
+            FileOpenRouter.reveal(url, preferred: self?.appDelegate?.activeController)
         }
     }
 

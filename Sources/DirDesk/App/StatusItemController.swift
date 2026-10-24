@@ -10,7 +10,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     func install(delegate: AppDelegate?) {
         self.delegate = delegate
-        let wanted = AppModel.shared.preferences.showsFileTransitMenuBarItem
+        guard !UserDefaults.standard.bool(forKey: "DirDeskSnapshotHidden") else { return }
+        let wanted = AppModel.shared.preferences.showsFileTransitMenuBarItem || GlobalSearchController.shared.configuration.enabled
+            || DesktopCoordinator.shared.isEnabled
         if wanted, item == nil {
             let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
             statusItem.button?.image = NSImage(systemSymbolName: "shippingbox", accessibilityDescription: L("Floating Files"))
@@ -37,6 +39,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func toggleFloatingFiles() {
+        if !AppModel.shared.preferences.showsFileTransitMenuBarItem {
+            GlobalSearchController.shared.toggle()
+            return
+        }
         let controller = FloatingFilesController.shared
         if controller.isVisible {
             controller.hide()
@@ -57,6 +63,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let store = FileTransitStore.shared
+        let search = ClosureMenuItem(L("Miji Search") + "    " + GlobalSearchController.shared.configuration.label) {
+            GlobalSearchController.shared.show()
+        }
+        menu.addItem(search)
+        let desktop = ClosureMenuItem(DesktopCoordinator.shared.isEnabled ? L("Show System Desktop") : L("Manage Desktop Files with Wumi")) {
+            DesktopCoordinator.shared.setEnabled(!DesktopCoordinator.shared.isEnabled)
+        }
+        menu.addItem(desktop)
+        menu.addItem(.separator())
         menu.addItem(ClosureMenuItem(L("Show Floating Files")) { FloatingFilesController.shared.show() })
         menu.addItem(ClosureMenuItem(L("Add Files or Folders…")) { store.presentAddPanel() })
         if !store.items.isEmpty {

@@ -381,6 +381,7 @@ enum DebugSelfTest {
             let report = lines.joined(separator: "\n") + "\n"
             try? report.write(to: reportDirectory.appendingPathComponent("selftest.txt"), atomically: true, encoding: .utf8)
             fm.createFile(atPath: reportDirectory.appendingPathComponent("selftest-done").path, contents: nil)
+            if UserDefaults.standard.bool(forKey: "WumiSelfTestExit") { NSApp.terminate(nil) }
         }
     }
 

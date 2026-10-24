@@ -442,7 +442,7 @@ private struct ToolbarRowContent: View {
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(app.preferences.usesColoredToolbarIcons ? ToolbarGlyph.blue : Color.primary)
                 if expanded {
-                    Text(L("Lightning Search")).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(L("Miji Search")).font(.system(size: 12)).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 4)
                     Text("⌘F").font(.system(size: 11)).foregroundStyle(.tertiary).fixedSize()
@@ -453,8 +453,8 @@ private struct ToolbarRowContent: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
-        .help(L("Lightning Search"))
-        .accessibilityLabel(L("Lightning Search"))
+        .help(L("Miji Search"))
+        .accessibilityLabel(L("Miji Search"))
         .accessibilityIdentifier("Toolbar.Search.Field")
     }
 }

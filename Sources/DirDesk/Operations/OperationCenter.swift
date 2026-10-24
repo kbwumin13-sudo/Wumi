@@ -100,6 +100,7 @@ final class OperationCenter: ObservableObject {
     }
 
     private func registerUndo(_ report: FileOperationReport, plan: FileOperationPlan, undoManager: UndoManager?) {
+        guard let undoManager else { return }
         guard !report.mutations.isEmpty else { return }
         FileUndo.register(FileOperations.undoSteps(for: report.mutations), name: plan.kind == .copy ? L("Copy") : L("Move"),
                           undoManager: undoManager)

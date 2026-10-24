@@ -1,0 +1,4 @@
+module COilFind {
+    umbrella header "coilfind.h"
+    export *
+}

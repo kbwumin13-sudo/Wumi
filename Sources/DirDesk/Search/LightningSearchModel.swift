@@ -109,6 +109,7 @@ final class LightningSearchModel: ObservableObject {
     @Published private(set) var elapsedMilliseconds = 0
     @Published private(set) var isTruncated = false
     @Published private(set) var isSearching = false
+    private var refreshAfterSearch = false
     /// Something to search for: an expression, or any folder scope (an empty query lists the folder).
     @Published private(set) var hasQuery = false
     /// `rows` are the answer to the current query.
@@ -363,7 +364,7 @@ final class LightningSearchModel: ObservableObject {
         pendingSearch?.cancel()
         pendingSearch = Task { [weak self] in
             if !immediately {
-                try? await Task.sleep(for: .milliseconds(150))
+                try? await Task.sleep(for: .milliseconds(35))
                 if Task.isCancelled { return }
             }
             self?.runSearch()
@@ -446,6 +447,7 @@ final class LightningSearchModel: ObservableObject {
             self.isSearching = false
             guard !outcome.result.cancelled else { return }
             self.apply(outcome, incomplete: incomplete)
+            if self.refreshAfterSearch { self.refreshAfterSearch = false; self.scheduleSearch(immediately: true) }
         }
     }
 
@@ -485,7 +487,9 @@ final class LightningSearchModel: ObservableObject {
     }
 
     private func indexWasReplaced() {
-        if hasQuery { scheduleSearch(immediately: true) }
+        if hasQuery {
+            if isSearching { refreshAfterSearch = true } else { scheduleSearch(immediately: true) }
+        }
     }
 
     // MARK: Result actions
@@ -495,25 +499,29 @@ final class LightningSearchModel: ObservableObject {
     }
 
     func reveal(_ row: LightningRow) {
+        guard row.isOnline else { showNotice(L("This device is offline. Its indexed information is still available.")); return }
         openHandler(row.url, true)
     }
 
     /// Preview: the item opens in Super Preview over the browser window.
     func preview(_ row: LightningRow) {
+        guard row.isOnline else { showNotice(L("This device is offline. Its indexed information is still available.")); return }
         NotificationCenter.default.post(name: .dirDeskShowSuperPreview, object: row.url)
     }
 
     func open(_ rows: [LightningRow]) {
-        for row in rows.prefix(Self.maximumOpenCount) { openHandler(row.url, false) }
+        for row in rows.filter(\.isOnline).prefix(Self.maximumOpenCount) { openHandler(row.url, false) }
     }
 
     func copy(_ rows: [LightningRow]) {
+        let rows = rows.filter(\.isOnline)
         guard !rows.isEmpty else { return }
         LightningSearchActions.copy(rows.map(\.url))
         showNotice(LF("Copied %lld items to the Clipboard", Int64(rows.count)))
     }
 
     func cut(_ rows: [LightningRow]) {
+        let rows = rows.filter(\.isOnline)
         guard !rows.isEmpty else { return }
         LightningSearchActions.cut(rows.map(\.url))
         showNotice(L("Ready to move — paste at the destination"))
@@ -526,12 +534,14 @@ final class LightningSearchModel: ObservableObject {
     }
 
     func sendToFileTransit(_ rows: [LightningRow]) {
+        let rows = rows.filter(\.isOnline)
         guard !rows.isEmpty else { return }
         NotificationCenter.default.post(name: LightningSearchActions.stageItemsNotification, object: rows.map(\.url))
         showNotice(L("Sent to File Transit"))
     }
 
     func moveToTrash(_ rows: [LightningRow]) {
+        let rows = rows.filter(\.isOnline)
         guard !rows.isEmpty else { return }
         let alert = NSAlert()
         alert.alertStyle = .warning

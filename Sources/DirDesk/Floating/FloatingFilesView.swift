@@ -7,6 +7,7 @@ enum FloatingTab: Hashable {
     case staging
     case folder(URL)
     case bookmarks
+    case search
 }
 
 /// Floating Files window content, laid out like the original (reference 11-中转舱与浮窗): a tab capsule with
@@ -20,6 +21,7 @@ struct FloatingFilesView: View {
     @State private var showingSettings = false
     @State private var bookmarkFolder: UUID?
     @State private var browsingBookmark: URL?
+    @State private var tabBeforeSearch: FloatingTab = .staging
 
     static var downloads: URL { FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0] }
 
@@ -27,11 +29,24 @@ struct FloatingFilesView: View {
         [Self.downloads] + store.configuration.pinnedDirectories.filter { $0.standardizedFileURL != Self.downloads.standardizedFileURL }
     }
 
+    private var searchContext: URL? {
+        switch tabBeforeSearch {
+        case .folder: pane.currentDirectory
+        case .bookmarks: browsingBookmark
+        case .staging, .search: nil
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
             Group {
                 switch tab {
+                case .search:
+                    EmbeddedMijiSearchView(context: searchContext, currentFolderOnly: searchContext != nil, onReveal: { url in
+                        tab = tabBeforeSearch
+                        FileOpenRouter.reveal(url)
+                    }, onDismiss: { tab = tabBeforeSearch })
                 case .staging: FloatingStagingView(controller: controller)
                 case .folder(let root): FloatingFolderView(pane: pane, root: root, controller: controller)
                 case .bookmarks:
@@ -76,6 +91,10 @@ struct FloatingFilesView: View {
             tabButton(.bookmarks, title: L("Bookmarks"), symbol: "bookmark")
             Spacer(minLength: 8)
             HStack(spacing: 0) {
+                headerButton("magnifyingglass", L("Miji Search"), identifier: "FileFloating.Search") {
+                    if tab == .search { tab = tabBeforeSearch }
+                    else { tabBeforeSearch = tab; tab = .search }
+                }
                 headerButton("plus", L("Add Folder"), identifier: "FileFloating.AddFolder") { addFolder() }
                 headerButton(controller.keepsOpen ? "pin.fill" : "pin", L("Keep Open"), identifier: "FileFloating.KeepOpen") {
                     controller.keepsOpen.toggle()
