@@ -65,7 +65,7 @@ final class LightningSearchService: ObservableObject {
     @Published private(set) var hasFullDiskAccess: Bool?
     private(set) var engine: MijiSearchBackend?
     private var host: MijiIndexHost?
-    private let setupQueue = DispatchQueue(label: "wumi.miji.host", qos: .utility)
+    private let setupQueue: DispatchQueue
     private let shutdownFlag = LightningFlag()
     private var indexFlag = LightningFlag()
     private let pendingHost = PendingMijiHost()
@@ -97,10 +97,11 @@ final class LightningSearchService: ObservableObject {
     }
 
     init(defaults: UserDefaults = .standard,
+         setupQueue: DispatchQueue = DispatchQueue(label: "wumi.miji.host", qos: .utility),
          hostFactory: @escaping MijiHostFactory = {url,readOnly,ignored,helper in
              try MijiIndexHost(databaseURL:url,readOnly:readOnly,ignoredPaths:ignored,extractionWorker:helper)
          }) {
-        self.defaults = defaults;self.hostFactory = hostFactory
+        self.defaults = defaults;self.hostFactory = hostFactory;self.setupQueue = setupQueue
         indexingPreferences = defaults.data(forKey: Self.indexingPreferencesKey).flatMap { try? JSONDecoder().decode(IndexingPreferences.self, from: $0) } ?? IndexingPreferences()
         watchedFolders = defaults.stringArray(forKey: Self.watchedFoldersKey) ?? Self.defaultWatchedFolders
         ignoredFolders = defaults.stringArray(forKey: Self.ignoredFoldersKey) ?? Self.defaultIgnoredFolders
@@ -167,34 +168,34 @@ final class LightningSearchService: ObservableObject {
     }
     func shutdown() {
         guard !shutdownFlag.isSet else { return }
-        let hosts = detachHosts()
-        setupQueue.sync { hosts.forEach { $0.shutdown() } }
+        detachHosts()
+        let handoff = pendingHost
+        setupQueue.sync { handoff.take()?.shutdown() }
     }
     func stopForTermination(completion: @escaping () -> Void) {
-        let hosts = detachHosts()
+        detachHosts()
+        let handoff = pendingHost
         setupQueue.async {
-            hosts.forEach { $0.shutdown() }
+            handoff.take()?.shutdown()
             // AppKit waits in a nested run loop for terminateLater. A test or menu
             // can call terminate from a main-queue block, so enqueue on the run loop.
             RunLoop.main.perform(inModes: [.default, .modalPanel, .eventTracking], block: completion)
         }
     }
-    private func detachHosts() -> [MijiIndexHost] {
+    private func detachHosts() {
         shutdownFlag.set(); indexFlag.set()
         interactionResume?.cancel(); interactionResume = nil
         catalogRefresh?.cancel(); catalogRefresh = nil
         host?.onStatus = nil
         host?.onCatalogChange = nil
         host?.onContentChange = nil
-        let hosts = [host, pendingHost.take()].compactMap { $0 }
         host = nil; engine = nil
-        return hosts
     }
     private func launch(updateRoots: Bool = false) {
         catalogRefresh?.cancel(); catalogRefresh = nil; pendingContentChange = false
         isStarted = true; indexFlag.set()
         let cancel = LightningFlag(); indexFlag = cancel
-        let previous = host; previous?.onStatus = nil; previous?.onCatalogChange = nil; previous?.onContentChange = nil
+        host?.onStatus = nil; host?.onCatalogChange = nil; host?.onContentChange = nil
         host = nil; engine = nil; status = LightningIndexStatus(stage: .loadingSnapshot)
         let target = Self.databaseURL, readOnly = Self.isReadOnly
         let watched = watchedFolders.map(Self.expandingTilde)
@@ -204,11 +205,13 @@ final class LightningSearchService: ObservableObject {
         let preferences = indexingPreferences
         let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/miji-extract")
         let shutdown = shutdownFlag
-        let handoff = pendingHost, makeHost = hostFactory
+        let handoff = pendingHost, makeHost = hostFactory, queue = setupQueue
         let preferenceStore = defaults
-        setupQueue.async { [weak self] in
-            previous?.shutdown()
+        queue.async { [weak self] in
             guard !cancel.isSet, !shutdown.isSet else { return }
+            // This queue owns the host through both pending and installed states.
+            // Finish releasing its lease before constructing any successor.
+            handoff.take()?.shutdown()
             do {
                 let new = try makeHost(target, readOnly, ignored, helper)
                 guard !cancel.isSet, !shutdown.isSet else { new.shutdown(); return }
@@ -222,8 +225,12 @@ final class LightningSearchService: ObservableObject {
                 let roots = try new.roots()
                 guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
                 Task { @MainActor [weak self] in
-                    guard let self, !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
-                    handoff.remove(new)
+                    guard let self, !cancel.isSet, !shutdown.isSet else {
+                        // A newer setup may already have retired this host. Cleanup
+                        // still runs after it on the same queue, never on MainActor.
+                        queue.async { handoff.remove(new); new.shutdown() }
+                        return
+                    }
                     self.host = new; self.engine = new.engine; self.status = new.status; self.roots = roots
                     if !readOnly && applyFolders { self.didApplyFolders(watched: folderSnapshot.0, ignored: folderSnapshot.1) }
                     self.contentGeneration += 1

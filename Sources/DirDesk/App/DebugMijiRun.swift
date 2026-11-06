@@ -191,6 +191,37 @@ enum DebugMijiRun {
                 pending.configure(originalOptions)
                 check("options edited before main handoff reach pending host", loadingHost.engine.retainsOffline)
                 pending.take()?.shutdown()
+                let replacementDB=URL(fileURLWithPath:path).deletingLastPathComponent().appendingPathComponent("replacement.sqlite")
+                _ = try SearchDatabase(url:replacementDB)
+                let replacementQueue=DispatchQueue(label:"wumi.fixture.host-replacement")
+                let constructed=PendingMijiHost()
+                let replacing=LightningSearchService(defaults:suite,setupQueue:replacementQueue,hostFactory:{_,_,_,_ in
+                    let host=try MijiIndexHost(databaseURL:replacementDB,readOnly:true)
+                    constructed.store(host);return host
+                })
+                replacing.ensureStarted()
+                // Keep MainActor in this turn while the first setup enqueues its
+                // installation. The next explicit save runs before that handoff.
+                replacementQueue.sync {}
+                let predecessor=constructed.take()
+                replacing.updateFolders(watched:["/fixture-latest"],ignored:["/latest-exclusion"])
+                var newestOptions=replacing.indexingPreferences;newestOptions.retainOffline=false
+                replacing.updateIndexingPreferences(newestOptions)
+                replacementQueue.sync {}
+                let successor=constructed.take()
+                check("pending predecessor exits before successor takes same lease", await wait {
+                    successor != nil && replacing.engine === successor?.engine && replacing.status.lastError==nil
+                    && replacing.watchedFolders==["/fixture-latest"] && replacing.engine?.retainsOffline==false
+                })
+                replacementQueue.sync {} // Includes the late canceled first MainActor task's cleanup.
+                var successorKeepsLease=false
+                do {let unexpected=try MijiIndexHost(databaseURL:replacementDB,readOnly:true);unexpected.shutdown()}
+                catch {successorKeepsLease=true}
+                check("late canceled handoff preserves live successor lease", predecessor != nil && successorKeepsLease && replacing.engine === successor?.engine)
+                replacing.shutdown()
+                let releasedSuccessor=try MijiIndexHost(databaseURL:replacementDB,readOnly:true)
+                check("serial shutdown releases installed handoff lease", replacing.engine==nil)
+                releasedSuccessor.shutdown()
                 let writer=try SearchDatabase(url:URL(fileURLWithPath:path))
                 let refreshedFile=try writer.search("Wumi-note",options:SearchOptions(scope:.name)).first!.file
                 model.previewMode = .automatic;model.scope = .content;model.currentFolderOnly=false;model.rootID=nil;model.kind=nil
