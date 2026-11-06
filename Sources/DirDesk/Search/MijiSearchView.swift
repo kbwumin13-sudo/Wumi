@@ -63,7 +63,7 @@ struct MijiSearchView:View {
                 GeometryReader {geometry in
                     if embedded && geometry.size.width < 680 && model.previewVisible {
                         VStack(spacing:0) {
-                            visibleResults.frame(height:max(100,geometry.size.height*0.48))
+                            visibleResults.frame(height:max(100,geometry.size.height*0.35))
                             Divider()
                             if model.searchPresented {MijiResultPreviewPane(model:model)}
                         }
