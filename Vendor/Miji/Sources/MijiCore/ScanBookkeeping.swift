@@ -34,10 +34,13 @@ public struct ScanWriteStatistics: Equatable, Sendable {
     public var updated = 0
     public var unchanged = 0
     public var metadataWrites = 0
+    /// Existing indexed bodies detached by a changed file signature in a committed batch.
+    public var contentInvalidations = 0
     public init() {}
 
     public static func += (lhs: inout ScanWriteStatistics, rhs: ScanWriteStatistics) {
         lhs.inserted += rhs.inserted; lhs.updated += rhs.updated
         lhs.unchanged += rhs.unchanged; lhs.metadataWrites += rhs.metadataWrites
+        lhs.contentInvalidations += rhs.contentInvalidations
     }
 }

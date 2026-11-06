@@ -50,6 +50,7 @@ final class LightningSearchService: ObservableObject {
         "/Library/Caches", "/System/Library/Caches", "/private/var", "/private/tmp",
     ]
     static let mappedFoldersKey = "dirdesk-miji-folders-mapped-v1"
+    static let listDisabledRootsKey = "dirdesk-miji-list-disabled-roots-v1"
     static let pendingFoldersKey = "dirdesk-miji-folders-pending-v1"
     static let indexingPreferencesKey = "dirdesk-miji-indexing-v1"
     @Published private(set) var indexingPreferences: IndexingPreferences
@@ -204,6 +205,7 @@ final class LightningSearchService: ObservableObject {
         let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/miji-extract")
         let shutdown = shutdownFlag
         let handoff = pendingHost, makeHost = hostFactory
+        let preferenceStore = defaults
         setupQueue.async { [weak self] in
             previous?.shutdown()
             guard !cancel.isSet, !shutdown.isSet else { return }
@@ -212,7 +214,11 @@ final class LightningSearchService: ObservableObject {
                 guard !cancel.isSet, !shutdown.isSet else { new.shutdown(); return }
                 handoff.store(new)
                 guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
-                try new.start(watchedFolders: watched, ignoredFolders: ignored, updateRoots: applyFolders, preferences: preferences)
+                try new.start(watchedFolders: watched, ignoredFolders: ignored, updateRoots: applyFolders, preferences: preferences,
+                              listDisabledRootIDs: Set(preferenceStore.stringArray(forKey: Self.listDisabledRootsKey) ?? []),
+                              persistListDisabledRootIDs: { ids in
+                                  preferenceStore.set(ids.sorted(), forKey: Self.listDisabledRootsKey)
+                              })
                 let roots = try new.roots()
                 guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
                 Task { @MainActor [weak self] in

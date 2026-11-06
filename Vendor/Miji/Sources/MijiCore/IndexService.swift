@@ -609,6 +609,14 @@ public final class IndexService: @unchecked Sendable {
         emit(phase,detail,count:session.checkpoint.count,busy:true)
         let change=IndexChange(rootID:root.id,relativePaths:[scope],fullRescan:whole)
         var announcedWrites=session.writes.inserted+session.writes.updated+session.writes.metadataWrites
+        var announcedContentInvalidations=session.writes.contentInvalidations
+        func announceContentInvalidations() {
+            guard session.writes.contentInvalidations != announcedContentInvalidations else {return}
+            announcedContentInvalidations=session.writes.contentInvalidations
+            onContentChange?()
+        }
+        // A later scan error must not hide a preceding committed batch's invalidation.
+        defer {announceContentInvalidations()}
         let previousPruned=session.pruned
         let initialCount=session.checkpoint.count
         let result=try session.advance(cancelled:{
@@ -616,6 +624,7 @@ public final class IndexService: @unchecked Sendable {
         },shouldYield:{ self.scheduling.now() >= deadline },maximumItems:maximumItems) { count in
             guard !self.yielding else { return }
             self.emit(phase,detail,count:count,busy:true)
+            announceContentInvalidations()
             // An unchanged rescan confirms seen IDs without changing the
             // catalog. Avoid waking every search view for those checkpoints.
             let writes=session.writes.inserted+session.writes.updated+session.writes.metadataWrites

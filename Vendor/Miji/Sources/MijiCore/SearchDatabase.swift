@@ -176,7 +176,8 @@ public final class SearchDatabase: @unchecked Sendable {
                       f.name=? AND f.extension=? AND f.kind=? AND f.size=? AND f.modified=? AND f.inode=?
                       AND (f.content_state IN ('done','error') OR (f.content_state=? AND f.content_error IS ?)),
                       f.name,f.pinyin_search,f.initials_search,
-                      m.file_id IS NOT NULL,m.created,m.is_directory,m.is_package
+                      m.file_id IS NOT NULL,m.created,m.is_directory,m.is_package,
+                      f.content_id IS NOT NULL,f.size,f.modified,f.inode
                     FROM files f LEFT JOIN wumi_file_metadata m ON m.file_id=f.id
                     WHERE f.root_id=? AND f.relative_path=?
                     """)
@@ -235,6 +236,10 @@ public final class SearchDatabase: @unchecked Sendable {
                         if metadataChanged { try saveMetadata(file, id: existingID) }
                         continue
                     }
+                    let invalidatesContent = found && sqlite3_column_int(existing, 10) != 0
+                        && (sqlite3_column_int64(existing, 11) != file.size
+                            || sqlite3_column_double(existing, 12) != file.modified
+                            || sqlite3_column_int64(existing, 13) != file.inode)
                     let romanized = found && text(existing, 3) == file.name ? (text(existing, 4), text(existing, 5)) : Self.pinyin(file.name)
                     sqlite3_reset(existing)
                     sqlite3_reset(statement)
@@ -252,6 +257,7 @@ public final class SearchDatabase: @unchecked Sendable {
                     let id = found ? existingID : sqlite3_last_insert_rowid(connection)
                     seen.insert(id)
                     if found { statistics.updated += 1 } else { statistics.inserted += 1 }
+                    if invalidatesContent { statistics.contentInvalidations += 1 }
                     if metadataChanged { try saveMetadata(file, id: id) }
                 }
                 return statistics

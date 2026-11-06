@@ -16,6 +16,8 @@ public final class MijiIndexHost: @unchecked Sendable {
     private let lock=NSLock()
     private let configurationLock=NSLock()
     private var configuredPreferences:IndexingPreferences?
+    private var listDisabledRootIDs=Set<String>()
+    private var persistListDisabledRootIDs:((Set<String>) throws -> Void)?
     private var started=false
     private var current=LightningIndexStatus(stage:.loadingSnapshot)
     private var stopped=false
@@ -77,24 +79,35 @@ public final class MijiIndexHost: @unchecked Sendable {
 
     /// Called only after the host is installed. No scanner is started by init.
     public func start(watchedFolders:[String],ignoredFolders:[String],updateRoots:Bool=false,
-                      preferences:IndexingPreferences=IndexingPreferences()) throws {
+                      preferences:IndexingPreferences=IndexingPreferences(),
+                      listDisabledRootIDs:Set<String>?=nil,
+                      persistListDisabledRootIDs:((Set<String>) throws -> Void)?=nil) throws {
+        configurationLock.lock();defer{configurationLock.unlock()}
+        if let listDisabledRootIDs {self.listDisabledRootIDs=listDisabledRootIDs}
+        if let persistListDisabledRootIDs {self.persistListDisabledRootIDs=persistListDisabledRootIDs}
         if !readOnly {
             let existing=try database.roots()
             let configured=LightningIndex.outermost(watchedFolders)
             if updateRoots {
-                for var root in existing where !root.isExternal && root.enabled && !configured.contains(root.path) {
-                    root.enabled=false
-                    try database.saveRoot(root)
+                for var root in existing where !root.isExternal {
+                    if !configured.contains(root.path),root.enabled {
+                        // Persist the source before disabling: a failed launch can retry it.
+                        try saveListDisabledRoots(self.listDisabledRootIDs.union([root.id]))
+                        root.enabled=false;try database.saveRoot(root)
+                    } else if configured.contains(root.path),self.listDisabledRootIDs.contains(root.id) {
+                        root.enabled=true;try database.saveRoot(root)
+                        // Clear only after the database accepted the restored root.
+                        try saveListDisabledRoots(self.listDisabledRootIDs.subtracting([root.id]))
+                    }
                 }
             }
-            // Existing disabled roots keep their independent user choice.
+            // Unmarked disabled roots retain the user's independent choice.
             if existing.isEmpty || updateRoots {
                 for path in configured where !existing.contains(where:{$0.path==path}) {
                     try database.saveRoot(VolumeIdentity.root(for:URL(fileURLWithPath:path)))
                 }
             }
         }
-        configurationLock.lock();defer{configurationLock.unlock()}
         let latest=configuredPreferences ?? preferences
         engine.retainsOffline=latest.retainOffline
         guard !readOnly else {return}
@@ -115,8 +128,19 @@ public final class MijiIndexHost: @unchecked Sendable {
         engine.retainsOffline=preferences.retainOffline
         guard !readOnly,started else {return};service?.configure(preferences)
     }
+    private func saveListDisabledRoots(_ ids:Set<String>) throws {
+        guard ids != listDisabledRootIDs else {return}
+        try persistListDisabledRootIDs?(ids)
+        listDisabledRootIDs=ids
+    }
     public func setRootEnabled(id:String,enabled:Bool,completion:@escaping(Error?)->Void={_ in}) {
         guard !readOnly else {completion(SearchDatabaseError(message:"只读索引不能修改根设置"));return}
+        configurationLock.lock()
+        do {
+            // An explicit switch owns the state even when the requested value is unchanged.
+            try saveListDisabledRoots(listDisabledRootIDs.subtracting([id]))
+            configurationLock.unlock()
+        } catch {configurationLock.unlock();completion(error);return}
         service?.mutate({db in
             guard var root=try db.roots().first(where:{$0.id==id}) else {return}
             root.enabled=enabled;try db.saveRoot(root)

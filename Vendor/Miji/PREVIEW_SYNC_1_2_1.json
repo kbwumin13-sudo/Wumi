@@ -31,8 +31,8 @@
       "source": "Sources/MijiApp/PreviewMedia.swift",
       "source_sha256": "780bcf5b6b794a1281331d8373482c60055679c33cacfae28af4219334ce200c",
       "adapted_path": "Sources/DirDesk/Search/MijiPreviewMedia.swift",
-      "adapted_sha256": "ff666bdb58e5e665a2efd2e8da7e20bdcc3441464a6f8d6e59504674fba96df0"
+      "adapted_sha256": "d187c6e806c2bf6aadd61c74c5f72eb5c768bf0db754857a566d70245aa89628"
     }
   ],
-  "note": "UI adaptation on delivered Wumi 1.2.4, followed by scoped Wumi preference handoff and search invalidation fixes. Single index host retained; only a content-change callback was added to the vendored IndexService."
+  "note": "UI adaptation on delivered Wumi 1.2.4, followed by scoped Wumi preference handoff, root-list provenance, search invalidation and native-preview teardown fixes. Single index host retained; vendored scan statistics only observe existing content detachment to notify cached searches."
 }

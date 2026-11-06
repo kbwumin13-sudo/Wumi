@@ -108,17 +108,25 @@ struct MijiPDFDocumentPreview: NSViewRepresentable {
     static func dismantleNSView(_ view: PDFView, coordinator: Coordinator) { view.document = nil; coordinator.document = nil }
 }
 
+// SwiftUI's provider teardown invokes deactivate; keep Quick Look's own private
+// activation lifecycle behind a plain container and close its child explicitly.
+final class MijiQuickLookContainer: NSView {
+    let preview=QLPreviewView(frame:.zero,style:.compact)!
+    override init(frame:NSRect) {
+        super.init(frame:frame)
+        preview.autostarts=false;preview.shouldCloseWithWindow=false
+        preview.translatesAutoresizingMaskIntoConstraints=false;addSubview(preview)
+        NSLayoutConstraint.activate([preview.leadingAnchor.constraint(equalTo:leadingAnchor),preview.trailingAnchor.constraint(equalTo:trailingAnchor),preview.topAnchor.constraint(equalTo:topAnchor),preview.bottomAnchor.constraint(equalTo:bottomAnchor)])
+    }
+    required init?(coder:NSCoder) {fatalError("init(coder:) has not been implemented")}
+}
 struct MijiSystemFilePreview: NSViewRepresentable {
-    let url: URL
-    func makeNSView(context: Context) -> QLPreviewView {
-        let view = QLPreviewView(frame: .zero, style: .compact)!
-        view.autostarts = false
-        return view
+    let url:URL
+    func makeNSView(context:Context)->MijiQuickLookContainer {MijiQuickLookContainer(frame:.zero)}
+    func updateNSView(_ view:MijiQuickLookContainer,context:Context) {
+        if (view.preview.previewItem as? NSURL) != url as NSURL {view.preview.previewItem=url as NSURL}
     }
-    func updateNSView(_ view: QLPreviewView, context: Context) {
-        if (view.previewItem as? NSURL) != url as NSURL { view.previewItem = url as NSURL }
-    }
-    static func dismantleNSView(_ view: QLPreviewView, coordinator: ()) { view.previewItem = nil; view.close() }
+    static func dismantleNSView(_ view:MijiQuickLookContainer,coordinator:()) {view.preview.previewItem=nil;view.preview.close()}
 }
 
 private final class MijiPreviewPlayback: ObservableObject {

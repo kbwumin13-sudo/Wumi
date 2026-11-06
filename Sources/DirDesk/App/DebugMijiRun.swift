@@ -3,6 +3,7 @@ import DirDeskCore
 import MijiCore
 import PDFKit
 import CoreText
+import SwiftUI
 
 /// Opt-in acceptance for the actual embedded Miji model, using an explicit scratch catalog.
 @MainActor
@@ -242,7 +243,55 @@ enum DebugMijiRun {
                         check("unindexed \(ext) \(failed) original stays unchanged", try Data(contentsOf:URL(fileURLWithPath:before.path))==original)
                     }
                 }
+                let nativeOriginal=URL(fileURLWithPath:path).deletingLastPathComponent().appendingPathComponent("files/unindexed-false.txt")
+                let scratchSessions=WorkspaceSessionStore(directory:output.deletingLastPathComponent().appendingPathComponent("preview-close-sessions"))
+                func previewContainer(in view:NSView)->MijiQuickLookContainer? {
+                    if let found=view as? MijiQuickLookContainer {return found}
+                    return view.subviews.compactMap {previewContainer(in:$0)}.first
+                }
+                for cycle in 1...2 {
+                    var controller:WorkspaceController?=WorkspaceController(model:WorkspaceModel(directory:nativeOriginal.deletingLastPathComponent(),store:scratchSessions))
+                    weak var closedWindow=controller?.window
+                    var hosted:NSHostingController<MijiSystemFilePreview>?=NSHostingController(rootView:MijiSystemFilePreview(url:nativeOriginal))
+                    weak var closedHost=hosted
+                    controller?.window?.contentViewController=hosted
+                    controller?.window?.setFrameOrigin(NSPoint(x:2000,y:100));controller?.window?.orderBack(nil)
+                    let mounted=await wait {hosted.map {previewContainer(in:$0.view)?.preview.previewItem != nil} ?? false}
+                    weak var closedPreview=hosted.flatMap {previewContainer(in:$0.view)}
+                    weak var closedNative=closedPreview?.preview
+                    check("native original mounts after reopen \(cycle)", mounted && closedPreview != nil)
+                    hosted=nil;controller?.close();controller=nil
+                    check("workspace close releases native preview and host \(cycle)", await wait {closedHost==nil && closedPreview==nil && closedNative==nil && closedWindow==nil})
+                }
+                // Use the real scanner with extraction disabled; a signature change
+                // detaches stored text even when no extractor will later notify us.
+                let scannedRoot=try writer.roots().first(where:{$0.id=="local"})!
+                let scannedURL=URL(fileURLWithPath:scannedRoot.path).appendingPathComponent("Wumi-note.txt")
+                for queryScope in [SearchScope.content,.all] {
+                    _ = try FileScanner(database:writer).scan(root:scannedRoot,relativePath:"Wumi-note.txt")
+                    let scannedFile=try writer.search("Wumi-note",options:SearchOptions(scope:.name)).first!.file
+                    _ = try writer.completeContent(file:scannedFile,content:ExtractedContent(text:"SCAN_REMOVED_BODY_TOKEN"))
+                    service.catalogDidChange(contentChanged:true)
+                    model.scope=queryScope;model.rootID=nil;model.currentFolderOnly=false
+                    _ = await search("SCAN_REMOVED_BODY_TOKEN")
+                    check("\(queryScope) scan fixture starts with stored body", await wait {model.hits.contains {$0.id==scannedFile.id} && !model.searching})
+                    try Data("changed original without the prior token \(queryScope)".utf8).write(to:scannedURL)
+                    let runtime=IndexService(database:writer)
+                    runtime.onContentChange={Task { @MainActor in service.catalogDidChange(contentChanged:true)}}
+                    runtime.onIndexChange={_ in Task { @MainActor in service.catalogDidChange()}}
+                    var noExtraction=IndexingPreferences();noExtraction.autoAddExternal=false;noExtraction.documents=false;noExtraction.images=false
+                    runtime.configure(noExtraction);runtime.requestScan()
+                    let cleared=await wait {model.hits.isEmpty && !model.searching}
+                    runtime.stopAndWait()
+                    let storedAfterScan=try writer.storedContent(fileID:scannedFile.id)
+                    check("\(queryScope) unchanged query drops body cleared by scan", cleared && storedAfterScan==nil)
+                    check("\(queryScope) cleared body stays pending with extraction disabled", try writer.search("Wumi-note",options:SearchOptions(scope:.name)).first?.file.contentState=="pending")
+                }
                 model.setSearchVisible(false)
+                let closedGeneration=service.contentGeneration
+                for _ in 0..<20 {service.catalogDidChange(contentChanged:true)}
+                _ = await wait {service.contentGeneration>closedGeneration}
+                check("closed model stays idle after merged content invalidation", model.hits.isEmpty && !model.searching && model.previewText.isEmpty && model.previewPDF==nil)
                 model.query = "数学"
                 check("hidden model cancels search", !model.searching)
                 check("collapsed panel height", MijiSearchModel.panelHeight(query: "", resultCount: 0) == 100)

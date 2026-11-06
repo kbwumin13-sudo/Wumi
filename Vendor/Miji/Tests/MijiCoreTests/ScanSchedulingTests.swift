@@ -669,10 +669,35 @@ final class ScanSchedulingTests: XCTestCase {
         XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='done'"),2)
         prefs.documents=false;prefs.images=false;service.configure(prefs)
         service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub").path)])
+        service.configure(prefs) // Advance the queued scope without waiting for the event debounce.
         turns=0
         while scheduler.runNext(),turns<100 {turns += 1}
         XCTAssertLessThan(turns,100)
         XCTAssertEqual(notifications.value,3,"Unchanged metadata scans do not invalidate content queries")
+    }
+
+    func testChangedScanInvalidatesStoredBodyWithExtractionDisabled() throws {
+        let root=try savedRoot()
+        _ = try FileScanner(database:db).scan(root:root)
+        let file=try db.pendingFiles(rootID:root.id).first(where:{$0.name=="c.txt"})!
+        _ = try db.completeContent(file:file,content:ExtractedContent(text:"SCAN_STALE_BODY"))
+        let scheduler=ManualIndexScheduler(),clock=SliceClock(),notifications=Counter(),extractions=Counter()
+        let service=IndexService(database:db,extractor:{_,_ in extractions.increment();return ExtractedContent()},watchEvents:false,resources:{IndexResourceState()},scheduling:scheduler.policy(clock:clock))
+        defer {service.stopAndWait()}
+        service.onContentChange={notifications.increment()}
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false;prefs.documents=false;prefs.images=false
+        service.configure(prefs)
+        func drain() {var turns=0;while scheduler.runNext(),turns<100 {turns += 1};XCTAssertLessThan(turns,100)}
+        drain();XCTAssertEqual(notifications.value,0)
+        XCTAssertFalse(try db.search("SCAN_STALE_BODY",options:SearchOptions(scope:.content)).isEmpty)
+        try write("sub/c.txt","replacement without the old indexed keyword")
+        service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub/c.txt").path)]);service.configure(prefs);drain()
+        XCTAssertEqual(notifications.value,1)
+        XCTAssertEqual(extractions.value,0)
+        XCTAssertEqual(try scalar("SELECT content_id IS NULL FROM files WHERE relative_path='sub/c.txt'"),1)
+        XCTAssertTrue(try db.search("SCAN_STALE_BODY",options:SearchOptions(scope:.content)).isEmpty)
+        service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub/c.txt").path)]);service.configure(prefs);drain()
+        XCTAssertEqual(notifications.value,1,"Unchanged rescans preserve the body cache")
     }
 
     func testUnchangedYieldedScanDoesNotAnnounceCatalogChanges() throws {
