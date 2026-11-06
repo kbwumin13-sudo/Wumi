@@ -121,6 +121,55 @@ enum DebugMijiRun {
                 let offlineResolution=MijiPreviewResolver.resolve(hit:SearchHit(file:offlineFile,root:offlineRoot),content:ExtractedContent(text:"前😀\n\nPAGE_MATCH_723",pages:4,pageRanges:[ContentPageRange(page:4,utf8Offset:"前😀\n\n".utf8.count,utf8Length:14)]),query:"PAGE_MATCH_723 -unrelated ext:pdf",cancelled:{false})
                 check("offline PDF keeps original page number", offlineResolution.page==4)
                 check("preview excludes filters and negative terms", MijiPreviewResolver.terms(in:"PAGE_MATCH_723 -unrelated ext:pdf")==["page_match_723"])
+                model.previewMode = .automatic
+                model.scope = .name; model.kind = .application
+                _ = await search("preview-contract")
+                check("automatic applications use compact list", !model.previewVisible && model.panelWidth == 800)
+                check("metadata skips content and file probes", !model.previewLoading && model.previewText.isEmpty && model.previewLocalURL == nil)
+                model.previewMode = .shown
+                check("manual shown displays metadata without loading", model.previewVisible && model.panelWidth == 1060 && !model.previewLoading && model.previewLocalURL == nil)
+                model.previewMode = .hidden
+                model.kind = .document
+                _ = await search("preview-contract")
+                check("manual hidden survives content search", !model.previewVisible && !model.previewLoading && model.previewText.isEmpty && model.panelWidth == 800)
+                model.previewMode = .automatic
+                check("automatic text preview resumes", await wait {model.previewText.contains("PREVIEW_CONTRACT_BODY")})
+                model.kind = nil
+                _ = await search("preview-contract")
+                let mixedWidth=model.panelWidth, mixedHeight=model.panelHeight
+                if let metadata=model.hits.first(where:{$0.file.kind == .application}),
+                   let document=model.hits.first(where:{$0.file.kind == .document}) {
+                    model.selectedID=metadata.id
+                    check("mixed metadata retains pane dimensions", model.previewVisible && model.panelWidth==mixedWidth && model.panelHeight==mixedHeight && !model.previewLoading)
+                    model.selectedID=document.id
+                    _ = await wait {model.previewText.contains("PREVIEW_CONTRACT_BODY")}
+                    check("mixed content retains pane dimensions", model.panelWidth==mixedWidth && model.panelHeight==mixedHeight)
+                } else {check("mixed preview fixture", false)}
+                model.previewMode = .hidden
+                check("hidden cancels and releases preview", model.previewText.isEmpty && model.previewPDF==nil && model.previewLocalURL==nil && !model.previewLoading)
+                let previewRoot=IndexedRoot(id:"policy",path:"/preview-policy")
+                func policyHit(_ kind:FileKind,_ ext:String="",_ matched:String="文件名",_ snippet:String="")->SearchHit {
+                    SearchHit(file:FileRecord(id:1,rootID:previewRoot.id,relativePath:"sample",name:"sample",fileExtension:ext,kind:kind,size:1,modified:0),root:previewRoot,snippet:snippet,matchedIn:matched)
+                }
+                check("empty results never reserve pane", !MijiSearchPreviewPolicy.showsPane(mode:.shown,hits:[]))
+                check("metadata kinds remain compact", [.application,.folder,.archive,.other].allSatisfy {!MijiSearchPreviewPolicy.hasContent(policyHit($0))})
+                check("valuable formats preserve pane", [.image,.document,.code,.audio,.video].allSatisfy {MijiSearchPreviewPolicy.hasContent(policyHit($0))})
+                check("other body match can show text", MijiSearchPreviewPolicy.hasContent(policyHit(.other,"bin","正文","saved text")))
+                check("plain text uses native text reader", MijiSearchPreviewPolicy.usesTextReader(policyHit(.document,"md")) && !MijiSearchPreviewPolicy.usesTextReader(policyHit(.document,"pdf")))
+                let previewVerification=try SearchDatabase(url:URL(fileURLWithPath:path),readOnly:true)
+                model.previewMode = .automatic;model.scope = .name;model.kind=nil
+                for ext in ["txt","md"] {
+                    for failed in [false,true] {
+                        let name="unindexed-\(failed).\(ext)"
+                        let before=try previewVerification.search(name,options:SearchOptions(scope:.name)).first!
+                        let original=try Data(contentsOf:URL(fileURLWithPath:before.path))
+                        _ = await search(name)
+                        _ = await wait {!model.previewLoading && model.previewLocalURL != nil}
+                        check("unindexed \(ext) \(failed) keeps original preview", model.previewVisible && model.previewText.isEmpty && model.previewLocalURL?.path==before.path && MijiSearchPreviewPolicy.usesSystemPreview(before,hasIndexedText:!model.previewText.isEmpty))
+                        check("unindexed \(ext) \(failed) state stays unchanged", try previewVerification.storedContent(fileID:before.id)==nil && previewVerification.search(name,options:SearchOptions(scope:.name)).first?.file.contentState==before.file.contentState)
+                        check("unindexed \(ext) \(failed) original stays unchanged", try Data(contentsOf:URL(fileURLWithPath:before.path))==original)
+                    }
+                }
                 model.setSearchVisible(false)
                 model.query = "数学"
                 check("hidden model cancels search", !model.searching)
@@ -165,6 +214,8 @@ enum DebugMijiRun {
             ("pdf-proof.pdf", "local", .document, 300, "PDF 提取正文"),
             ("Folder/scope-inside.txt", "local", .document, 20, "inside"),
             ("FolderSibling/scope-outside.txt", "local", .document, 20, "outside"),
+            ("preview-contract.app", "local", .application, 100, ""),
+            ("preview-contract-note.txt", "local", .document, 120, "PREVIEW_CONTRACT_BODY 原生预览正文"),
             ("offline-proof.pdf", "offline", .document, 400, "离线保存的正文")
         ] {
             let file = FileRecord(rootID: root, relativePath: name, name: (name as NSString).lastPathComponent,
@@ -180,6 +231,15 @@ enum DebugMijiRun {
             }
         }
 
+        for ext in ["txt","md"] {
+            for failed in [false,true] {
+                let name="unindexed-\(failed).\(ext)",url=folder.appendingPathComponent("unindexed-\(failed).\(ext)")
+                try Data("# Local original\nNot yet in the content index.".utf8).write(to:url)
+                let signature=try FileSignature.read(url)
+                try db.upsertFiles([FileRecord(rootID:"local",relativePath:name,name:name,fileExtension:ext,kind:.document,size:signature.size,modified:signature.modified,inode:signature.inode)],generation:1)
+                if failed,let pending=try db.pendingFiles(rootID:"local").first(where:{$0.name==name}) {try db.failContent(file:pending,message:"fixture extraction failed")}
+            }
+        }
         let code=folder.appendingPathComponent("location-demo.swift")
         try Data("first\nMATCH_LINE_42 😀\nlast".utf8).write(to:code)
         let data=NSMutableData()

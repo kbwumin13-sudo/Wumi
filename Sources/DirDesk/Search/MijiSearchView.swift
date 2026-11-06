@@ -61,7 +61,7 @@ struct MijiSearchView:View {
                     } label:{Label(model.scope == .content ? "内容" : model.scope == .name ? "文件名" : "筛选",systemImage:"line.3.horizontal.decrease")}.menuStyle(.borderlessButton).fixedSize().font(.system(size:11)).foregroundStyle(.secondary).accessibilityIdentifier("Wumi.MijiSearch.Filters")
                 }.padding(.horizontal,16).frame(height:44)
                 GeometryReader {geometry in
-                    if embedded && geometry.size.width < 680 && model.previewEnabled {
+                    if embedded && geometry.size.width < 680 && model.previewVisible {
                         VStack(spacing:0) {
                             visibleResults.frame(height:max(100,geometry.size.height*0.48))
                             Divider()
@@ -69,12 +69,12 @@ struct MijiSearchView:View {
                         }
                     } else {
                         HStack(spacing:0) {
-                            visibleResults
-                            if model.previewEnabled && model.searchPresented {
+                            visibleResults.frame(maxWidth:.infinity,maxHeight:.infinity)
+                            if model.previewVisible {
                                 Divider()
-                                MijiResultPreviewPane(model:model).frame(width:min(360,geometry.size.width*0.42))
+                                MijiResultPreviewPane(model:model).frame(width:min(MijiSearchModel.previewWidth,geometry.size.width*0.42))
                             }
-                        }
+                        }.frame(width:geometry.size.width,height:geometry.size.height)
                     }
                 }
             }
@@ -157,7 +157,12 @@ struct MijiSearchView:View {
                     Text("↩ 打开    ⌘↩ 定位")
                     Button("⌘Y 预览"){model.previewSelected()}.buttonStyle(.plain)
                     Button {model.gridEnabled.toggle();searchFocused=false;keyScope.focusResults()} label:{Image(systemName:model.gridEnabled ? "list.bullet" : "square.grid.2x2")}.buttonStyle(.plain).help("切换列表／网格").accessibilityLabel("切换列表／网格")
-                    Button {model.previewEnabled.toggle()} label:{Image(systemName:"sidebar.right")}.buttonStyle(.plain).help("显示／隐藏预览栏").accessibilityLabel("显示／隐藏预览栏")
+                    Menu {
+                        Picker("预览栏",selection:$model.previewMode) {
+                            ForEach(MijiSearchPreviewMode.allCases) {mode in Text(mode.title).tag(mode)}
+                        }
+                    } label:{Image(systemName:"sidebar.right").foregroundStyle(model.previewVisible ? Color.accentColor : .secondary)}
+                    .menuStyle(.borderlessButton).fixedSize().help("预览栏：\(model.previewMode.title)").accessibilityLabel("预览栏：\(model.previewMode.title)")
                 } else {Text("⌃⌥Space 唤起")}
                 Button {showHelp.toggle()} label:{Image(systemName:"questionmark.circle")}.buttonStyle(.plain).popover(isPresented:$showHelp) {
                     VStack(alignment:.leading,spacing:10) {Text("搜索语法").font(.headline);Text("多个词：全部匹配\n\"完整短语\"：连续匹配\next:pdf：限定格式\npath:课程：限定路径\n-草稿：排除词\n支持中文、拼音与首字母");Divider();Text("↑ ↓ 选择 · Return 打开\n⌘Return / ⌘R 定位 · ⌘Y / 空格预览\n⌘C 复制文件 · ⌘⇧C 复制路径 · Esc 收起").font(.caption)}.padding(20)
@@ -208,9 +213,9 @@ private struct MijiResultGridCell:View {
     let selected:Bool
     var body:some View {
         VStack(alignment:.leading,spacing:7) {
-            if hit.root.isOnline {
+            if hit.root.isOnline && MijiSearchPreviewPolicy.hasContent(hit) {
                 MijiFileThumbnail(hit:hit).frame(maxWidth:.infinity).frame(height:108)
-            } else {Image(systemName:"externaldrive.badge.exclamationmark").font(.largeTitle).frame(maxWidth:.infinity).frame(height:108).foregroundStyle(.secondary)}
+            } else {Image(nsImage:MijiFileIconCache.icon(hit)).resizable().scaledToFit().frame(width:40,height:40).frame(maxWidth:.infinity).frame(height:108)}
             Text(mijiHighlightedPreview(hit.file.name,query:query)).font(.system(size:12,weight:.medium)).lineLimit(1)
             Text(hit.root.isOnline ? hit.file.kind.title : "未连接").font(.system(size:10)).foregroundStyle(.secondary)
         }.padding(10).frame(maxWidth:.infinity,alignment:.leading)
@@ -219,7 +224,7 @@ private struct MijiResultGridCell:View {
     }
 }
 
-private enum MijiFileIconCache {
+enum MijiFileIconCache {
     static let cache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 256

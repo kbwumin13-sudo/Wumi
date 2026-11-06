@@ -149,7 +149,7 @@ final class GlobalSearchController: NSObject, ObservableObject, NSWindowDelegate
             onAdvanced: { [weak self] in self?.showAdvanced() }, onSettings: { [weak self] in self?.showSettings() }))
         hosting.sizingOptions = []
         panel.contentView = hosting
-        Publishers.CombineLatest4(model.$query,model.$hits,model.$previewEnabled,model.$gridEnabled)
+        Publishers.CombineLatest4(model.$query,model.$hits,model.$previewMode,model.$gridEnabled)
             .sink { [weak panel,weak model] _ in
                 DispatchQueue.main.async {
                     guard let panel,let model else{return}

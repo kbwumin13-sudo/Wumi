@@ -1,0 +1,38 @@
+{
+  "source_repository": "https://github.com/kbwumin13-sudo/miji",
+  "source_commit": "97b21e69eadeeae7e289c3e9b41214db6e2aaa92",
+  "source_version": "1.2.1",
+  "files": [
+    {
+      "source": "Sources/MijiApp/SearchPreviewPolicy.swift",
+      "source_sha256": "7ac4cd6c67db9de9238767e8a7660fc467438759ecbc5c63b9bd08a86248783f",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchPreviewPolicy.swift",
+      "adapted_sha256": "2358c9927e551c72dab84e0838853c0d40d44efee7831941acb8708b38e9a8ad"
+    },
+    {
+      "source": "Sources/MijiApp/AppModel.swift",
+      "source_sha256": "ae1715b0ff9d7af6baae3aa7cd5e5c095d9c4c7da1488c1c978dcbe20ffed8e6",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchModel.swift",
+      "adapted_sha256": "3773e498a8b6c12efad5629ad47b30ce35a39581387db331b642af4aab8f3668"
+    },
+    {
+      "source": "Sources/MijiApp/MainView.swift",
+      "source_sha256": "6f9060ad2744cca89a282b4dd884afa85938de83f9807841f1e154a46ff32778",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchView.swift",
+      "adapted_sha256": "23e68ae5e581d67d45b94dea595de934b1bfe03e10fa0733238416512bf8ef93"
+    },
+    {
+      "source": "Sources/MijiApp/ResultPreviewPane.swift",
+      "source_sha256": "de59f062be33da3adf45def8fa3d1b1417d5743e8379b71c824f05b620552bbc",
+      "adapted_path": "Sources/DirDesk/Search/MijiResultPreviewPane.swift",
+      "adapted_sha256": "a1fff8b8c57633d62ab4e77fcdcaa76ed2eb024b46b308f8bc8f79b0257d91e5"
+    },
+    {
+      "source": "Sources/MijiApp/PreviewMedia.swift",
+      "source_sha256": "780bcf5b6b794a1281331d8373482c60055679c33cacfae28af4219334ce200c",
+      "adapted_path": "Sources/DirDesk/Search/MijiPreviewMedia.swift",
+      "adapted_sha256": "ff666bdb58e5e665a2efd2e8da7e20bdcc3441464a6f8d6e59504674fba96df0"
+    }
+  ],
+  "note": "UI-only adaptation on the delivered Wumi 1.2.4 baseline. Single Wumi index host and read-only UI readers retained; no schema or indexing changes."
+}

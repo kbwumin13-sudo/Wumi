@@ -88,3 +88,14 @@ Wumi 的本地键鼠事件接入已有 `setUserActive` 门控，输入停止 350
 - UI 由 Wumi 的 `Sources/DirDesk/Search/MijiSearchModel.swift`、`MijiSearchView.swift`、`MijiSearchKeyAction.swift` 及新增的 `MijiPreviewResolver.swift`、`MijiPreviewMedia.swift`、`MijiResultPreviewPane.swift` 承接；全局面板尺寸适配位于 `GlobalSearchController.swift`。窄嵌入区域改为上下布局。
 - 右侧预览、摘要高亮、文件复制、PDF匹配页／阅读窗口、代码行定位、网格与按需媒体播放复用 Wumi 唯一宿主的只读连接；没有新增索引写入者，不自动读取或迁移独立觅迹的生产数据库。可见性门控、名称刷新与正文缓存、文件操作和定位回调继续沿用Wumi契约。
 - 新增 `PDFPageMapTests.swift`（按本地codec入口适配），扩展应用的 `DebugMijiRun` 验收代码行、页码、离线映射、版本变化、预览去重与隐藏释放、剪贴板和焦点。验收与构建日志在根目录本地 `artifacts/miji-1.2.0-sync-20261031/`，不随公开仓库提交。
+
+## 觅迹 1.2.1 自适应预览同步（2026-11-07）
+
+来源为独立觅迹 1.2.1 的 `97b21e69eadeeae7e289c3e9b41214db6e2aaa92`，文件来源摘要见 `PREVIEW_SYNC_1_2_1.json`。此次仅适配搜索 UI；沿用已交付 Wumi 1.2.4 基线，索引宿主、只读 UI 连接、扫描调度和持久格式保持原样。
+
+- `MijiSearchPreviewPolicy` 用结果元数据选择自动／显示／隐藏模式；纯应用、文件夹、压缩包和无正文的其他文件采用紧凑列表。整组结果决定分栏，选择和异步加载结果不改变窗口尺寸。手动模式在本次搜索会话内保留。
+- 内容预览保留 PDF 页码、代码行、正文和按需媒体播放，固定文件头与操作、可滚动正文和可复制路径；加载与失败状态使用原生控件。窄嵌入视图继续使用上下布局。
+- 预览只为可见且有内容的选中结果加载；隐藏／关闭取消任务并释放模型内容与 PDF，缩略图取消生成并受原有 24 MiB 缓存上限和关窗清理约束，媒体卸载时停止并释放播放观察。
+- `DebugMijiRun` 继续仅在显式临时数据库和只读模式运行，补充自动紧凑、手动模式、混合结果稳定尺寸和隐藏释放回归。
+
+本地 TXT／Markdown／代码没有索引正文时，保留系统原文件预览回退；此回退不提取或写入索引。Wumi 的 GeometryReader 分栏显式填满可用尺寸，保留 800 点紧凑、1060 点分栏及窄嵌入上下布局。

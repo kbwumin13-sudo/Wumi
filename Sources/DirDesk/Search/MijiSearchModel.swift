@@ -109,7 +109,12 @@ final class MijiSearchModel: ObservableObject {
     private var catalogChangedWhileHidden = false
     /// The container closed the session, so its results were cleared.
     private var clearedWhileHidden = false
-    @Published var previewEnabled = true {didSet {loadPreview()}}
+    @Published var previewMode = MijiSearchPreviewMode.automatic {didSet {loadPreview()}}
+    var previewEnabled: Bool {
+        get {previewMode != .hidden}
+        set {previewMode = newValue ? .shown : .hidden}
+    }
+    var previewVisible: Bool {searchPresented && MijiSearchPreviewPolicy.showsPane(mode:previewMode,hits:hits)}
     @Published var gridEnabled = false
     @Published private(set) var searchPresented = false
     @Published private(set) var previewLoading = false
@@ -164,8 +169,9 @@ final class MijiSearchModel: ObservableObject {
     static func panelHeight(query: String, resultCount: Int) -> CGFloat {
         query.isEmpty ? 100 : CGFloat(150 + min(7, max(2, resultCount)) * 59)
     }
-    var panelHeight: CGFloat {query.isEmpty ? 100 : (previewEnabled || gridEnabled ? 563 : Self.panelHeight(query:query,resultCount:hits.count))}
-    var panelWidth:CGFloat {!query.isEmpty && previewEnabled ? 1060 : 800}
+    static let previewWidth: CGFloat = 440
+    var panelHeight: CGFloat {query.isEmpty ? 100 : (previewVisible || gridEnabled ? 563 : Self.panelHeight(query:query,resultCount:hits.count))}
+    var panelWidth:CGFloat {!query.isEmpty && previewVisible ? 1060 : 800}
 
     /// The container shows or closes the session. Closing clears its results, as before.
     func setSearchVisible(_ visible: Bool) {
@@ -428,7 +434,7 @@ final class MijiSearchModel: ObservableObject {
         MijiPDFReaderController.shared.show(document:document,page:page,terms:terms,title:title)
     }
     private func loadPreview() {
-        guard searchVisible,previewEnabled,let hit=selected,let engine=service.engine else {
+        guard searchVisible,previewVisible,let hit=selected,MijiSearchPreviewPolicy.hasContent(hit),let engine=service.engine else {
             previewTicket?.cancel();previewKey=nil;clearPreview();return
         }
         let key="\(hit.id)|\(hit.path)|\(hit.file.inode)|\(hit.file.modified)|\(hit.file.size)|\(hit.file.contentState)|\(hit.file.contentError ?? "")|\(hit.root.isOnline)|\(query)|\(hit.matchedIn)|\(hit.snippet)|\(hit.labels)"
@@ -449,7 +455,14 @@ final class MijiSearchModel: ObservableObject {
                 resolution.warning=[resolution.warning,"文件已变化，正文为上次索引内容；位置将在索引更新后恢复"].compactMap{$0}.joined(separator:"；")
             }
             var document:PDFDocument?
-            if hit.file.fileExtension.lowercased()=="pdf",let url=localURL,let size=try? url.resourceValues(forKeys:[.fileSizeKey]).fileSize,size<=64*1024*1024 {document=PDFDocument(url:url)}
+            if hit.file.fileExtension.lowercased()=="pdf",let url=localURL {
+                let size=try? url.resourceValues(forKeys:[.fileSizeKey]).fileSize
+                if let size,size<=64*1024*1024 {
+                    document=PDFDocument(url:url)
+                    if document?.isLocked == true {document=nil;resolution.warning="PDF 已加密，无法显示原文预览"}
+                    else if document == nil {resolution.warning="PDF 无法读取，显示已索引内容"}
+                } else {resolution.warning="PDF 较大，使用快速查看打开原文件"}
+            }
             DispatchQueue.main.async {
                 guard let self,!ticket.isCancelled,self.searchVisible,self.selectedID==hit.id else { return }
                 self.previewText=resolution.text;self.previewWarning=resolution.warning

@@ -47,15 +47,22 @@ enum MijiPreviewThumbnails {
 struct MijiFileThumbnail: View {
     let hit: SearchHit
     var pixels = 400
+    var showsStatus = false
     @State private var image: NSImage?
+    @State private var loading = true
     var body: some View {
         Group {
             if let image { Image(nsImage: image).resizable().scaledToFit() }
-            else { Image(systemName: hit.file.kind.mijiPreviewSymbol).font(.system(size: 38, weight: .light)).foregroundStyle(.secondary) }
+            else if showsStatus {
+                if loading { ProgressView("正在载入缩略图…").controlSize(.small).font(.caption) }
+                else { Label("缩略图不可用 · 可使用快速查看", systemImage: "photo").font(.caption).foregroundStyle(.secondary) }
+            } else { Image(systemName: hit.file.kind.mijiPreviewSymbol).font(.system(size: 38, weight: .light)).foregroundStyle(.secondary) }
         }
         .task(id: "\(hit.path)|\(hit.file.modified)|\(hit.file.size)|\(pixels)") {
-            image = nil
-            image = await MijiPreviewThumbnails.load(hit, pixels: pixels)
+            image = nil; loading = true
+            let loaded = await MijiPreviewThumbnails.load(hit, pixels: pixels)
+            guard !Task.isCancelled else { return }
+            image = loaded; loading = false
         }
     }
 }
@@ -116,8 +123,19 @@ struct MijiSystemFilePreview: NSViewRepresentable {
 
 private final class MijiPreviewPlayback: ObservableObject {
     @Published var player: AVPlayer?
-    func play(_ url: URL) { stop(); let next = AVPlayer(url: url); player = next; next.play() }
-    func stop() { player?.pause(); player?.replaceCurrentItem(with: nil); player = nil }
+    @Published var failed = false
+    private var observation: NSKeyValueObservation?
+    func play(_ url: URL) {
+        stop()
+        let item = AVPlayerItem(url: url)
+        observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            if item.status == .failed {
+                DispatchQueue.main.async { if self?.player?.currentItem === item { self?.failed = true } }
+            }
+        }
+        let next = AVPlayer(playerItem: item); player = next; next.play()
+    }
+    func stop() { observation = nil; player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; failed = false }
     deinit { player?.pause() }
 }
 
@@ -126,9 +144,11 @@ struct MijiMediaFilePreview: View {
     @StateObject private var playback = MijiPreviewPlayback()
     var body: some View {
         ZStack {
-            if let player = playback.player { VideoPlayer(player: player) }
+            if playback.failed { Label("无法播放此媒体 · 可打开原文件", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.secondary) }
+            else if let player = playback.player { VideoPlayer(player: player) }
             else {
-                MijiFileThumbnail(hit: hit, pixels: 800)
+                if hit.file.kind == .video { MijiFileThumbnail(hit: hit, pixels: 800, showsStatus: true) }
+                else { Image(systemName: "waveform").font(.system(size: 32)).foregroundStyle(.secondary).offset(y: -48) }
                 Button {
                     if let url = MijiPreviewResolver.localURL(for: hit) { playback.play(url) }
                 } label: { Image(systemName: "play.circle.fill").font(.system(size: 48)).symbolRenderingMode(.palette).foregroundStyle(.white, .black.opacity(0.6)) }
