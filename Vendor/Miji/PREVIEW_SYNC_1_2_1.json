@@ -19,7 +19,7 @@
       "source": "Sources/MijiApp/MainView.swift",
       "source_sha256": "6f9060ad2744cca89a282b4dd884afa85938de83f9807841f1e154a46ff32778",
       "adapted_path": "Sources/DirDesk/Search/MijiSearchView.swift",
-      "adapted_sha256": "c6ed1707e066dbb5c36ffb7163d09d3b4a3cb9bcd310dfe733b54060303ee9ec"
+      "adapted_sha256": "ac84b3c7d4c20bc15853ac0697c817ee36a492438ec0ebc3fee8374dc21e84f2"
     },
     {
       "source": "Sources/MijiApp/ResultPreviewPane.swift",
