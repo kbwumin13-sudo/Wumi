@@ -55,6 +55,7 @@ public final class IndexService: @unchecked Sendable {
     public let database: SearchDatabase
     public var onProgress: ((IndexProgress) -> Void)?
     public var onChange: (() -> Void)?
+    public var onContentChange: (() -> Void)?
     public var onIndexChange: ((IndexChange) -> Void)?
     private let lock = NSLock()
     // Background QoS runs on efficiency cores with throttled disk I/O, so indexing
@@ -568,17 +569,17 @@ public final class IndexService: @unchecked Sendable {
                 }
                 if try !FileSignature.read(url).matches(file) {
                     try database.failContent(file:file,message:"文件正在修改，将在下次扫描后重试")
-                    handled=true; receiveEvents([FileChangeEvent(path:url.path)]); onChange?(); continue
+                    handled=true; receiveEvents([FileChangeEvent(path:url.path)]); onContentChange?(); onChange?(); continue
                 }
                 _ = try database.completeContent(file:file,content:content)
-                handled=true
+                handled=true;onContentChange?()
             } catch {
                 if contentInterrupted { break }
                 if !VolumeIdentity.refreshed(root).isOnline {
                     offlineRoots.insert(root.id); wakeWork(); continue
                 }
                 try database.failContent(file:file,message:error.localizedDescription)
-                handled=true
+                handled=true;onContentChange?()
             }
             onChange?()
         }

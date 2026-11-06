@@ -24,7 +24,9 @@ enum DebugMijiRun {
             do {
                 try fixture(databaseURL: URL(fileURLWithPath: path))
                 let service = LightningSearchService.shared
-                service.ensureStarted()
+                let early=MijiSearchModel();early.scope = .content;early.setSearchVisible(true);early.query="ORIGINAL_BODY_TOKEN"
+                check("content query before host ready resumes without typing", await wait {early.hits.contains {$0.file.name=="Wumi-note.txt"} && !early.searching})
+                early.setSearchVisible(false)
                 check("shared index loaded", await wait { service.engine != nil })
                 let model = MijiSearchModel()
                 model.setSearchVisible(true)
@@ -156,6 +158,76 @@ enum DebugMijiRun {
                 check("valuable formats preserve pane", [.image,.document,.code,.audio,.video].allSatisfy {MijiSearchPreviewPolicy.hasContent(policyHit($0))})
                 check("other body match can show text", MijiSearchPreviewPolicy.hasContent(policyHit(.other,"bin","正文","saved text")))
                 check("plain text uses native text reader", MijiSearchPreviewPolicy.usesTextReader(policyHit(.document,"md")) && !MijiSearchPreviewPolicy.usesTextReader(policyHit(.document,"pdf")))
+                let suiteName="Wumi.ReviewFixture."+UUID().uuidString
+                let suite=UserDefaults(suiteName:suiteName)!
+                defer {suite.removePersistentDomain(forName:suiteName)}
+                check("absent legacy exclusions preserve migrated defaults", LightningSearchService.savedIgnoredFolders(defaults:suite,folders:["/legacy-default"]).isEmpty)
+                suite.set(["/saved-exclusion"],forKey:LightningSearchService.ignoredFoldersKey)
+                check("legacy exclusions apply before mapping marker exists", LightningSearchService.savedIgnoredFolders(defaults:suite,folders:["/saved-exclusion"])==["/saved-exclusion"])
+                let deferred=LightningSearchService(defaults:suite)
+                deferred.updateFolders(watched:["/fixture-next"],ignored:["/saved-exclusion"])
+                check("pre-start folder save stays pending", deferred.foldersNeedApplication)
+                let nextLaunch=LightningSearchService(defaults:suite)
+                check("pending folder request survives next service", nextLaunch.foldersNeedApplication && nextLaunch.watchedFolders==["/fixture-next"])
+                check("unacknowledged failed launch keeps request", suite.bool(forKey:LightningSearchService.pendingFoldersKey))
+                nextLaunch.didApplyFolders(watched:["/stale"],ignored:[])
+                check("stale launch cannot clear newer request", nextLaunch.foldersNeedApplication)
+                nextLaunch.didApplyFolders(watched:nextLaunch.watchedFolders,ignored:nextLaunch.ignoredFolders)
+                check("successful matching application clears pending", !nextLaunch.foldersNeedApplication)
+                let failedLaunch=LightningSearchService(defaults:suite,hostFactory:{_,_,_,_ in throw SearchDatabaseError(message:"fixture launch failure")})
+                failedLaunch.updateFolders(watched:["/fixture-failed"],ignored:[])
+                failedLaunch.ensureStarted()
+                check("failed host launch keeps persisted folder request", await wait {!failedLaunch.isStarted} && failedLaunch.foldersNeedApplication && failedLaunch.status.lastError=="fixture launch failure")
+                let pendingDB=URL(fileURLWithPath:path).deletingLastPathComponent().appendingPathComponent("handoff.sqlite")
+                _ = try SearchDatabase(url:pendingDB)
+                let pending=PendingMijiHost();var originalOptions=IndexingPreferences();originalOptions.retainOffline=true
+                pending.configure(originalOptions)
+                var editedOptions=originalOptions;editedOptions.retainOffline=false
+                pending.configure(editedOptions)
+                let loadingHost=try MijiIndexHost(databaseURL:pendingDB,readOnly:true);pending.store(loadingHost)
+                try loadingHost.start(watchedFolders:[],ignoredFolders:[],preferences:originalOptions)
+                check("options edited during loading beat launch snapshot", !loadingHost.engine.retainsOffline)
+                pending.configure(originalOptions)
+                check("options edited before main handoff reach pending host", loadingHost.engine.retainsOffline)
+                pending.take()?.shutdown()
+                let writer=try SearchDatabase(url:URL(fileURLWithPath:path))
+                let refreshedFile=try writer.search("Wumi-note",options:SearchOptions(scope:.name)).first!.file
+                model.previewMode = .automatic;model.scope = .content;model.currentFolderOnly=false;model.rootID=nil;model.kind=nil
+                _ = await search("REFRESH_SEARCH_TOKEN")
+                check("new body token begins absent", model.hits.isEmpty)
+                _ = try writer.completeContent(file:refreshedFile,content:ExtractedContent(text:"REFRESH_SEARCH_TOKEN"))
+                let generation=service.contentGeneration
+                for _ in 0..<20 {service.catalogDidChange(contentChanged:true)}
+                check("body completion refreshes unchanged query", await wait {model.hits.contains {$0.id==refreshedFile.id} && !model.searching})
+                check("content notifications coalesce", service.contentGeneration==generation+1)
+                _ = try writer.completeContent(file:refreshedFile,content:ExtractedContent(text:"removed keyword"));service.catalogDidChange(contentChanged:true)
+                check("removed body keyword clears content results", await wait {model.hits.isEmpty && !model.searching})
+                model.scope = .all
+                _ = await search("REFRESH_SEARCH_TOKEN")
+                _ = try writer.completeContent(file:refreshedFile,content:ExtractedContent(text:"REFRESH_SEARCH_TOKEN fresh snippet"));service.catalogDidChange(contentChanged:true)
+                check("all scope refreshes new supplementary match", await wait {model.hits.contains {$0.id==refreshedFile.id} && !model.searching})
+                _ = try writer.completeContent(file:refreshedFile,content:ExtractedContent(text:"removed keyword again"));service.catalogDidChange(contentChanged:true)
+                check("all scope drops stale supplementary IDs and snippets", await wait {model.hits.isEmpty && !model.searching})
+                model.setWindowVisible(false)
+                _ = try writer.completeContent(file:refreshedFile,content:ExtractedContent(text:"REFRESH_SEARCH_TOKEN"));service.catalogDidChange(contentChanged:true)
+                _ = await wait {service.contentGeneration>generation+4}
+                check("hidden session does not query content notifications", !model.searching && model.hits.isEmpty)
+                model.setWindowVisible(true)
+                check("visible session catches changed body", await wait {model.hits.contains {$0.id==refreshedFile.id} && !model.searching})
+                _ = try writer.completeContent(file:refreshedFile,content:ExtractedContent(text:"ORIGINAL_BODY_TOKEN"))
+                var external=IndexedRoot(id:"mount-refresh",path:"/Volumes/OldFixture",name:"Mount fixture",isExternal:true,isOnline:true)
+                try writer.saveRoot(external)
+                try writer.upsertFiles([FileRecord(rootID:external.id,relativePath:"Folder/volume-scope.txt",name:"volume-scope.txt",fileExtension:"txt",kind:.document,size:1,modified:0)],generation:1)
+                try service.engine?.names.refresh(rootID:external.id,relativePaths:[""],fullRescan:true)
+                service.catalogDidChange()
+                check("running root additions reach sessions", await wait {model.roots.contains {$0.id==external.id}})
+                model.scope = .name;model.context=URL(fileURLWithPath:"/Volumes/NewFixture/Folder");model.currentFolderOnly=true
+                _ = await search("volume-scope")
+                check("new mount location initially excluded", model.hits.isEmpty)
+                external.path="/Volumes/NewFixture";try writer.saveRoot(external);service.catalogDidChange()
+                check("changed mount path replans current folder", await wait {model.hits.contains {$0.file.name=="volume-scope.txt"} && !model.searching})
+                try writer.removeRoot(id:external.id);service.catalogDidChange()
+                model.currentFolderOnly=false;model.context=nil;model.scope = .name
                 let previewVerification=try SearchDatabase(url:URL(fileURLWithPath:path),readOnly:true)
                 model.previewMode = .automatic;model.scope = .name;model.kind=nil
                 for ext in ["txt","md"] {

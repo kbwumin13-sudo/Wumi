@@ -146,6 +146,16 @@ final class MijiSearchModel: ObservableObject {
             if self.searching || self.searchWork != nil { self.refreshAfterSearch = true }
             else { self.scheduleCatalogRefresh() }
         }.store(in: &subscriptions)
+        service.$contentGeneration.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] _ in
+            guard let self else {return}
+            self.supplementaryCache=nil;self.previewKey=nil
+            guard self.searchVisible else {
+                if self.requestedVisible {self.catalogChangedWhileHidden=true}
+                return
+            }
+            if self.searching || self.searchWork != nil {self.refreshAfterSearch=true}
+            else {self.scheduleCatalogRefresh()}
+        }.store(in:&subscriptions)
         service.$roots.receive(on: DispatchQueue.main).sink { [weak self] in
             guard let self, self.roots != $0 else { return }
             self.roots = $0
@@ -241,8 +251,8 @@ final class MijiSearchModel: ObservableObject {
     func refresh() { scheduleSearch(preserveResults: true) }
 
     /// Index changes refresh filename results at most every two seconds while the
-    /// session is visible. Content matches come from the last complete search; only a
-    /// new query, filter or scope runs the content search again.
+    /// session is visible. Metadata changes reuse content matches; committed content
+    /// changes invalidate that cache and share the same visible, rate-limited refresh.
     private func scheduleCatalogRefresh() {
         guard catalogRefreshWork == nil else { return }
         let wait = max(0, lastCatalogRefresh.addingTimeInterval(Self.catalogRefreshInterval).timeIntervalSinceNow)
@@ -277,8 +287,7 @@ final class MijiSearchModel: ObservableObject {
         // A filename refresh keeps the content matches of the same request; without
         // them (or for content-only scope) it has nothing cheaper to offer.
         let cachedSupplementary = namesOnly ? supplementaryCache.flatMap { $0.request == request ? $0.hits : nil } : nil
-        if namesOnly && (cachedSupplementary == nil || options.scope == .content) {
-            if options.scope == .content { return }
+        if namesOnly && cachedSupplementary == nil {
             scheduleSearch(preserveResults: true)
             return
         }
@@ -289,6 +298,7 @@ final class MijiSearchModel: ObservableObject {
         searchTicket = ticket
         let plans = MijiSearchPlan.make(query: query, options: options,
                                        folder: currentFolderOnly ? context : nil, roots: roots)
+        let contentRevision=service.contentGeneration
         let typedAt = Date(), reader = searchReader, contentReader = contentReader
         // Capture the already shared engine; do not load, refresh or replace its names.
         let names = engine.names, databaseURL = engine.databaseURL
@@ -336,7 +346,7 @@ final class MijiSearchModel: ObservableObject {
                     }
                     let finished = options.scope == .name || (options.sort == .relevance && nameHits.count >= options.limit)
                     DispatchQueue.main.async {
-                        if finished { self?.cacheSupplementary([], request: request, ticket: ticket) }
+                        if finished { self?.cacheSupplementary([], request: request, contentRevision: contentRevision, ticket: ticket) }
                         self?.publish(nameHits, ticket: ticket, elapsed: Date().timeIntervalSince(typedAt) * 1000, finished: finished, preserveResults: preserveResults)
                     }
                     guard !finished, !ticket.isCancelled else { return }
@@ -367,7 +377,7 @@ final class MijiSearchModel: ObservableObject {
                         }
                         let result = Self.merge(nameHits, supplementary, options: options)
                         DispatchQueue.main.async {
-                            self?.cacheSupplementary(supplementary, request: request, ticket: ticket)
+                            self?.cacheSupplementary(supplementary, request: request, contentRevision: contentRevision, ticket: ticket)
                             self?.publish(result, ticket: ticket, elapsed: nameHits.isEmpty ? Date().timeIntervalSince(typedAt) * 1000 : nil, finished: true, preserveResults: preserveResults)
                         }
                         } catch {
@@ -390,8 +400,11 @@ final class MijiSearchModel: ObservableObject {
         if refreshAfterSearch { refreshAfterSearch = false; scheduleCatalogRefresh() }
     }
 
-    private func cacheSupplementary(_ hits: [SearchHit], request: String, ticket: MijiSearchTicket) {
+    private func cacheSupplementary(_ hits: [SearchHit], request: String, contentRevision: Int, ticket: MijiSearchTicket) {
         guard !ticket.isCancelled else { return }
+        guard contentRevision == service.contentGeneration else {
+            supplementaryCache=nil;refreshAfterSearch=true;return
+        }
         supplementaryCache = (request, hits)
     }
 

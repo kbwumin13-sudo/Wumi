@@ -22,13 +22,21 @@ final class LightningFlag: @unchecked Sendable {
     }
 }
 
-private final class PendingMijiHost: @unchecked Sendable {
+final class PendingMijiHost: @unchecked Sendable {
     private let lock = NSLock()
     private var value: MijiIndexHost?
-    func store(_ host: MijiIndexHost) { lock.lock(); value = host; lock.unlock() }
+    private var preferences = IndexingPreferences()
+    func configure(_ preferences: IndexingPreferences) {
+        lock.lock(); self.preferences = preferences; value?.configure(preferences); lock.unlock()
+    }
+    func store(_ host: MijiIndexHost) {
+        lock.lock(); value = host; host.configure(preferences); lock.unlock()
+    }
     func remove(_ host: MijiIndexHost) { lock.lock(); if value === host { value = nil }; lock.unlock() }
     func take() -> MijiIndexHost? { lock.lock(); defer { lock.unlock() }; let host = value; value = nil; return host }
 }
+
+typealias MijiHostFactory = @Sendable (URL, Bool, [String], URL) throws -> MijiIndexHost
 
 /// Wumi's single Miji index host. UI sessions share the backend, never a second full-disk index.
 @MainActor
@@ -42,6 +50,7 @@ final class LightningSearchService: ObservableObject {
         "/Library/Caches", "/System/Library/Caches", "/private/var", "/private/tmp",
     ]
     static let mappedFoldersKey = "dirdesk-miji-folders-mapped-v1"
+    static let pendingFoldersKey = "dirdesk-miji-folders-pending-v1"
     static let indexingPreferencesKey = "dirdesk-miji-indexing-v1"
     @Published private(set) var indexingPreferences: IndexingPreferences
     @Published private(set) var roots: [IndexedRoot] = []
@@ -49,6 +58,7 @@ final class LightningSearchService: ObservableObject {
     @Published private(set) var status = LightningIndexStatus()
     @Published private(set) var isStarted = false
     @Published private(set) var indexGeneration = 0
+    @Published private(set) var contentGeneration = 0
     @Published private(set) var watchedFolders: [String]
     @Published private(set) var ignoredFolders: [String]
     @Published private(set) var hasFullDiskAccess: Bool?
@@ -59,6 +69,9 @@ final class LightningSearchService: ObservableObject {
     private var indexFlag = LightningFlag()
     private let pendingHost = PendingMijiHost()
     private var catalogRefresh: Task<Void, Never>?
+    private var pendingContentChange = false
+    private let defaults: UserDefaults
+    private let hostFactory: MijiHostFactory
     private var interactionResume: Task<Void, Never>?
     private var interactionDeadline = ContinuousClock.now
 
@@ -82,11 +95,15 @@ final class LightningSearchService: ObservableObject {
         }
     }
 
-    private init() {
-        let defaults = UserDefaults.standard
+    init(defaults: UserDefaults = .standard,
+         hostFactory: @escaping MijiHostFactory = {url,readOnly,ignored,helper in
+             try MijiIndexHost(databaseURL:url,readOnly:readOnly,ignoredPaths:ignored,extractionWorker:helper)
+         }) {
+        self.defaults = defaults;self.hostFactory = hostFactory
         indexingPreferences = defaults.data(forKey: Self.indexingPreferencesKey).flatMap { try? JSONDecoder().decode(IndexingPreferences.self, from: $0) } ?? IndexingPreferences()
         watchedFolders = defaults.stringArray(forKey: Self.watchedFoldersKey) ?? Self.defaultWatchedFolders
         ignoredFolders = defaults.stringArray(forKey: Self.ignoredFoldersKey) ?? Self.defaultIgnoredFolders
+        pendingHost.configure(indexingPreferences)
     }
     nonisolated static var databaseURL: URL {
         if let path = UserDefaults.standard.string(forKey: "WumiSearchDatabase"), !path.isEmpty {
@@ -167,48 +184,54 @@ final class LightningSearchService: ObservableObject {
         catalogRefresh?.cancel(); catalogRefresh = nil
         host?.onStatus = nil
         host?.onCatalogChange = nil
+        host?.onContentChange = nil
         let hosts = [host, pendingHost.take()].compactMap { $0 }
         host = nil; engine = nil
         return hosts
     }
     private func launch(updateRoots: Bool = false) {
-        catalogRefresh?.cancel(); catalogRefresh = nil
+        catalogRefresh?.cancel(); catalogRefresh = nil; pendingContentChange = false
         isStarted = true; indexFlag.set()
         let cancel = LightningFlag(); indexFlag = cancel
-        let previous = host; previous?.onStatus = nil
+        let previous = host; previous?.onStatus = nil; previous?.onCatalogChange = nil; previous?.onContentChange = nil
         host = nil; engine = nil; status = LightningIndexStatus(stage: .loadingSnapshot)
         let target = Self.databaseURL, readOnly = Self.isReadOnly
         let watched = watchedFolders.map(Self.expandingTilde)
-        let ignored = (UserDefaults.standard.bool(forKey: Self.mappedFoldersKey) ? ignoredFolders.map(Self.expandingTilde) : []) + [Self.snapshotURL.deletingLastPathComponent().path]
+        let ignored = Self.savedIgnoredFolders(defaults: defaults, folders: ignoredFolders).map(Self.expandingTilde) + [Self.snapshotURL.deletingLastPathComponent().path]
+        let folderSnapshot = (watchedFolders, ignoredFolders)
+        let applyFolders = updateRoots || foldersNeedApplication
         let preferences = indexingPreferences
         let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/miji-extract")
         let shutdown = shutdownFlag
-        let handoff = pendingHost
+        let handoff = pendingHost, makeHost = hostFactory
         setupQueue.async { [weak self] in
             previous?.shutdown()
             guard !cancel.isSet, !shutdown.isSet else { return }
             do {
-                let new = try MijiIndexHost(databaseURL: target, readOnly: readOnly, ignoredPaths: ignored, extractionWorker: helper)
+                let new = try makeHost(target, readOnly, ignored, helper)
                 guard !cancel.isSet, !shutdown.isSet else { new.shutdown(); return }
                 handoff.store(new)
                 guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
-                try new.start(watchedFolders: watched, ignoredFolders: ignored, updateRoots: updateRoots, preferences: preferences)
+                try new.start(watchedFolders: watched, ignoredFolders: ignored, updateRoots: applyFolders, preferences: preferences)
                 let roots = try new.roots()
                 guard !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
                 Task { @MainActor [weak self] in
                     guard let self, !cancel.isSet, !shutdown.isSet else { handoff.remove(new); new.shutdown(); return }
                     handoff.remove(new)
                     self.host = new; self.engine = new.engine; self.status = new.status; self.roots = roots
+                    if !readOnly && applyFolders { self.didApplyFolders(watched: folderSnapshot.0, ignored: folderSnapshot.1) }
+                    self.contentGeneration += 1
                     self.indexGeneration += 1
                     new.onCatalogChange = { [weak self, weak observedHost = new] in
                         Task { @MainActor in
-                            guard let self, let observedHost, self.host === observedHost, self.catalogRefresh == nil else { return }
-                            self.catalogRefresh = Task { [weak self] in
-                                try? await Task.sleep(for: .milliseconds(400))
-                                guard !Task.isCancelled, let self, self.host === observedHost else { return }
-                                self.catalogRefresh = nil
-                                self.indexGeneration += 1
-                            }
+                            guard let self, let observedHost, self.host === observedHost else { return }
+                            self.catalogDidChange()
+                        }
+                    }
+                    new.onContentChange = { [weak self, weak observedHost = new] in
+                        Task { @MainActor in
+                            guard let self, let observedHost, self.host === observedHost else { return }
+                            self.catalogDidChange(contentChanged: true)
                         }
                     }
                     new.onStatus = { [weak self, weak observedHost = new] status in
@@ -218,6 +241,7 @@ final class LightningSearchService: ObservableObject {
                             self.status = status
                         }
                     }
+                    self.catalogDidChange()
                 }
             } catch {
                 handoff.take()?.shutdown()
@@ -227,6 +251,37 @@ final class LightningSearchService: ObservableObject {
                     self.isStarted = false
                 }
             }
+        }
+    }
+
+    /// Explicit saved exclusions are an upgrade contract; absent legacy keys keep
+    /// the migrated Miji catalog's defaults instead of applying Wumi's old defaults.
+    static func savedIgnoredFolders(defaults: UserDefaults, folders: [String]) -> [String] {
+        defaults.bool(forKey: mappedFoldersKey) || defaults.object(forKey: ignoredFoldersKey) != nil ? folders : []
+    }
+    var foldersNeedApplication: Bool { defaults.bool(forKey: Self.pendingFoldersKey) }
+    func didApplyFolders(watched: [String], ignored: [String]) {
+        guard watched == watchedFolders, ignored == ignoredFolders else { return }
+        defaults.set(false, forKey: Self.pendingFoldersKey)
+    }
+    /// Roots must be published before the query generation that depends on them.
+    /// Body notifications share this coalescer; metadata-only changes keep cached FTS hits.
+    func catalogDidChange(contentChanged: Bool = false) {
+        guard let observedHost = host else { return }
+        pendingContentChange = pendingContentChange || contentChanged
+        guard catalogRefresh == nil else { return }
+        catalogRefresh = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled, let self, self.host === observedHost else { return }
+            let queue = self.setupQueue
+            let updatedRoots: [IndexedRoot]? = await withCheckedContinuation { continuation in
+                queue.async { continuation.resume(returning: try? observedHost.roots()) }
+            }
+            guard !Task.isCancelled, self.host === observedHost else { return }
+            self.catalogRefresh = nil
+            if let updatedRoots, self.roots != updatedRoots { self.roots = updatedRoots }
+            if self.pendingContentChange { self.pendingContentChange = false; self.contentGeneration += 1 }
+            self.indexGeneration += 1
         }
     }
 
@@ -249,17 +304,19 @@ final class LightningSearchService: ObservableObject {
     }
 
     func updateFolders(watched: [String], ignored: [String]) {
-        guard watched != watchedFolders || ignored != ignoredFolders || !UserDefaults.standard.bool(forKey: Self.mappedFoldersKey) else { return }
-        UserDefaults.standard.set(true, forKey: Self.mappedFoldersKey)
+        guard watched != watchedFolders || ignored != ignoredFolders || !defaults.bool(forKey: Self.mappedFoldersKey) || foldersNeedApplication else { return }
+        defaults.set(true, forKey: Self.mappedFoldersKey)
+        defaults.set(true, forKey: Self.pendingFoldersKey)
         watchedFolders = watched; ignoredFolders = ignored
-        UserDefaults.standard.set(watched, forKey: Self.watchedFoldersKey)
-        UserDefaults.standard.set(ignored, forKey: Self.ignoredFoldersKey)
+        defaults.set(watched, forKey: Self.watchedFoldersKey)
+        defaults.set(ignored, forKey: Self.ignoredFoldersKey)
         if isStarted { launch(updateRoots: true) }
     }
 
     func updateIndexingPreferences(_ value: IndexingPreferences) {
         indexingPreferences = value
-        if let data = try? JSONEncoder().encode(value) { UserDefaults.standard.set(data, forKey: Self.indexingPreferencesKey) }
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: Self.indexingPreferencesKey) }
+        pendingHost.configure(value)
         host?.configure(value)
     }
     func refreshRoots() {

@@ -13,7 +13,7 @@
       "source": "Sources/MijiApp/AppModel.swift",
       "source_sha256": "ae1715b0ff9d7af6baae3aa7cd5e5c095d9c4c7da1488c1c978dcbe20ffed8e6",
       "adapted_path": "Sources/DirDesk/Search/MijiSearchModel.swift",
-      "adapted_sha256": "3773e498a8b6c12efad5629ad47b30ce35a39581387db331b642af4aab8f3668"
+      "adapted_sha256": "7c484f8ee40bcab7fb86dc4a76e459afd1a7d5e31b818f540d6d84328bc46234"
     },
     {
       "source": "Sources/MijiApp/MainView.swift",
@@ -34,5 +34,5 @@
       "adapted_sha256": "ff666bdb58e5e665a2efd2e8da7e20bdcc3441464a6f8d6e59504674fba96df0"
     }
   ],
-  "note": "UI-only adaptation on the delivered Wumi 1.2.4 baseline. Single Wumi index host and read-only UI readers retained; no schema or indexing changes."
+  "note": "UI adaptation on delivered Wumi 1.2.4, followed by scoped Wumi preference handoff and search invalidation fixes. Single index host retained; only a content-change callback was added to the vendored IndexService."
 }

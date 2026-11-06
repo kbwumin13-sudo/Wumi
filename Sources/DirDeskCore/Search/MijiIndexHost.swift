@@ -14,10 +14,14 @@ public final class MijiIndexHost: @unchecked Sendable {
     private var lease:DatabaseLease?
     private var service:IndexService?
     private let lock=NSLock()
+    private let configurationLock=NSLock()
+    private var configuredPreferences:IndexingPreferences?
+    private var started=false
     private var current=LightningIndexStatus(stage:.loadingSnapshot)
     private var stopped=false
     private var observer:((LightningIndexStatus)->Void)?
     private var catalogObserver:(()->Void)?
+    private var contentObserver:(()->Void)?
     // Status reaches observers at most once a second; the latest value always arrives.
     private let delivery=DispatchQueue(label:"wumi.miji.status",qos:.utility)
     private var deliveryScheduled=false
@@ -26,6 +30,10 @@ public final class MijiIndexHost: @unchecked Sendable {
     public var onCatalogChange:(()->Void)? {
         get {lock.lock();defer{lock.unlock()};return catalogObserver}
         set {lock.lock();catalogObserver=newValue;lock.unlock()}
+    }
+    public var onContentChange:(()->Void)? {
+        get {lock.lock();defer{lock.unlock()};return contentObserver}
+        set {lock.lock();contentObserver=newValue;lock.unlock()}
     }
     public var onStatus:((LightningIndexStatus)->Void)? {
         get {lock.lock();defer{lock.unlock()};return observer}
@@ -61,6 +69,7 @@ public final class MijiIndexHost: @unchecked Sendable {
             runtime.onProgress={ [weak self] progress in
                 self?.publish(updating:progress.busy,error:progress.phase.contains("问题") || progress.phase.contains("无法") ? progress.detail : nil)
             }
+            runtime.onContentChange={ [weak self] in self?.contentChanged() }
             runtime.onChange={ [weak self] in self?.publish();self?.catalogChanged() }
         }
         engine.onError={ [weak self] in self?.publish(error:$0) }
@@ -69,24 +78,28 @@ public final class MijiIndexHost: @unchecked Sendable {
     /// Called only after the host is installed. No scanner is started by init.
     public func start(watchedFolders:[String],ignoredFolders:[String],updateRoots:Bool=false,
                       preferences:IndexingPreferences=IndexingPreferences()) throws {
-        engine.retainsOffline=preferences.retainOffline
+        if !readOnly {
+            let existing=try database.roots()
+            let configured=LightningIndex.outermost(watchedFolders)
+            if updateRoots {
+                for var root in existing where !root.isExternal && root.enabled && !configured.contains(root.path) {
+                    root.enabled=false
+                    try database.saveRoot(root)
+                }
+            }
+            // Existing disabled roots keep their independent user choice.
+            if existing.isEmpty || updateRoots {
+                for path in configured where !existing.contains(where:{$0.path==path}) {
+                    try database.saveRoot(VolumeIdentity.root(for:URL(fileURLWithPath:path)))
+                }
+            }
+        }
+        configurationLock.lock();defer{configurationLock.unlock()}
+        let latest=configuredPreferences ?? preferences
+        engine.retainsOffline=latest.retainOffline
         guard !readOnly else {return}
-        let existing=try database.roots()
-        let configured=LightningIndex.outermost(watchedFolders)
-        if updateRoots {
-            for var root in existing where !root.isExternal {
-                root.enabled=configured.contains(root.path)
-                try database.saveRoot(root)
-            }
-        }
-        // A migrated catalog is authoritative. Wumi defaults never add or prune its roots.
-        if existing.isEmpty || updateRoots {
-            for path in configured where !existing.contains(where:{$0.path==path}) {
-                try database.saveRoot(VolumeIdentity.root(for:URL(fileURLWithPath:path)))
-            }
-        }
-        engine.retainsOffline=preferences.retainOffline
-        service?.configure(preferences)
+        started=true
+        service?.configure(latest)
         if updateRoots {service?.requestScan()}
         service?.start()
     }
@@ -97,8 +110,10 @@ public final class MijiIndexHost: @unchecked Sendable {
         service?.setUserActive(active)
     }
     public func configure(_ preferences:IndexingPreferences) {
+        configurationLock.lock();defer{configurationLock.unlock()}
+        configuredPreferences=preferences
         engine.retainsOffline=preferences.retainOffline
-        guard !readOnly else {return};service?.configure(preferences)
+        guard !readOnly,started else {return};service?.configure(preferences)
     }
     public func setRootEnabled(id:String,enabled:Bool,completion:@escaping(Error?)->Void={_ in}) {
         guard !readOnly else {completion(SearchDatabaseError(message:"只读索引不能修改根设置"));return}
@@ -113,6 +128,7 @@ public final class MijiIndexHost: @unchecked Sendable {
     /// Wait for the original Miji worker to stop (including its helper), then persist names.
     public func shutdown() {
         lock.lock();if stopped {lock.unlock();return};stopped=true;lock.unlock()
+        configurationLock.lock();started=false;configurationLock.unlock()
         service?.stopAndWait()
         if !readOnly {try? engine.names.saveCache()}
         service=nil;engine.discardTemporaryIndexes();lease=nil
@@ -122,6 +138,9 @@ public final class MijiIndexHost: @unchecked Sendable {
         lock.lock();let callback=stopped ? nil : catalogObserver;lock.unlock();callback?()
     }
 
+    private func contentChanged() {
+        lock.lock();let callback=stopped ? nil : contentObserver;lock.unlock();callback?()
+    }
     public static func backup(from source:URL,to target:URL,isCancelled:()->Bool={false}) throws {
         let lease=try DatabaseLease(databaseURL:target)
         try withExtendedLifetime(lease) {try SearchDatabase.backup(from:source,to:target,cancelled:isCancelled)}

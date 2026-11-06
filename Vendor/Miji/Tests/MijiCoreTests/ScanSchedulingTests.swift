@@ -650,6 +650,31 @@ final class ScanSchedulingTests: XCTestCase {
         XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='done'"),0)
     }
 
+    func testContentNotificationsFollowCommittedSuccessOrFailureOnly() throws {
+        _ = try savedRoot()
+        let scheduler=ManualIndexScheduler(),clock=SliceClock(),notifications=Counter()
+        let service=IndexService(database:db,extractor:{url,_ in
+            if url.lastPathComponent=="a.txt" {throw SearchDatabaseError(message:"fixture extraction failure")}
+            return ExtractedContent(text:"fresh indexed body")
+        },watchEvents:false,resources:{IndexResourceState()},scheduling:scheduler.policy(clock:clock))
+        defer {service.stopAndWait()}
+        service.onContentChange={notifications.increment()}
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false
+        service.configure(prefs)
+        var turns=0
+        while scheduler.runNext(),turns<100 {turns += 1}
+        XCTAssertLessThan(turns,100)
+        XCTAssertEqual(notifications.value,3)
+        XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='error'"),1)
+        XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='done'"),2)
+        prefs.documents=false;prefs.images=false;service.configure(prefs)
+        service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub").path)])
+        turns=0
+        while scheduler.runNext(),turns<100 {turns += 1}
+        XCTAssertLessThan(turns,100)
+        XCTAssertEqual(notifications.value,3,"Unchanged metadata scans do not invalidate content queries")
+    }
+
     func testUnchangedYieldedScanDoesNotAnnounceCatalogChanges() throws {
         let root=try savedRoot()
         _ = try FileScanner(database:db).scan(root:root)
