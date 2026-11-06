@@ -63,6 +63,10 @@ public final class IndexService: @unchecked Sendable {
     private let control = DispatchQueue(label: "local.miji.control", qos: .utility)
     private let log = Logger(subsystem: "local.miji", category: "index")
     private var running = false
+    private var executing = false
+    private var scheduledWork: DispatchWorkItem?
+    private var scheduleGeneration = 0
+    private let scheduling: IndexWorkScheduling
     private var requested = false
     private var fullRequested = false
     private var userActive = false
@@ -79,7 +83,9 @@ public final class IndexService: @unchecked Sendable {
     private var preferences = IndexingPreferences()
     private var watcher: FileWatcher?
     // Only used on work. A suspended session keeps its enumerator within this process.
-    private var scanSessions: [String:FileScanSession] = [:]
+    private var scanSessions: [String:[String:FileScanSession]] = [:]
+    private var localTurn = Set<String>()
+    private var rootCursor = 0
     // Whether the last progress report said "busy"; a quiet run must still clear it.
     private var announcedBusy = false
     private var timer: DispatchSourceTimer?
@@ -102,7 +108,6 @@ public final class IndexService: @unchecked Sendable {
     // when a slow image consumes the entire time slice by itself.
     private var contentLaneCursor = 0
     private let contentBatchLimit = 6
-    private let contentBatchSeconds: TimeInterval = 0.25
     public convenience init(database: SearchDatabase, ignoredPaths: [String] = [], extractionWorker: URL? = nil) {
         self.init(database:database,ignoredPaths:ignoredPaths,extractor: { url,cancelled in
             let ext=url.pathExtension.lowercased()
@@ -115,8 +120,10 @@ public final class IndexService: @unchecked Sendable {
     init(database: SearchDatabase, ignoredPaths: [String] = [], extractor: @escaping (URL, @escaping () -> Bool) throws -> ExtractedContent,
          contentClock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
          watchEvents: Bool = true, stateURL: URL? = nil, fullRescanCooldown: TimeInterval = 30 * 60,
-         resources: (() -> IndexResourceState)? = nil, resourceCheckInterval: TimeInterval = 5) {
+         resources: (() -> IndexResourceState)? = nil, resourceCheckInterval: TimeInterval = 5,
+         scheduling: IndexWorkScheduling = IndexWorkScheduling()) {
         self.database = database
+        self.scheduling = scheduling
         let inboxURL=stateURL ?? database.url.appendingPathExtension("incremental.json")
         self.stateURL=inboxURL
         var state=IncrementalIndexState.read(inboxURL)
@@ -164,7 +171,12 @@ public final class IndexService: @unchecked Sendable {
         wakeWork()
     }
     public func stop() {
-        locked { stopped=true }
+        locked {
+            stopped=true
+            scheduledWork?.cancel();scheduledWork=nil
+            scheduleGeneration += 1
+            if !executing { running=false }
+        }
         control.async { [weak self] in
             guard let self else { return }
             self.timer?.cancel();self.timer=nil;self.watcher=nil;self.debounce?.cancel();self.debounce=nil
@@ -198,14 +210,38 @@ public final class IndexService: @unchecked Sendable {
         refreshResources(force:true)
         wakeWork()
     }
-    private func wakeWork() {
-        let delay=locked { () -> TimeInterval? in
-            requested=true
-            guard !running, !stopped, !paused, !sleeping, !userActive, mutations == 0 else { return nil }
-            running=true
-            return fullRequested ? max(0,nextScanAfter.timeIntervalSinceNow) : 0
+    private var canRunLocked: Bool { !stopped && !paused && !sleeping && !userActive && mutations == 0 }
+    /// Caller holds lock. A generation also invalidates already submitted timer
+    /// callbacks, including injected schedulers that cannot cancel their timer.
+    private func prepareRunLocked(after delay: TimeInterval) -> (TimeInterval, DispatchWorkItem) {
+        scheduledWork?.cancel()
+        scheduleGeneration += 1
+        let generation=scheduleGeneration
+        let item=DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            let begin=self.locked { () -> Bool in
+                guard generation == self.scheduleGeneration else { return false }
+                self.scheduledWork=nil
+                guard self.canRunLocked else { self.running=false;return false }
+                self.executing=true
+                return true
+            }
+            if begin { self.run() }
         }
-        if let delay { work.asyncAfter(deadline:.now()+delay) { [weak self] in self?.run() } }
+        scheduledWork=item;running=true
+        return (delay,item)
+    }
+    private func enqueue(_ plan: (TimeInterval, DispatchWorkItem)?) {
+        if let (delay,item)=plan { scheduling.enqueue(work,delay,item) }
+    }
+    private func wakeWork() {
+        let plan=locked { () -> (TimeInterval, DispatchWorkItem)? in
+            requested=true
+            guard !executing,canRunLocked else { return nil }
+            // An event or manual request can bring forward a delayed refresh.
+            return prepareRunLocked(after:0)
+        }
+        enqueue(plan)
     }
     public func mutate(_ action: @escaping (SearchDatabase) throws -> Void, completion: @escaping (Error?) -> Void = {_ in}) {
         locked { mutations += 1 }
@@ -391,8 +427,13 @@ public final class IndexService: @unchecked Sendable {
         let currentID=FSEventsGetCurrentEventId()
         let ids=Set(roots.map(\.id))
         scanSessions=scanSessions.filter {ids.contains($0.key)}
+        localTurn.formIntersection(ids)
         let manualFull=locked { () -> Bool in
-            if fullRequested && Date() >= nextScanAfter { fullRequested=false;return true }
+            if fullRequested && Date() >= nextScanAfter {
+                fullRequested=false
+                nextScanAfter=Date().addingTimeInterval(rescanInterval)
+                return true
+            }
             return false
         }
         var refreshed:[IndexedRoot]=[]
@@ -403,11 +444,14 @@ public final class IndexService: @unchecked Sendable {
             refreshed.append(root)
         }
         try locked {
+            let oldRootCount=state.roots.count
             state.roots=state.roots.filter { ids.contains($0.key) }
+            var stateChanged=state.roots.count != oldRootCount || manualFull
             for root in refreshed {
                 let existing=roots.first { $0.id == root.id }
                 if let old=state.roots[root.id] {
                     if old.path != root.path || old.cursor > currentID || (existing?.isOnline == false && root.isOnline) {
+                        stateChanged=true
                         state.roots[root.id]?.path=root.path
                         state.roots[root.id]?.cursor=currentID
                         requestFull(root.id,immediate:true,reason:old.path != root.path ? "索引位置路径变化" : old.cursor > currentID ? "文件事件编号重置" : "索引位置重新连接")
@@ -415,57 +459,70 @@ public final class IndexService: @unchecked Sendable {
                 } else {
                     // First installation/migration has no replay cursor. Seed
                     // before scanning, so events during the scan are durable.
+                    stateChanged=true
                     state.roots[root.id] = .init(path:root.path,cursor:currentID,pending:[])
                     requestFull(root.id,immediate:true,reason:"首次建立索引")
                 }
                 if manualFull {
                     requestFull(root.id,immediate:true,reason:"手动重建索引")
                     // An explicit rebuild restarts a whole scan that is already running.
-                    if state.roots[root.id]?.inFlight == [""] {
-                        state.roots[root.id]?.inFlight=[]
+                    if state.roots[root.id]?.inFlight.contains("") == true {
+                        state.roots[root.id]?.inFlight.removeAll { $0.isEmpty }
                         state.roots[root.id]?.runningFull=nil
-                        scanSessions.removeValue(forKey:root.id)
+                        scanSessions[root.id]?.removeValue(forKey:"")
                     }
                 }
             }
-            try persistState()
+            // Ordinary events retain their 30-second checkpoint batching.
+            // A continuation with unchanged roots must not compact/encode and
+            // flush that dirty inbox on every metadata time slice.
+            if changed || stateChanged { try persistState() }
         }
         updateWatchers(refreshed)
         return (refreshed,changed)
     }
-    /// Decides this root's next scopes: an unfinished batch first, then a due
-    /// whole-root scan, then the path inbox. Paths waiting when a whole-root scan
-    /// starts stay queued: the scan may be abandoned before it reaches them.
-    private func nextScopes(for root: IndexedRoot, constrained: Bool) throws -> [String] {
-        try locked { () throws -> [String] in
-            // Fold the inbox first: an overflowing one turns into a whole-root request here.
-            if state.roots[root.id]?.inFlight.isEmpty == true { state.foldPending(root.id); announceRequests() }
-            guard var entry=state.roots[root.id] else { return [] }
-            if !entry.inFlight.isEmpty {
-                // Drain arrivals saved behind this batch afterwards. New arrivals
-                // still use the normal debounce, so a file changing during
-                // extraction cannot busy-loop.
-                if !entry.pending.isEmpty { requested=true }
-                return entry.inFlight
+    /// At most one whole and one local session per root. Alternate them so
+    /// neither an automatic whole scan nor a continuous event stream can starve
+    /// the other. Pending paths remain durable until their own session completes.
+    private func nextScope(for root: IndexedRoot, constrained: Bool, allowWhole: Bool = true) throws -> String? {
+        try locked {
+            // A live local session already owns its scope; do not repeatedly
+            // sort a large inbox while just resuming that session.
+            if state.roots[root.id]?.inFlight.contains(where:{ !$0.isEmpty }) != true {
+                state.foldPending(root.id);announceRequests()
             }
+            guard var entry=state.roots[root.id] else { return nil }
+            var changed=false
             let now=Date().timeIntervalSince1970
-            if let full=entry.fullRescan,
+            if !entry.inFlight.contains(""), let full=entry.fullRescan,
                full.immediate || (!constrained && entry.lastFullScan.map { now-$0 >= fullRescanCooldown } ?? true) {
-                entry.fullRescan=nil
-                entry.runningFull=full
-                entry.inFlight=[""]
-                if !entry.pending.isEmpty { requested=true }
-                state.roots[root.id]=entry
-                try persistState()
+                entry.fullRescan=nil;entry.runningFull=full;entry.inFlight.append("");changed=true
+                localTurn.insert(root.id)
                 log.notice("whole-root scan started for \(root.path, privacy: .public): \(full.reason, privacy: .public)")
-                return [""]
             }
-            guard !entry.pending.isEmpty else { return [] }
-            entry.inFlight=entry.pending
-            entry.pending=[]
+            if !entry.inFlight.contains(where:{ !$0.isEmpty }), !entry.pending.isEmpty {
+                entry.inFlight.append(entry.pending.removeFirst());changed=true
+            }
             state.roots[root.id]=entry
-            try persistState()
-            return entry.inFlight
+            if changed { try persistState() }
+            let local=entry.inFlight.first { !$0.isEmpty }
+            if let local, !allowWhole || !entry.inFlight.contains("") || localTurn.contains(root.id) {
+                localTurn.remove(root.id)
+                return local
+            }
+            if allowWhole, entry.inFlight.contains("") { localTurn.insert(root.id);return "" }
+            return nil
+        }
+    }
+    private func hasMetadataWork(roots: [IndexedRoot], constrained: Bool) -> Bool {
+        locked {
+            let now=Date().timeIntervalSince1970
+            return roots.contains { root in
+                guard root.enabled,root.isOnline,let entry=state.roots[root.id] else { return false }
+                if !entry.inFlight.isEmpty || !entry.pending.isEmpty { return true }
+                guard let full=entry.fullRescan else { return false }
+                return full.immediate || (!constrained && entry.lastFullScan.map { now-$0 >= fullRescanCooldown } ?? true)
+            }
         }
     }
     /// A bounded slice shared by startup, scan checkpoints and the final drain.
@@ -483,7 +540,7 @@ public final class IndexService: @unchecked Sendable {
             if prefs.documents && (!root.isExternal || prefs.externalDocuments) { lanes.append((root,.code)) }
         }
         guard !lanes.isEmpty else { return false }
-        let deadline=contentClock() + contentBatchSeconds
+        let deadline=contentClock() + scheduling.contentSeconds
         var handled=false, attempts=0, emptyLanes=0
         var offlineRoots=Set<String>()
         while !yielding && !contentInterrupted && attempts < contentBatchLimit && emptyLanes < lanes.count {
@@ -528,37 +585,49 @@ public final class IndexService: @unchecked Sendable {
         return handled
     }
     /// Scans one scope to completion, suspension (yielding) or abandonment (power constraints).
-    private func scan(scope: String, root: IndexedRoot, roots: [IndexedRoot], preferences prefs: IndexingPreferences) throws {
+    private func scan(scope: String, root: IndexedRoot, preferences prefs: IndexingPreferences, deadline: TimeInterval, maximumItems: Int) throws -> Int {
         let options=ScanOptions(includeHidden:prefs.includeHidden,excludeDevelopmentCaches:prefs.excludeDevelopmentCaches)
         let session:FileScanSession
-        if let live=scanSessions[root.id],!live.finished,live.matches(root:root,scope:scope,options:options) {session=live}
+        if let live=scanSessions[root.id]?[scope],!live.finished,live.matches(root:root,scope:scope,options:options) {session=live}
         else {
             session=try FileScanner(database:database,ignoredPaths:ignoredPaths).session(root:root,relativePath:scope,options:options)
-            scanSessions[root.id]=session
+            scanSessions[root.id,default:[:]][scope]=session
         }
         let whole=scope.isEmpty
+        if !whole, locked({ state.roots[root.id]?.inFlight.contains("") == true }) {
+            // A local scope may be chosen before the whole scan's first turn.
+            // Create its bookkeeping now so its later prune sees this scope too.
+            if scanSessions[root.id]?[""]?.matches(root:root,scope:"",options:options) != true {
+                scanSessions[root.id,default:[:]][""]=try FileScanner(database:database,ignoredPaths:ignoredPaths).session(root:root,relativePath:"",options:options)
+            }
+            scanSessions[root.id]?[""]?.preserveReconciledScope(scope)
+        }
         // Only automatic reconciliations give way to battery, Low Power Mode and heat.
         let deferrable=whole && !(locked { state.roots[root.id]?.runningFull?.immediate } ?? true)
         let phase=whole ? "正在建立文件目录" : "正在更新文件目录", detail=whole ? root.name : scope
         emit(phase,detail,count:session.checkpoint.count,busy:true)
-        var contentFailure:Error?
         let change=IndexChange(rootID:root.id,relativePaths:[scope],fullRescan:whole)
+        var announcedWrites=session.writes.inserted+session.writes.updated+session.writes.metadataWrites
+        let previousPruned=session.pruned
+        let initialCount=session.checkpoint.count
         let result=try session.advance(cancelled:{
-            self.yielding || contentFailure != nil || (deferrable && self.refreshResources(force:false).constrained)
-        }) { count in
-            guard !self.yielding,contentFailure == nil else { return }
+            self.yielding || (deferrable && self.refreshResources(force:false).constrained)
+        },shouldYield:{ self.scheduling.now() >= deadline },maximumItems:maximumItems) { count in
+            guard !self.yielding else { return }
             self.emit(phase,detail,count:count,busy:true)
-            // The committed ID journal makes a batch refresh
-            // bounded even while the first whole-root scan runs.
-            self.onIndexChange?(IndexChange(rootID:root.id,relativePaths:[scope],fullRescan:false))
-            self.onChange?()
-            if !self.refreshResources(force:false).constrained {
-                do { _=try self.drainContent(roots:roots,preferences:prefs) } catch { contentFailure=error }
+            // An unchanged rescan confirms seen IDs without changing the
+            // catalog. Avoid waking every search view for those checkpoints.
+            let writes=session.writes.inserted+session.writes.updated+session.writes.metadataWrites
+            if writes != announcedWrites {
+                announcedWrites=writes
+                self.onIndexChange?(IndexChange(rootID:root.id,relativePaths:[scope],fullRescan:false))
+                self.onChange?()
             }
-            if !self.yielding && contentFailure == nil { self.emit(phase,detail,count:count,busy:true) }
         }
-        if let contentFailure { throw contentFailure }
-        autoreleasepool { self.onIndexChange?(change);self.onChange?() }
+        let committedWrites=session.writes.inserted+session.writes.updated+session.writes.metadataWrites
+        if committedWrites != announcedWrites || session.pruned != previousPruned {
+            autoreleasepool { self.onIndexChange?(change);self.onChange?() }
+        }
         if session.finished {
             try locked {
                 // Incoming events go to a separate inbox while this scope is
@@ -578,7 +647,7 @@ public final class IndexService: @unchecked Sendable {
                 }
                 try persistState()
             }
-            scanSessions.removeValue(forKey:root.id)
+            scanSessions[root.id]?.removeValue(forKey:scope)
             let seconds=ProcessInfo.processInfo.systemUptime-session.startedAt
             let writes=session.writes
             if whole {
@@ -596,59 +665,81 @@ public final class IndexService: @unchecked Sendable {
                 requestFull(root.id,immediate:false,reason:request?.reason ?? "电源受限时中止的整盘扫描")
                 try persistState()
             }
-            scanSessions.removeValue(forKey:root.id)
+            scanSessions[root.id]?.removeValue(forKey:scope)
             let summary=locked { resourceState.summary }
             log.notice("whole-root scan deferred for \(root.path, privacy: .public) after \(result.count) items: \(summary, privacy: .public)")
         }
         if !result.errors.isEmpty && !yielding { emit("部分位置无法读取",result.errors[0]) }
-        if whole { locked { nextScanAfter=Date().addingTimeInterval(rescanInterval) } }
+        if whole && session.finished { locked { nextScanAfter=Date().addingTimeInterval(rescanInterval) } }
+        return session.checkpoint.count-initialCount
     }
     private func run() {
         let activity=ProcessInfo.processInfo.beginActivity(options:.background,reason:"在本机建立文件全文和图片索引")
+        var continuation=false
         defer {
             ProcessInfo.processInfo.endActivity(activity)
-            let restart=locked { () -> Bool in
-                running=false
-                return requested && !paused && !stopped && !sleeping && !userActive && mutations == 0
+            let plan=locked { () -> (TimeInterval, DispatchWorkItem)? in
+                executing=false;running=false
+                guard canRunLocked else { return nil }
+                if continuation || requested { return prepareRunLocked(after:scheduling.continuationDelay) }
+                if fullRequested { return prepareRunLocked(after:max(scheduling.continuationDelay,nextScanAfter.timeIntervalSinceNow)) }
+                return nil
             }
-            if restart { wakeWork() }
+            enqueue(plan)
         }
         do {
-            var didWork=false
-            while !yielding {
-                locked { requested=false }
-                let prefs=locked { preferences }
-                let refreshed=try refreshRoots(preferences:prefs)
-                let roots=refreshed.roots
-                if refreshed.changed { didWork=true }
-                let constrained=refreshResources(force:true).constrained
-                // Continue an existing content backlog before directory work.
-                if !constrained, try drainContent(roots:roots,preferences:prefs) { didWork=true }
-                for root in roots where root.enabled && root.isOnline {
-                    if yielding { return }
-                    for scope in try nextScopes(for:root,constrained:constrained) {
-                        if yielding { return }
-                        didWork=true
-                        try scan(scope:scope,root:root,roots:roots,preferences:prefs)
-                    }
+            guard !yielding else { return }
+            locked { requested=false }
+            let prefs=locked { preferences }
+            let refreshed=try refreshRoots(preferences:prefs)
+            let roots=refreshed.roots
+            let constrained=refreshResources(force:true).constrained
+            let deadline=scheduling.now()+scheduling.metadataSeconds
+            let eligible=roots.filter { $0.enabled && $0.isOnline }
+            if refreshed.changed { onChange?() }
+            // Share one deadline and item budget across all roots and scopes.
+            // Completed small scopes can drain within the same slice; they do
+            // not each pay the continuation delay. Missing scopes cost one item
+            // too, so deletion-only queues cannot bypass the global bound.
+            var remainingItems=max(1,scheduling.metadataItems)
+            var advancedWhole=Set<String>()
+            let hasLocalWork=locked {
+                eligible.contains { root in
+                    guard let entry=state.roots[root.id] else { return false }
+                    return !entry.pending.isEmpty || entry.inFlight.contains(where:{ !$0.isEmpty })
                 }
-                if yielding { return }
-                // Drain bounded batches with a fresh autorelease pool each time.
-                // Dirty events arriving during extraction interrupt only at a
-                // batch boundary, never invalidate an otherwise valid result.
-                while !yielding {
-                    let handled=try drainContent(roots:roots,preferences:prefs)
-                    if handled { didWork=true }
-                    if locked({requested}) { break }
-                    if !handled {
-                        // A quiet heartbeat must not announce a catalog change, but it
-                        // still clears a "busy" left by a run that yielded midway.
-                        if didWork || locked({announcedBusy}) { emit("索引已更新","新增或修改文件后会自动更新") }
-                        if didWork { onChange?() }
-                        return
-                    }
+            }
+            var remainingWholeItems=hasLocalWork ? max(1,remainingItems/2) : remainingItems
+            // Rotate the starting root independently of how many cheap scopes
+            // happen to fit, so the same whole root cannot win every slice.
+            let nextSliceRoot=eligible.isEmpty ? 0 : (rootCursor+1) % eligible.count
+            var idleRoots=0
+            while !eligible.isEmpty && !yielding && remainingItems > 0 && idleRoots < eligible.count && scheduling.now() < deadline {
+                let index=rootCursor % eligible.count
+                let root=eligible[index]
+                rootCursor=(index+1) % eligible.count
+                guard let scope=try nextScope(for:root,constrained:constrained,allowWhole:remainingWholeItems > 0 && !advancedWhole.contains(root.id)) else {
+                    idleRoots += 1
+                    continue
                 }
-                if !locked({requested}) { return }
+                idleRoots=0
+                // The whole-work quota is shared by every root, leaving room
+                // for many local scopes even when several full scans are live.
+                let limit=scope.isEmpty ? min(remainingItems,remainingWholeItems) : remainingItems
+                let count=try scan(scope:scope,root:root,preferences:prefs,deadline:deadline,maximumItems:limit)
+                remainingItems -= max(1,count)
+                if scope.isEmpty {
+                    remainingWholeItems -= max(1,count)
+                    advancedWhole.insert(root.id)
+                }
+            }
+            rootCursor=nextSliceRoot
+            // Exactly one content batch per slice. Deadlines are checked between
+            // files, never passed into the extractor as cancellation.
+            let handled = !yielding && !constrained ? try drainContent(roots:roots,preferences:prefs) : false
+            continuation=hasMetadataWork(roots:roots,constrained:refreshResources(force:false).constrained) || handled
+            if !continuation && !yielding {
+                if locked({announcedBusy}) { emit("索引已更新","新增或修改文件后会自动更新") }
             }
         } catch { emit("索引遇到问题",error.localizedDescription);onChange?() }
     }

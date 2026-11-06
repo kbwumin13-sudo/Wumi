@@ -13,7 +13,6 @@ struct MijiSearchView:View {
     @StateObject private var keyScope = MijiSearchKeyScope()
     @FocusState private var searchFocused:Bool
     @State private var showHelp=false
-    @State private var showDetails=false
     private var expanded:Bool {!model.query.isEmpty}
     private let tabs:[FileKind?]=[nil,.folder,.application,.document,.image,.video,.audio,.code,.archive]
     init(model: MijiSearchModel, onDismiss: @escaping () -> Void, onAdvanced: @escaping () -> Void,
@@ -61,11 +60,27 @@ struct MijiSearchView:View {
                         Button("高级搜索", action: onAdvanced).accessibilityIdentifier("Wumi.MijiSearch.Advanced")
                     } label:{Label(model.scope == .content ? "内容" : model.scope == .name ? "文件名" : "筛选",systemImage:"line.3.horizontal.decrease")}.menuStyle(.borderlessButton).fixedSize().font(.system(size:11)).foregroundStyle(.secondary).accessibilityIdentifier("Wumi.MijiSearch.Filters")
                 }.padding(.horizontal,16).frame(height:44)
-                results
+                GeometryReader {geometry in
+                    if embedded && geometry.size.width < 680 && model.previewEnabled {
+                        VStack(spacing:0) {
+                            visibleResults.frame(height:max(100,geometry.size.height*0.48))
+                            Divider()
+                            if model.searchPresented {MijiResultPreviewPane(model:model)}
+                        }
+                    } else {
+                        HStack(spacing:0) {
+                            visibleResults
+                            if model.previewEnabled && model.searchPresented {
+                                Divider()
+                                MijiResultPreviewPane(model:model).frame(width:min(360,geometry.size.width*0.42))
+                            }
+                        }
+                    }
+                }
             }
             footer
         }
-        .frame(width: embedded ? nil : 800, height: embedded ? nil : model.panelHeight)
+        .frame(width: embedded ? nil : model.panelWidth, height: embedded ? nil : model.panelHeight)
         .frame(maxWidth: embedded ? .infinity : nil, maxHeight: embedded ? .infinity : nil, alignment: .top)
         .background(MijiGlassBackground().overlay(Color.black.opacity(0.48)))
         .environment(\.colorScheme,.dark)
@@ -80,12 +95,19 @@ struct MijiSearchView:View {
         .background(MijiWindowVisibilityReader { [weak model] in model?.setWindowVisible($0) })
         .ignoresSafeArea()
         .onAppear { model.setSearchVisible(true); searchFocused = true }
-        .onDisappear { showDetails = false; model.setSearchVisible(false) }
+        .onDisappear {model.setSearchVisible(false)}
         .onChange(of: model.query.isEmpty) { _, empty in
             if empty { searchFocused = true }
         }
         .onChange(of:model.focusSearch) {searchFocused=true}
         .alert("觅迹",isPresented:Binding(get:{model.message != nil},set:{if !$0{model.message=nil}})) {Button("好"){model.message=nil}} message:{Text(model.message ?? "")}
+    }
+    @ViewBuilder private var visibleResults:some View {
+        if model.searchPresented {
+            results.background(GeometryReader {g in
+                Color.clear.onAppear {model.resultAreaWidth=g.size.width}.onChange(of:g.size.width){_,value in model.resultAreaWidth=value}
+            })
+        } else {Color.clear}
     }
     @ViewBuilder private var results:some View {
         if model.hits.isEmpty {
@@ -93,16 +115,19 @@ struct MijiSearchView:View {
         } else {
             ScrollViewReader {proxy in
                 ScrollView {
-                    LazyVStack(spacing:2) {
+                    LazyVGrid(columns:model.gridEnabled ? Array(repeating:GridItem(.flexible(),spacing:10),count:model.gridColumns) : [GridItem(.flexible())],spacing:model.gridEnabled ? 10 : 2) {
                         ForEach(model.hits) {hit in
-                            MijiCompactResultRow(hit:hit,query:model.query,selected:model.selectedID==hit.id)
+                            Group {
+                                if model.gridEnabled {MijiResultGridCell(hit:hit,query:model.query,selected:model.selectedID==hit.id)}
+                                else {MijiCompactResultRow(hit:hit,query:model.query,selected:model.selectedID==hit.id)}
+                            }
                                 .contentShape(Rectangle()).onTapGesture(count:2){model.selectedID=hit.id;model.openSelected()}
                                 .onTapGesture{model.selectedID=hit.id;searchFocused=false; keyScope.focusResults()}
                                 .contextMenu {
                                     Button("打开"){model.selectedID=hit.id;model.openSelected()}.disabled(!hit.root.isOnline)
                                     Button("在 Finder 中显示"){model.selectedID=hit.id;model.revealSelectedInFinder()}.disabled(!hit.root.isOnline)
                                     Button("快速查看"){model.selectedID=hit.id;model.previewSelected()}.disabled(!hit.root.isOnline)
-                                    Button("查看已索引内容"){model.selectedID=hit.id;showDetails=true}
+                                    Button("查看已索引内容"){model.selectedID=hit.id;model.previewEnabled=true}
                                     Button("复制路径"){model.selectedID=hit.id;model.copySelectedPath()}
                                     Divider()
                                     Group {
@@ -131,27 +156,14 @@ struct MijiSearchView:View {
                 if expanded {
                     Text("↩ 打开    ⌘↩ 定位")
                     Button("⌘Y 预览"){model.previewSelected()}.buttonStyle(.plain)
-                    Button("内容"){showDetails.toggle()}.buttonStyle(.plain).popover(isPresented:$showDetails){detailPreview}.onChange(of:showDetails){model.setPreviewVisible(showDetails)}
+                    Button {model.gridEnabled.toggle();searchFocused=false;keyScope.focusResults()} label:{Image(systemName:model.gridEnabled ? "list.bullet" : "square.grid.2x2")}.buttonStyle(.plain).help("切换列表／网格").accessibilityLabel("切换列表／网格")
+                    Button {model.previewEnabled.toggle()} label:{Image(systemName:"sidebar.right")}.buttonStyle(.plain).help("显示／隐藏预览栏").accessibilityLabel("显示／隐藏预览栏")
                 } else {Text("⌃⌥Space 唤起")}
                 Button {showHelp.toggle()} label:{Image(systemName:"questionmark.circle")}.buttonStyle(.plain).popover(isPresented:$showHelp) {
-                    VStack(alignment:.leading,spacing:10) {Text("搜索语法").font(.headline);Text("多个词：全部匹配\n\"完整短语\"：连续匹配\next:pdf：限定格式\npath:课程：限定路径\n-草稿：排除词\n支持中文、拼音与首字母");Divider();Text("↑ ↓ 选择 · Return 打开\n⌘Return / ⌘R 定位 · ⌘Y / 空格预览\n⌘⇧C 复制路径 · Esc 收起").font(.caption)}.padding(20)
+                    VStack(alignment:.leading,spacing:10) {Text("搜索语法").font(.headline);Text("多个词：全部匹配\n\"完整短语\"：连续匹配\next:pdf：限定格式\npath:课程：限定路径\n-草稿：排除词\n支持中文、拼音与首字母");Divider();Text("↑ ↓ 选择 · Return 打开\n⌘Return / ⌘R 定位 · ⌘Y / 空格预览\n⌘C 复制文件 · ⌘⇧C 复制路径 · Esc 收起").font(.caption)}.padding(20)
                 }
             }.font(.system(size:10)).foregroundStyle(.secondary).padding(.horizontal,22).frame(height:28)
         }
-    }
-    private var detailPreview:some View {
-        ScrollView {VStack(alignment:.leading,spacing:14) {
-            if let hit=model.selected {
-                Text(hit.file.name).font(.headline)
-                Text(hit.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                if !hit.root.isOnline {Label("未连接 · 已保留内容",systemImage:"externaldrive.badge.exclamationmark").foregroundStyle(.orange)}
-                if let image=model.previewImage {Image(nsImage:image).resizable().scaledToFit().frame(maxHeight:180)}
-                if !hit.labels.isEmpty {Text(hit.labels).font(.callout)}
-                Text(model.previewText.isEmpty ? "暂无提取内容" : model.previewText).font(.system(size:12)).textSelection(.enabled)
-                if let warning=model.previewWarning {Text(warning).font(.caption).foregroundStyle(.orange)}
-                if let error=hit.file.contentError {Text(error).font(.caption).foregroundStyle(.orange)}
-            } else {Text("选择一项结果查看内容")}
-        }.padding(20)}.frame(width:460,height:400)
     }
 }
 private struct MijiCompactResultRow:View {
@@ -176,7 +188,7 @@ private struct MijiCompactResultRow:View {
             VStack(alignment:.leading,spacing:3) {
                 Text(title).font(.system(size:14,weight:.medium)).lineLimit(1)
                 if (hit.matchedIn.contains("正文") || hit.matchedIn.contains("标签")),!hit.snippet.isEmpty {
-                    Text(hit.snippet).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(mijiHighlightedPreview(hit.snippet,query:query)).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1)
                 } else {Text(parentPath).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)}
             }
             Spacer(minLength:10)
@@ -190,6 +202,23 @@ private struct MijiCompactResultRow:View {
         .accessibilityElement(children:.combine).accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
+private struct MijiResultGridCell:View {
+    let hit:SearchHit
+    let query:String
+    let selected:Bool
+    var body:some View {
+        VStack(alignment:.leading,spacing:7) {
+            if hit.root.isOnline {
+                MijiFileThumbnail(hit:hit).frame(maxWidth:.infinity).frame(height:108)
+            } else {Image(systemName:"externaldrive.badge.exclamationmark").font(.largeTitle).frame(maxWidth:.infinity).frame(height:108).foregroundStyle(.secondary)}
+            Text(mijiHighlightedPreview(hit.file.name,query:query)).font(.system(size:12,weight:.medium)).lineLimit(1)
+            Text(hit.root.isOnline ? hit.file.kind.title : "未连接").font(.system(size:10)).foregroundStyle(.secondary)
+        }.padding(10).frame(maxWidth:.infinity,alignment:.leading)
+        .background(selected ? Color.accentColor.opacity(0.27) : Color.white.opacity(0.04),in:RoundedRectangle(cornerRadius:10))
+        .accessibilityElement(children:.combine).accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
 private enum MijiFileIconCache {
     static let cache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
@@ -249,10 +278,13 @@ private struct MijiSearchKeyRegion: NSViewRepresentable {
             case .reveal: model.revealSelected()
             case .preview: model.previewSelected()
             case .copyPath: model.copySelectedPath()
+            case .copyFile: model.copySelectedFile()
+            case .moveLeft: if model.gridEnabled {scope.focusResults();model.moveSelection(-1)}
+            case .moveRight: if model.gridEnabled {scope.focusResults();model.moveSelection(1)}
             case .hide: onDismiss()
             case .settings: onSettings()
-            case .moveDown: scope.focusResults(); model.moveSelection(1)
-            case .moveUp: scope.focusResults(); model.moveSelection(-1)
+            case .moveDown: scope.focusResults(); model.moveSelection(model.gridEnabled ? model.gridColumns : 1)
+            case .moveUp: scope.focusResults(); model.moveSelection(model.gridEnabled ? -model.gridColumns : -1)
             case .open: model.openSelected()
             }
         }

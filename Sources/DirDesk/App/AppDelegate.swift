@@ -220,6 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
     func windowControllerDidClose(_ controller: WorkspaceController) {
         controllers.removeAll { $0 === controller }
+        if lastActiveController === controller { lastActiveController = controllers.last }
         watcherHub.refresh()
     }
 
@@ -341,8 +342,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     // MARK: Double-tap "D" opens Lightning Search when typing outside text fields
 
     private func installKeyMonitor() {
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown, .rightMouseDown, .scrollWheel, .leftMouseDragged]) { [weak self] event in
             guard let self else { return event }
+            LightningSearchService.shared.userDidInteract()
+            guard event.type == .keyDown else { return event }
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.capsLock, .numericPad, .function])
             let isTextInput = (NSApp.keyWindow?.firstResponder is NSText) || (NSApp.keyWindow?.firstResponder is NSTextView)
             guard flags.isEmpty, !isTextInput, event.charactersIgnoringModifiers?.lowercased() == "d",

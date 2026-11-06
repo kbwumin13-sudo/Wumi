@@ -36,6 +36,7 @@ final class ExtractionContext {
     let deadline = Date().addingTimeInterval(180)
     var warnings: [String] = []
     private var chunks: [String] = []
+    private var pageRanges: [ContentPageRange]?
     private(set) var textBytes = 0
     var isFull: Bool { textBytes >= ExtractionLimits.textBytes }
     init(cancelled: @escaping () -> Bool) { self.cancelled = cancelled }
@@ -49,13 +50,16 @@ final class ExtractionContext {
         if !warnings.contains(message) { warnings.append(message) }
     }
 
-    func append(_ text: String, separator: String = "\n") {
-        guard !text.isEmpty else { return }
+    @discardableResult
+    func append(_ text: String, separator: String = "\n") -> Range<Int>? {
+        guard !text.isEmpty, !isFull else { return nil }
         let prefix = chunks.isEmpty ? "" : separator
+        let start = textBytes + prefix.utf8.count
         let remaining = ExtractionLimits.textBytes - textBytes
         let combined = prefix + text
         if combined.utf8.count <= remaining {
             chunks.append(combined); textBytes += combined.utf8.count
+            return start..<textBytes
         } else {
             // Decode only complete UTF-8 scalars, so the truncated index remains valid text.
             let bytes = Array(combined.utf8.prefix(remaining))
@@ -64,6 +68,17 @@ final class ExtractionContext {
             if end > 0 { chunks.append(String(bytes: bytes[..<end], encoding: .utf8)! ) }
             textBytes = ExtractionLimits.textBytes
             warn("提取文字达到 8 MiB 上限，内容已截断")
+            let bodyBytes = end - prefix.utf8.count
+            return bodyBytes > 0 ? start..<(start + bodyBytes) : nil
+        }
+    }
+
+    func beginPageMapping() { if pageRanges == nil { pageRanges = [] } }
+
+    func appendPage(_ text: String, page: Int) {
+        beginPageMapping()
+        if let range = append(text, separator: "\n\n"), !range.isEmpty {
+            pageRanges?.append(ContentPageRange(page: page, utf8Offset: range.lowerBound, utf8Length: range.count))
         }
     }
 
@@ -73,7 +88,7 @@ final class ExtractionContext {
             warn("未找到可提取的文字或图片类别")
         }
         return ExtractedContent(text: text, labels: labels, pages: pages,
-                                warning: warnings.isEmpty ? nil : warnings.joined(separator: "；"))
+                                warning: warnings.isEmpty ? nil : warnings.joined(separator: "；"), pageRanges: pageRanges)
     }
 }
 

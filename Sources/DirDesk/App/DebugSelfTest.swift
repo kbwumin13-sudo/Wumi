@@ -375,6 +375,7 @@ enum DebugSelfTest {
             }
 
             await DebugOptimizationChecks.run { name, ok, detail in check(name, ok, detail) }
+            await DebugWindowLifetimeChecks.check { name, ok, detail in check(name, ok, detail) }
             restoreClipboard(clipboard)
             appDelegate.controllers.first?.activePane.open(root.deletingLastPathComponent())
             try? fm.removeItem(at: root)

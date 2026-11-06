@@ -1,0 +1,68 @@
+{
+  "source_repository": "https://github.com/kbwumin13-sudo/miji",
+  "source_commit": "56c3cd9bd6d764fd1e0a7202a8dade40cd7ae68c",
+  "tag": "v1.2.0",
+  "files": [
+    {
+      "source": "Sources/MijiCore/Models.swift",
+      "source_sha256": "c58f59c4a8cea435c7b45739441b00c35ac4e69240af40dbcaeb38f2d03ba851",
+      "adapted_path": "Vendor/Miji/Sources/MijiCore/Models.swift",
+      "adapted_sha256": "c64ca4bf0a72dabaebe27619f3caa64a789bceb7a4fe03ec4401a17ee1ac724a"
+    },
+    {
+      "source": "Sources/MijiCore/Extraction/ExtractionSupport.swift",
+      "source_sha256": "3a45204e6b13467a11285bff91eeea02e462bed9ddc517b59c0d4bae801cc25c",
+      "adapted_path": "Vendor/Miji/Sources/MijiCore/Extraction/ExtractionSupport.swift",
+      "adapted_sha256": "e5579a185611be618385d3c25e6cfb7cb0a0466e7b7d2021de725c4303812541"
+    },
+    {
+      "source": "Sources/MijiCore/Extraction/VisionDocuments.swift",
+      "source_sha256": "14d29f78622037720677fbe84e6c9f04ba284470f150e7fd3746b9ab472d2b31",
+      "adapted_path": "Vendor/Miji/Sources/MijiCore/Extraction/VisionDocuments.swift",
+      "adapted_sha256": "14d29f78622037720677fbe84e6c9f04ba284470f150e7fd3746b9ab472d2b31"
+    },
+    {
+      "source": "Sources/MijiApp/AppModel.swift",
+      "source_sha256": "e5db16cdd1eeb1c790a1a45043a3a47216ccae4a4f6910c49fcd91a381781c54",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchModel.swift",
+      "adapted_sha256": "3e60c1de035280aaa245a2329fcf5e757eaddc9ff6b480242cc8f3d68b392f7d"
+    },
+    {
+      "source": "Sources/MijiApp/MainView.swift",
+      "source_sha256": "b5c64ad96a7324ec0bc77b04f332ce114c828bb65e4100353c443f082280e501",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchView.swift",
+      "adapted_sha256": "52b3653dc1100bcd5dee8af3f7adbc2b8752c4e8638383e507e6534502182e87"
+    },
+    {
+      "source": "Sources/MijiApp/SearchKeyAction.swift",
+      "source_sha256": "e5a92ec9fdc397a4226138055f70141c7d70978fd0e8fed1092246ae388f0b29",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchKeyAction.swift",
+      "adapted_sha256": "d3f429790d409143b5789f5e0700d6506d839c1e1a3fdd5b1e0d11167f04ec37"
+    },
+    {
+      "source": "Sources/MijiApp/PreviewResolver.swift",
+      "source_sha256": "17630e47a9fe875bd390a7f3d98286da7d840d825a59957f03edc5635ebf76c4",
+      "adapted_path": "Sources/DirDesk/Search/MijiPreviewResolver.swift",
+      "adapted_sha256": "f608bc267d0f3fcfb95f61c90eb3456c2075a482e550933cf6d125c7f3e38b59"
+    },
+    {
+      "source": "Sources/MijiApp/PreviewMedia.swift",
+      "source_sha256": "4283a463245396500c68b9b9212a594d5aff8703c05f213f8d17c2245c87b85b",
+      "adapted_path": "Sources/DirDesk/Search/MijiPreviewMedia.swift",
+      "adapted_sha256": "29530f422a3e1fc1600d39c8b2ea41210709b47a86bbebdb3b92f0468458461b"
+    },
+    {
+      "source": "Sources/MijiApp/ResultPreviewPane.swift",
+      "source_sha256": "af07b9effe50dbd1f315680f7a478ba0d7b2c62678319ab5d1283b782ca714cf",
+      "adapted_path": "Sources/DirDesk/Search/MijiResultPreviewPane.swift",
+      "adapted_sha256": "40504a5b43ccfd2124e2b6eeada264fd60b3cf986b6030d6e531ce1be0ad6e2c"
+    },
+    {
+      "source": "Tests/MijiCoreTests/PDFPageMapTests.swift",
+      "source_sha256": "21c58b5734952abfc56aff90643a2c0e3c1f9d200b7489bc835b5e6e3a1d5db2",
+      "adapted_path": "Vendor/Miji/Tests/MijiCoreTests/PDFPageMapTests.swift",
+      "adapted_sha256": "5c44d12016e75d8a5c78402b37382544972cf6fdf0497deb24185cc4fa8d3c0d"
+    }
+  ],
+  "note": "Targeted adaptation. Original P0 manifests and Wumi-only backend changes are retained."
+}

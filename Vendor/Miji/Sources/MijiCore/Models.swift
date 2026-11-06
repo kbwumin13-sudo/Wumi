@@ -56,12 +56,28 @@ public struct FileRecord: Codable, Identifiable, Sendable {
     }
 }
 
+/// A page's text in the stored UTF-8 body. Separators between pages are excluded.
+/// Empty pages have no entry; page numbers always refer to the original PDF.
+public struct ContentPageRange: Codable, Equatable, Sendable {
+    public var page: Int
+    public var utf8Offset: Int
+    public var utf8Length: Int
+    public init(page: Int, utf8Offset: Int, utf8Length: Int) {
+        self.page=page; self.utf8Offset=utf8Offset; self.utf8Length=utf8Length
+    }
+}
+
 public struct ExtractedContent: Codable, Equatable, Sendable {
     public var text: String
     public var labels: [String]
     public var pages: Int
     public var warning: String?
-    public init(text: String = "", labels: [String] = [], pages: Int = 0, warning: String? = nil) { self.text=text; self.labels=labels; self.pages=pages; self.warning=warning }
+    /// Nil for older indexes and formats without page boundaries.
+    public var pageRanges: [ContentPageRange]?
+    public init(text: String = "", labels: [String] = [], pages: Int = 0, warning: String? = nil,
+                pageRanges: [ContentPageRange]? = nil) {
+        self.text=text; self.labels=labels; self.pages=pages; self.warning=warning; self.pageRanges=pageRanges
+    }
 }
 public struct ExtractionOptions: Sendable {
     public var recognizeImages: Bool

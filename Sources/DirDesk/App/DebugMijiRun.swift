@@ -1,6 +1,8 @@
 import AppKit
 import DirDeskCore
 import MijiCore
+import PDFKit
+import CoreText
 
 /// Opt-in acceptance for the actual embedded Miji model, using an explicit scratch catalog.
 @MainActor
@@ -76,6 +78,13 @@ enum DebugMijiRun {
                 check("Wumi reveal callback", revealed?.lastPathComponent == "Wumi-note.txt")
                 model.setPreviewVisible(true)
                 check("stored content preview", await wait { model.previewText.contains("ORIGINAL_BODY_TOKEN") })
+                let retainedPreview=model.previewText
+                model.setPreviewVisible(true)
+                check("same preview request does not reload", !model.previewLoading && model.previewText==retainedPreview)
+                model.setWindowVisible(false)
+                check("hidden preview releases text and PDF", model.previewText.isEmpty && model.previewPDF==nil && !model.searchPresented)
+                model.setWindowVisible(true)
+                check("preview resumes with visible window", await wait {model.previewText.contains("ORIGINAL_BODY_TOKEN")})
                 model.setPreviewVisible(false)
                 model.rootID = "offline"
                 check("offline results retained", await search("proof").map(\.file.name) == ["offline-proof.pdf"])
@@ -91,6 +100,27 @@ enum DebugMijiRun {
                 let scoped = await search("scope")
                 check("folder boundary excludes sibling paths", scoped.map(\.file.name) == ["scope-inside.txt"],
                       "paths=\(scoped.map(\.path)); roots=\(model.roots.map(\.path)); error=\(model.message ?? "")")
+                model.currentFolderOnly=false;model.context=nil;model.sort = .relevance;model.scope = .all
+                model.setPreviewVisible(true)
+                _ = await search("MATCH_LINE_42")
+                check("code preview locates indexed source line", await wait {model.previewLine==2})
+                check("code context has line numbers", model.previewText.contains("2  MATCH_LINE_42"))
+                let clipboard=NSPasteboard.withUniqueName()
+                model.copySelectedFile(to:clipboard)
+                check("copy file writes file URL", (clipboard.readObjects(forClasses:[NSURL.self]) as? [URL])?.first?.lastPathComponent=="location-demo.swift")
+                clipboard.releaseGlobally()
+                if let selected=model.selected {
+                    try Data("File changed after indexing".utf8).write(to:URL(fileURLWithPath:selected.path))
+                    model.setPreviewVisible(false);model.setPreviewVisible(true)
+                    check("changed file does not expose old line", await wait {model.previewWarning?.contains("文件已变化")==true} && model.previewLine==nil)
+                }
+                _ = await search("PAGE_MATCH_723")
+                check("PDF preview uses saved page map", await wait {model.previewPage==2} && model.previewPDF?.pageCount==2)
+                let offlineRoot=IndexedRoot(id:"preview-offline",path:"/Volumes/Offline",isOnline:false)
+                let offlineFile=FileRecord(id:9999,rootID:offlineRoot.id,relativePath:"pages.pdf",name:"pages.pdf",fileExtension:"pdf",kind:.document,size:1,modified:0)
+                let offlineResolution=MijiPreviewResolver.resolve(hit:SearchHit(file:offlineFile,root:offlineRoot),content:ExtractedContent(text:"前😀\n\nPAGE_MATCH_723",pages:4,pageRanges:[ContentPageRange(page:4,utf8Offset:"前😀\n\n".utf8.count,utf8Length:14)]),query:"PAGE_MATCH_723 -unrelated ext:pdf",cancelled:{false})
+                check("offline PDF keeps original page number", offlineResolution.page==4)
+                check("preview excludes filters and negative terms", MijiPreviewResolver.terms(in:"PAGE_MATCH_723 -unrelated ext:pdf")==["page_match_723"])
                 model.setSearchVisible(false)
                 model.query = "数学"
                 check("hidden model cancels search", !model.searching)
@@ -106,6 +136,11 @@ enum DebugMijiRun {
                 let reveal = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: 0,
                     windowNumber: 0, context: nil, characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)!
                 check("Command Return reveals", MijiSearchKeyAction.action(for: reveal, firstResponder: editor) == .reveal)
+                let copy=NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:[.command],timestamp:0,windowNumber:0,context:nil,characters:"c",charactersIgnoringModifiers:"c",isARepeat:false,keyCode:8)!
+                let pdfView=PDFView(),pdfChild=NSView();pdfView.addSubview(pdfChild)
+                check("PDF text copy stays native", MijiSearchKeyAction.action(for:copy,firstResponder:pdfChild)==nil)
+                check("input copy stays native", MijiSearchKeyAction.action(for:copy,firstResponder:editor)==nil)
+                check("result copy copies file", MijiSearchKeyAction.action(for:copy,firstResponder:NSView()) == .copyFile)
             } catch { checks.append(["name": "fixture and model acceptance", "passed": false, "error": error.localizedDescription]) }
             try? FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
             let result: [String: Any] = ["checks": checks, "passed": !checks.isEmpty && checks.allSatisfy { $0["passed"] as? Bool == true }]
@@ -142,6 +177,30 @@ enum DebugMijiRun {
                 let url = folder.appendingPathComponent(name)
                 try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try Data(text.utf8).write(to: url)
+            }
+        }
+
+        let code=folder.appendingPathComponent("location-demo.swift")
+        try Data("first\nMATCH_LINE_42 😀\nlast".utf8).write(to:code)
+        let data=NSMutableData()
+        let pdfConsumer=CGDataConsumer(data:data)!
+        var box=CGRect(x:0,y:0,width:600,height:800)
+        let drawing=CGContext(consumer:pdfConsumer,mediaBox:&box,nil)!
+        for text in ["Cover", "PAGE_MATCH_723 on second page"] {
+            drawing.beginPDFPage(nil);drawing.textMatrix = .identity;drawing.textPosition=CGPoint(x:40,y:600)
+            let font=CTFontCreateWithName("Helvetica" as CFString,24,nil)
+            CTLineDraw(CTLineCreateWithAttributedString(NSAttributedString(string:text,attributes:[NSAttributedString.Key(kCTFontAttributeName as String):font])),drawing)
+            drawing.endPDFPage()
+        }
+        drawing.closePDF()
+        let pdf=folder.appendingPathComponent("location-demo.pdf");try (data as Data).write(to:pdf)
+        for url in [code,pdf] {
+            let signature=try FileSignature.read(url)
+            let file=FileRecord(rootID:"local",relativePath:url.lastPathComponent,name:url.lastPathComponent,fileExtension:url.pathExtension,kind:url.pathExtension=="swift" ? .code : .document,size:signature.size,modified:signature.modified,inode:signature.inode)
+            try db.upsertFiles([file],generation:1)
+            if let saved=try db.catalogBatch(afterID:0,limit:100).first(where:{$0.file.relativePath==url.lastPathComponent})?.file {
+                let content=try ContentExtractor.extract(url:url,options:ExtractionOptions(ocrPDF:false))
+                _ = try db.completeContent(file:saved,content:content)
             }
         }
     }

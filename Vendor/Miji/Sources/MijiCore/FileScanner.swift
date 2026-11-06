@@ -123,6 +123,9 @@ final class FileScanSession {
     private let excluded: Set<String> = ["node_modules",".git",".svn",".build",".venv","venv","__pycache__","DerivedData","Pods","Carthage",".Trash",".Trashes",".Spotlight-V100",".fseventsd"]
     private let userLibrary=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library").path
     private let seen:FileIDSet
+    // A concurrent scope owns reconciliation of these rows. Its newly inserted
+    // IDs may be outside the whole scan's already enumerated directories.
+    private var reconciledScopes = Set<String>()
     private(set) var checkpoint: FileScanCheckpoint
     private(set) var finished = false
     private(set) var writes = ScanWriteStatistics()
@@ -139,6 +142,10 @@ final class FileScanSession {
     }
     func matches(root: IndexedRoot, scope: String, options: ScanOptions) -> Bool {
         checkpoint.matches(root:root,scope:IndexRelativePath.packageScope(scope),options:options)
+    }
+    func preserveReconciledScope(_ scope: String) {
+        guard !scope.isEmpty, IndexRelativePath.validated(scope) else { return }
+        reconciledScopes.insert(scope)
     }
     private func relative(_ url: URL) -> String? {
         let path=url.standardizedFileURL.path, prefix=root.path == "/" ? "/" : root.path+"/"
@@ -188,7 +195,8 @@ final class FileScanSession {
         }
         progress(checkpoint.count)
     }
-    func advance(cancelled: ()->Bool, progress: (Int)->Void) throws -> ScanResult {
+    func advance(cancelled: ()->Bool, shouldYield: ()->Bool = { false }, maximumItems: Int = .max, progress: (Int)->Void) throws -> ScanResult {
+        let initialCount=checkpoint.count
         root=VolumeIdentity.refreshed(root)
         try database.saveRoot(root)
         guard root.enabled,root.isOnline,root.path == checkpoint.rootPath else {
@@ -203,7 +211,7 @@ final class FileScanSession {
             } else if errno != ENOENT && errno != ENOTDIR {recordFailure(target,NSError(domain:NSPOSIXErrorDomain,code:Int(errno)))}
             checkpoint.started=true
         }
-        while !cancelled() {
+        while !cancelled() && !shouldYield() && checkpoint.count-initialCount < maximumItems {
             if checkpoint.currentDirectory == nil {
                 checkpoint.currentDirectory=checkpoint.directories.popLast()
                 if let path=checkpoint.currentDirectory {queuedDirectories.remove(path)}
@@ -235,10 +243,10 @@ final class FileScanSession {
         let reachedEnd=checkpoint.started && checkpoint.currentDirectory == nil && checkpoint.directories.isEmpty && !cancelled() && root.isOnline
         if reachedEnd {
             if checkpoint.scope.isEmpty {
-                pruned=try database.finishScan(rootID:root.id,seen:seen,preservingPaths:Array(checkpoint.preservingPaths))
+                pruned=try database.finishScan(rootID:root.id,seen:seen,preservingPaths:Array(checkpoint.preservingPaths.union(reconciledScopes)))
                 if checkpoint.errors.isEmpty {root.lastScan=Date()}
             } else {
-                pruned=try database.finishIncrementalScan(rootID:root.id,relativePath:checkpoint.scope,seen:seen,preservingPaths:Array(checkpoint.preservingPaths))
+                pruned=try database.finishIncrementalScan(rootID:root.id,relativePath:checkpoint.scope,seen:seen,preservingPaths:Array(checkpoint.preservingPaths.union(reconciledScopes)))
             }
             finished=true
         }

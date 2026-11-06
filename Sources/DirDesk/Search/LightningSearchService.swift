@@ -59,6 +59,28 @@ final class LightningSearchService: ObservableObject {
     private var indexFlag = LightningFlag()
     private let pendingHost = PendingMijiHost()
     private var catalogRefresh: Task<Void, Never>?
+    private var interactionResume: Task<Void, Never>?
+    private var interactionDeadline = ContinuousClock.now
+
+    /// One timer for an input burst. Merely keeping a window in front never pauses the index.
+    func userDidInteract() {
+        guard let host, !Self.isReadOnly else { return }
+        interactionDeadline = .now + .milliseconds(350)
+        host.setUserActive(true)
+        guard interactionResume == nil else { return }
+        interactionResume = Task { @MainActor [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                let deadline = self.interactionDeadline
+                do { try await Task.sleep(until: deadline, clock: .continuous) }
+                catch { return }
+                if ContinuousClock.now >= self.interactionDeadline { break }
+            }
+            guard !Task.isCancelled else { return }
+            self.interactionResume = nil
+            self.host?.setUserActive(false)
+        }
+    }
 
     private init() {
         let defaults = UserDefaults.standard
@@ -141,6 +163,7 @@ final class LightningSearchService: ObservableObject {
     }
     private func detachHosts() -> [MijiIndexHost] {
         shutdownFlag.set(); indexFlag.set()
+        interactionResume?.cancel(); interactionResume = nil
         catalogRefresh?.cancel(); catalogRefresh = nil
         host?.onStatus = nil
         host?.onCatalogChange = nil

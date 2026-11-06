@@ -68,8 +68,23 @@ Oil Find 的逐字读音可能与 Miji 原有 CFString 整词读音不同，例�
 - 子树范围查询拆成“路径本身”和“后代区间”两条语句。原 `relative_path=? OR (relative_path>=? AND relative_path<?)` 只能用到 `root_id`，每次局部扫描的清理都会读完该根的全部索引项（生产库约 400 万行）。`finishIncrementalScan` 两个版本和名称引擎的回退刷新都已改写。
 - 名称快照改为直接映射缓存文件。`OilFindCore/MappedStorage.swift` 提供私有映射、对齐分段写入器和 `SegmentedArray`（映射段加内存追加段，映射段的写入只落在进程私有页）。`NameSnapshotCache` 升为 `MJNAME03`，各列按 16 字节对齐分段并以 SHA-256 校验；`MJNAME02` 读取一次后改写。从 SQLite 或旧缓存建成的快照立即写成映射缓存；内存追加行超过 262,144 行，或未排序尾部/墓碑过多时，宿主在 utility 队列压缩重写。搜索面板显示时预读映射。
 
+## Wumi 索引时间片适配（2026-10-26）
+
+`IndexWorkScheduling` 为目录元数据和正文提取提供有界时间片。目录保留扫描会话、迭代器及已见 ID，真正遍历完成才清理过期行；整根核对和局部变更可交替推进，局部已核对范围保护同期新插入项。所有根和范围共享元数据时间及条数预算，短文件范围在同片继续处理，随后通过 `asyncAfter` 让出队列。正文在文件边界检查预算，不因超时片而取消有效 OCR。静止时停止续片，停止服务会取消等待中的工作。真实写入和清理才通知目录变化。
+
+Wumi 的本地键鼠事件接入已有 `setUserActive` 门控，输入停止 350ms 后恢复；仅保持前台不暂停索引。稳定续片不再提前保存事件检查点，普通事件保留原有 30 秒合并落盘，根变化、范围接管/完成与停止仍可靠保存。范围、持久格式、全文/OCR 和电源策略保持原有契约。调度测试使用可注入时钟和排队器验证多次让出后的完整性、批量增量吞吐、全盘与局部及多根公平、输入暂停恢复、停止、静止不空转和事件落盘后重放。
+
 ## 本地验证
 
 在本目录执行 `swift test -c release`。只复制了六个以临时 SQLite 或内存构造数据的上游测试文件，另增 `VendoredFixtureTests.swift` 验证全文及固定 OCR 结果持久化、只读重开与离线/恢复查询，`WumiCatalogTests.swift` 验证旧 schema 补表和 WAL backup。未复制上游生产扫描器、IndexService 或真实 OCR 提取测试；`ScanSchedulingTests.swift` 是 Wumi 自己的扫描写入、范围清理、事件分流、状态迁移与冷却/电源调度测试，`NameSnapshotCacheTests` 和 `DeduplicatedNameIndexTests` 覆盖 v3 映射、v2 转换、映射后变更与压缩。名称大规模基准默认条件跳过，需显式环境变量才运行；本轮未启用。
 
 整词/逐字拼音、别名边界、序列化/缓存重启、旧 magic 失效回归分别位于 `NameSearchEngineTests`、`DeduplicatedNameIndexTests`、`NameSnapshotCacheTests`。Wumi 的真实临时文件创建日期补齐、完整排序计数与名称/高级查询拼音一致性回归位于根包 `Tests/DirDeskCoreTests/MijiBackendTests.swift`；读取计数回归覆盖名称/glob 先排除、跨批次候选、重复日期及失败读取仅一次、排序只读取已匹配在线缺失项、OR 短路、NOT/未知正文、取消后不发布行。所有数据库和文件均由测试在临时目录创建，不访问生产库或 Main 的生产副本。
+
+## 觅迹 1.2.0 预览与定位同步（2026-10-31）
+
+本轮来源为独立觅迹的公开 tag `v1.2.0` / commit `56c3cd9bd6d764fd1e0a7202a8dade40cd7ae68c`（https://github.com/kbwumin13-sudo/miji/releases/tag/v1.2.0）。原 P0 来源清单仍保留，未覆盖。新清单 `PREVIEW_SYNC_1_2_0.json` 记录本轮上游文件摘要和 Wumi 对应位置。
+
+- Core 定向合入 `ContentPageRange`、可选 `ExtractedContent.pageRanges`、提取上下文的UTF-8范围及PDF文字层／OCR按页记录；兼容旧JSON和既有schema。Wumi额外文件元数据、目录扫描、索引时间片、名称映射缓存、后台QoS和提取进程树回收均保留。
+- UI 由 Wumi 的 `Sources/DirDesk/Search/MijiSearchModel.swift`、`MijiSearchView.swift`、`MijiSearchKeyAction.swift` 及新增的 `MijiPreviewResolver.swift`、`MijiPreviewMedia.swift`、`MijiResultPreviewPane.swift` 承接；全局面板尺寸适配位于 `GlobalSearchController.swift`。窄嵌入区域改为上下布局。
+- 右侧预览、摘要高亮、文件复制、PDF匹配页／阅读窗口、代码行定位、网格与按需媒体播放复用 Wumi 唯一宿主的只读连接；没有新增索引写入者，不自动读取或迁移独立觅迹的生产数据库。可见性门控、名称刷新与正文缓存、文件操作和定位回调继续沿用Wumi契约。
+- 新增 `PDFPageMapTests.swift`（按本地codec入口适配），扩展应用的 `DebugMijiRun` 验收代码行、页码、离线映射、版本变化、预览去重与隐藏释放、剪贴板和焦点。验收与构建日志在根目录本地 `artifacts/miji-1.2.0-sync-20261031/`，不随公开仓库提交。

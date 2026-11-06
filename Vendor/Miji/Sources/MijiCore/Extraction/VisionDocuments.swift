@@ -150,6 +150,7 @@ func extractPDF(_ data: Data, options: ExtractionOptions, context: ExtractionCon
     guard let document = PDFDocument(data: data) else { throw ContentExtractionError.invalidDocument("PDF 无法打开") }
     guard !document.isLocked else { throw ContentExtractionError.invalidDocument("PDF 已加密，需要密码") }
     let count = document.pageCount
+    context.beginPageMapping()
     var skipped = 0, blank = 0
     for index in 0..<count {
         try context.check()
@@ -158,14 +159,14 @@ func extractPDF(_ data: Data, options: ExtractionOptions, context: ExtractionCon
             guard let page = document.page(at: index) else { context.warn("PDF 第 \(index + 1) 页无法读取"); return }
             let text = page.string ?? ""
             if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                context.append(text, separator: "\n\n"); return
+                context.appendPage(text, page: index + 1); return
             }
             guard options.ocrPDF else { skipped += 1; return }
             guard let image = renderPDFPage(page) else { context.warn("PDF 第 \(index + 1) 页无法渲染 OCR"); return }
             do {
                 let recognized = try recognizeImageText(image, context: context)
                 if recognized.isEmpty { blank += 1 }
-                context.append(recognized, separator: "\n\n")
+                context.appendPage(recognized, page: index + 1)
             } catch { try partialVisionFailure(error, context: context, operation: "PDF 第 \(index + 1) 页 OCR") }
         }
     }

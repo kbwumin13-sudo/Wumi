@@ -67,7 +67,7 @@ final class GlobalSearchController: NSObject, ObservableObject, NSWindowDelegate
         let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? NSScreen.main
         if let screen {
             let visible = screen.visibleFrame
-            let width: CGFloat = 800
+            let width = model.panelWidth
             let height = model.panelHeight
             panel.setFrame(NSRect(x: visible.midX - width / 2, y: visible.maxY - height - 70,
                                   width: width, height: height), display: false)
@@ -149,15 +149,17 @@ final class GlobalSearchController: NSObject, ObservableObject, NSWindowDelegate
             onAdvanced: { [weak self] in self?.showAdvanced() }, onSettings: { [weak self] in self?.showSettings() }))
         hosting.sizingOptions = []
         panel.contentView = hosting
-        Publishers.CombineLatest(model.$query, model.$hits)
-            .map { MijiSearchModel.panelHeight(query: $0, resultCount: $1.count) }
-            .removeDuplicates().sink { [weak panel] height in
-            guard let panel else { return }
-            var frame = panel.frame
-            frame.origin.y += frame.height - height
-            frame.size.height = height
-            panel.setFrame(frame, display: true)
-        }.store(in: &cancellables)
+        Publishers.CombineLatest4(model.$query,model.$hits,model.$previewEnabled,model.$gridEnabled)
+            .sink { [weak panel,weak model] _ in
+                DispatchQueue.main.async {
+                    guard let panel,let model else{return}
+                    let old=panel.frame,width=model.panelWidth,height=model.panelHeight
+                    let screen=(panel.screen ?? NSScreen.main)?.visibleFrame ?? old
+                    let x=min(max(screen.minX,old.midX-width/2),max(screen.minX,screen.maxX-width))
+                    let y=min(max(screen.minY,old.maxY-height),max(screen.minY,screen.maxY-height))
+                    panel.setFrame(NSRect(x:x,y:y,width:width,height:height),display:true)
+                }
+            }.store(in:&cancellables)
         self.model = model
         self.panel = panel
     }
@@ -192,10 +194,13 @@ final class GlobalSearchPanel: NSPanel {
             case .reveal: model.revealSelected()
             case .preview: model.previewSelected()
             case .copyPath: model.copySelectedPath()
+            case .copyFile: model.copySelectedFile()
+            case .moveLeft: if model.gridEnabled {model.moveSelection(-1)}else{super.sendEvent(event)}
+            case .moveRight: if model.gridEnabled {model.moveSelection(1)}else{super.sendEvent(event)}
             case .hide: onEscape?()
             case .settings: onSettings?()
-            case .moveDown: model.moveSelection(1)
-            case .moveUp: model.moveSelection(-1)
+            case .moveDown: model.moveSelection(model.gridEnabled ? model.gridColumns : 1)
+            case .moveUp: model.moveSelection(model.gridEnabled ? -model.gridColumns : -1)
             case .open: model.openSelected()
             case nil: super.sendEvent(event)
             }

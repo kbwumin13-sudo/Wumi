@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 import DirDeskCore
-import ImageIO
+import PDFKit
 import MijiCore
 
 private final class MijiSearchTicket: @unchecked Sendable {
@@ -81,7 +81,6 @@ final class MijiSearchModel: ObservableObject {
     @Published private(set) var searchMilliseconds: Double = 0
     @Published var message: String?
     @Published private(set) var previewText = ""
-    @Published private(set) var previewImage: NSImage?
     @Published private(set) var previewWarning: String?
     @Published var focusSearch = UUID()
     var onReveal: (URL) -> Void
@@ -110,7 +109,18 @@ final class MijiSearchModel: ObservableObject {
     private var catalogChangedWhileHidden = false
     /// The container closed the session, so its results were cleared.
     private var clearedWhileHidden = false
-    private var previewVisible = false
+    @Published var previewEnabled = true {didSet {loadPreview()}}
+    @Published var gridEnabled = false
+    @Published private(set) var searchPresented = false
+    @Published private(set) var previewLoading = false
+    @Published private(set) var previewPage:Int?
+    @Published private(set) var previewLine:Int?
+    @Published private(set) var previewPDF:PDFDocument?
+    @Published private(set) var previewLocalURL:URL?
+    @Published var resultAreaWidth:CGFloat = 700
+    var gridColumns:Int {max(1,Int((resultAreaWidth-24)/180))}
+    private var previewKey:String?
+    private var previewQuery=""
     private var refreshAfterSearch = false
     private var catalogRefreshWork: DispatchWorkItem?
     private var lastCatalogRefresh = Date.distantPast
@@ -154,15 +164,17 @@ final class MijiSearchModel: ObservableObject {
     static func panelHeight(query: String, resultCount: Int) -> CGFloat {
         query.isEmpty ? 100 : CGFloat(150 + min(7, max(2, resultCount)) * 59)
     }
-    var panelHeight: CGFloat { Self.panelHeight(query: query, resultCount: hits.count) }
+    var panelHeight: CGFloat {query.isEmpty ? 100 : (previewEnabled || gridEnabled ? 563 : Self.panelHeight(query:query,resultCount:hits.count))}
+    var panelWidth:CGFloat {!query.isEmpty && previewEnabled ? 1060 : 800}
 
     /// The container shows or closes the session. Closing clears its results, as before.
     func setSearchVisible(_ visible: Bool) {
         let wasVisible = searchVisible
         requestedVisible = visible
+        searchPresented = searchVisible
         if !visible {
             guard wasVisible || !clearedWhileHidden else { return }
-            setPreviewVisible(false)
+            suspendPreview()
             clearedWhileHidden = true; resumeSearchWhenShown = false; catalogChangedWhileHidden = false
             scheduleSearch()
         } else if searchVisible && !wasVisible {
@@ -177,13 +189,15 @@ final class MijiSearchModel: ObservableObject {
     func setWindowVisible(_ visible: Bool) {
         let wasVisible = searchVisible
         windowVisible = visible
+        searchPresented = searchVisible
         guard searchVisible != wasVisible else { return }
         if searchVisible { becameVisible(); return }
         if searching || searchWork != nil { resumeSearchWhenShown = true }
+        if previewQuery != query {previewTicket?.cancel();previewKey=nil}
         searchWork?.cancel(); searchWork = nil
         searchTicket?.cancel(); searching = false
         catalogRefreshWork?.cancel(); catalogRefreshWork = nil
-        previewTicket?.cancel()
+        suspendPreview()
     }
 
     private func becameVisible() {
@@ -200,7 +214,7 @@ final class MijiSearchModel: ObservableObject {
             catalogChangedWhileHidden = false
             scheduleCatalogRefresh()
         }
-        if previewVisible { loadPreview() }
+        loadPreview()
     }
 
     private func apply(_ status: LightningIndexStatus) {
@@ -240,6 +254,7 @@ final class MijiSearchModel: ObservableObject {
     }
 
     private func scheduleSearch(preserveResults: Bool = false, namesOnly: Bool = false) {
+        if previewQuery != query {previewTicket?.cancel();previewKey=nil}
         searchWork?.cancel(); searchWork = nil
         searchTicket?.cancel(); searching = false; refreshAfterSearch = false
         if !namesOnly { catalogRefreshWork?.cancel(); catalogRefreshWork = nil }
@@ -398,40 +413,53 @@ final class MijiSearchModel: ObservableObject {
         hits = result; searching = !finished
         if let elapsed { searchMilliseconds = elapsed }
         if !result.contains(where: { $0.id == selectedID }) { selectedID = result.first?.id }
+        loadPreview()
         if finished, refreshAfterSearch { refreshAfterSearch = false; scheduleCatalogRefresh() }
     }
 
-    func setPreviewVisible(_ visible: Bool) { previewVisible = visible; loadPreview() }
+    func setPreviewVisible(_ visible:Bool) {previewEnabled=visible}
+    private func suspendPreview() {
+        previewTicket?.cancel();previewKey=nil;clearPreview();MijiPreviewThumbnails.clear()
+    }
+    func showPDFMatch() {
+        guard let document=previewPDF,let page=previewPage else{return}
+        let terms=MijiPreviewResolver.terms(in:query),title=selected?.file.name ?? "PDF"
+        onDismiss()
+        MijiPDFReaderController.shared.show(document:document,page:page,terms:terms,title:title)
+    }
     private func loadPreview() {
-        previewTicket?.cancel()
-        previewText = ""; previewImage = nil; previewWarning = nil
-        guard previewVisible, let hit = selected, let engine = service.engine else { return }
-        let ticket = MijiSearchTicket(); previewTicket = ticket
-        let reader = previewReader, url = engine.databaseURL
+        guard searchVisible,previewEnabled,let hit=selected,let engine=service.engine else {
+            previewTicket?.cancel();previewKey=nil;clearPreview();return
+        }
+        let key="\(hit.id)|\(hit.path)|\(hit.file.inode)|\(hit.file.modified)|\(hit.file.size)|\(hit.file.contentState)|\(hit.file.contentError ?? "")|\(hit.root.isOnline)|\(query)|\(hit.matchedIn)|\(hit.snippet)|\(hit.labels)"
+        guard key != previewKey else{return}
+        previewTicket?.cancel();previewKey=key;previewQuery=query;clearPreview()
+        let ticket=MijiSearchTicket();previewTicket=ticket;previewLoading=true
+        let query=query
+        let reader=previewReader,url=engine.databaseURL
         previewQueue.async { [weak self] in
-            guard !ticket.isCancelled else { return }
-            do {
-                let content = try reader.open(url).storedContent(fileID: hit.id)
-                var thumbnail: NSImage?
-                if !ticket.isCancelled, hit.file.kind == .image, hit.root.isOnline,
-                   let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: hit.path) as CFURL, nil),
-                   let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 700, kCGImageSourceCreateThumbnailWithTransform: true] as CFDictionary) {
-                    thumbnail = NSImage(cgImage: cg, size: .zero)
-                }
-                DispatchQueue.main.async {
-                    guard let self, !ticket.isCancelled, self.previewVisible, self.selectedID == hit.id else { return }
-                    self.previewText = String((content?.text ?? hit.snippet).prefix(16000))
-                    self.previewImage = thumbnail; self.previewWarning = content?.warning
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    guard let self, !ticket.isCancelled else { return }
-                    self.previewWarning = error.localizedDescription
-                }
+            guard !ticket.isCancelled else{return}
+            let content=try? reader.open(url).storedContent(fileID:hit.id)
+            var resolution=MijiPreviewResolver.resolve(hit:hit,content:content,query:query,cancelled:{ticket.isCancelled})
+            guard !ticket.isCancelled else{return}
+            let localURL=MijiPreviewResolver.localURL(for:hit)
+            if (hit.file.kind == .code || hit.file.fileExtension.lowercased()=="pdf"),let url=localURL,
+               let signature=try? FileSignature.read(url),!signature.matches(hit.file) {
+                resolution.page=nil;resolution.line=nil
+                resolution.warning=[resolution.warning,"文件已变化，正文为上次索引内容；位置将在索引更新后恢复"].compactMap{$0}.joined(separator:"；")
+            }
+            var document:PDFDocument?
+            if hit.file.fileExtension.lowercased()=="pdf",let url=localURL,let size=try? url.resourceValues(forKeys:[.fileSizeKey]).fileSize,size<=64*1024*1024 {document=PDFDocument(url:url)}
+            DispatchQueue.main.async {
+                guard let self,!ticket.isCancelled,self.searchVisible,self.selectedID==hit.id else { return }
+                self.previewText=resolution.text;self.previewWarning=resolution.warning
+                self.previewLocalURL=localURL;self.previewPage=resolution.page;self.previewLine=resolution.line;self.previewPDF=document;self.previewLoading=false
             }
         }
     }
-
+    private func clearPreview() {
+        previewText="";previewWarning=nil;previewPage=nil;previewLine=nil;previewPDF=nil;previewLocalURL=nil;previewLoading=false
+    }
     func moveSelection(_ step: Int) {
         guard !hits.isEmpty else { return }
         let current = hits.firstIndex { $0.id == selectedID } ?? (step > 0 ? -1 : hits.count)
@@ -442,6 +470,7 @@ final class MijiSearchModel: ObservableObject {
         guard hit.root.isOnline, FileManager.default.fileExists(atPath: hit.path) else {
             message = "请连接「\(hit.root.name)」后打开此文件。"; return
         }
+        if hit.file.kind == .code,let line=previewLine,MijiCodeFileOpener.open(URL(fileURLWithPath:hit.path),line:line) {onDismiss();return}
         onDismiss()
         FileOpenRouter.open(URL(fileURLWithPath: hit.path))
     }
@@ -454,8 +483,12 @@ final class MijiSearchModel: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: hit.path)])
     }
     func previewSelected() {
-        guard let hit = selected, hit.root.isOnline else { return }
-        NotificationCenter.default.post(name: .dirDeskShowSuperPreview, object: URL(fileURLWithPath: hit.path))
+        guard let hit=selected,let url=MijiPreviewResolver.localURL(for:hit) else{return}
+        NotificationCenter.default.post(name:.dirDeskShowSuperPreview,object:url)
+    }
+    func copySelectedFile(to pasteboard:NSPasteboard = .general) {
+        guard let hit=selected,let url=MijiPreviewResolver.localURL(for:hit) else{message="请先连接磁盘或将文件下载到本机。";return}
+        pasteboard.clearContents();pasteboard.writeObjects([url as NSURL])
     }
     func copySelectedPath() {
         guard let hit = selected else { return }

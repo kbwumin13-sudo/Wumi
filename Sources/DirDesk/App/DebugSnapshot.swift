@@ -16,6 +16,10 @@ enum DebugSnapshot {
                 appDelegate.activeController?.activePane.open(URL(fileURLWithPath: folder))
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                if defaults.string(forKey: "DirDeskSnapshotAction") == "windowLifetime" {
+                    DebugWindowLifetimeChecks.run(output: URL(fileURLWithPath: directory))
+                    return
+                }
                 if defaults.string(forKey: "DirDeskSnapshotAction") == "performance" {
                     DebugPerformanceRun.run(delegate: appDelegate, output: URL(fileURLWithPath: directory))
                     return

@@ -91,6 +91,11 @@ public final class MijiIndexHost: @unchecked Sendable {
         service?.start()
     }
     public func roots() throws -> [IndexedRoot] {try database.roots()}
+    /// Brief input bursts yield background indexing without suspending searches.
+    public func setUserActive(_ active:Bool) {
+        guard !readOnly else {return}
+        service?.setUserActive(active)
+    }
     public func configure(_ preferences:IndexingPreferences) {
         engine.retainsOffline=preferences.retainOffline
         guard !readOnly else {return};service?.configure(preferences)
