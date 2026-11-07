@@ -375,12 +375,14 @@ enum DebugSelfTest {
             }
 
             await DebugOptimizationChecks.run { name, ok, detail in check(name, ok, detail) }
+            await DebugWindowLifetimeChecks.check { name, ok, detail in check(name, ok, detail) }
             restoreClipboard(clipboard)
             appDelegate.controllers.first?.activePane.open(root.deletingLastPathComponent())
             try? fm.removeItem(at: root)
             let report = lines.joined(separator: "\n") + "\n"
             try? report.write(to: reportDirectory.appendingPathComponent("selftest.txt"), atomically: true, encoding: .utf8)
             fm.createFile(atPath: reportDirectory.appendingPathComponent("selftest-done").path, contents: nil)
+            if UserDefaults.standard.bool(forKey: "WumiSelfTestExit") { NSApp.terminate(nil) }
         }
     }
 

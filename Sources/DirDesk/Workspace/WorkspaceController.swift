@@ -209,6 +209,19 @@ final class WorkspaceController: NSWindowController, NSWindowDelegate, BrowserAc
             WindowGeometryStore.remove(model.windowID)
         }
         appDelegate?.windowControllerDidClose(self)
+        if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
+        activationObserver = nil
+        cancellables.removeAll()
+        model.watcherChanged = nil
+        // Hosted SwiftUI views keep their action controller alive. Closing an
+        // NSWindow does not detach that content, so explicitly break the cycle
+        // after AppKit has finished dispatching the close notification.
+        DispatchQueue.main.async { [self] in
+            for item in splitController.splitViewItems { splitController.removeSplitViewItem(item) }
+            window?.contentViewController = nil
+            window?.delegate = nil
+            window = nil
+        }
     }
 
     func windowDidBecomeMain(_ notification: Notification) {

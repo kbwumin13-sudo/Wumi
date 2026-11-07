@@ -6,16 +6,25 @@ set -euo pipefail
 cd "${0:A:h}/.."
 
 CONFIG="${1:-release}"
-VERSION="${DIRDESK_VERSION:-1.1.1}"
+VERSION="${DIRDESK_VERSION:-1.2.5}"
 BUILD_NUMBER="${DIRDESK_BUILD:-$(date +%Y%m%d%H%M)}"
 
 swift build -c "$CONFIG" --product DirDesk
 BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
+swift build --package-path Vendor/Miji -c "$CONFIG" --product miji-extract
+MIJI_BIN_DIR="$(swift build --package-path Vendor/Miji -c "$CONFIG" --show-bin-path)"
 
-APP="build/Wumi.app"
+APP="${DIRDESK_APP_PATH:-build/Wumi.app}"
+[[ "$APP" == *.app && "$APP" != ".app" && "$APP" != "/.app" ]] || { print -u2 "DIRDESK_APP_PATH must name an .app bundle"; exit 1; }
+mkdir -p build
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Helpers" "$APP/Contents/Resources/Licenses"
 cp "$BIN_DIR/DirDesk" "$APP/Contents/MacOS/DirDesk"
+cp "$MIJI_BIN_DIR/miji-extract" "$APP/Contents/Helpers/miji-extract"
+cp Vendor/Miji/LICENSE "$APP/Contents/Resources/Licenses/Miji-MIT.txt"
+cp Vendor/Miji/Vendor/OilFind/LICENSE "$APP/Contents/Resources/Licenses/OilFind-MIT.txt"
+cp Vendor/Miji/UPSTREAM.md "$APP/Contents/Resources/Licenses/Miji-UPSTREAM.md"
+cp Vendor/Miji/Vendor/OilFind/UPSTREAM.md "$APP/Contents/Resources/Licenses/OilFind-UPSTREAM.md"
 # SwiftPM records the deployment target as the SDK version (sdk 15.0), which makes macOS 26 and later draw every
 # window in the older control style. Record the SDK the app was really built with, like an Xcode build does.
 SDK_VERSION="$(xcrun --show-sdk-version)"
@@ -42,5 +51,6 @@ cp build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 if [[ -z "${SIGN_IDENTITY:-}" ]] && security find-identity -p codesigning 2>/dev/null | grep -qF '"DirDesk Local Signing"'; then
   SIGN_IDENTITY="DirDesk Local Signing"
 fi
+codesign --force --sign "${SIGN_IDENTITY:--}" --timestamp=none "$APP/Contents/Helpers/miji-extract"
 codesign --force --sign "${SIGN_IDENTITY:--}" --timestamp=none "$APP"
 echo "built $APP ($CONFIG, $VERSION/$BUILD_NUMBER, signed: ${SIGN_IDENTITY:-ad-hoc})"

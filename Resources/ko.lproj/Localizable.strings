@@ -121,6 +121,7 @@
 "AirDrop is unavailable." = "AirDrop을 사용할 수 없습니다.";
 "Alias" = "가상본";
 "Aliases Created" = "가상본 생성됨";
+"All" = "모두";
 "All Bookmarks" = "모든 책갈피";
 "All Items" = "모든 항목";
 "All Subfiles of %@" = "%@의 모든 하위 파일";
@@ -176,6 +177,7 @@
 "Automatic sync is off" = "자동 동기화가 꺼져 있음";
 "Automatic sync runs while Wumi is open." = "자동 동기화는 Wumi가 열려 있는 동안 실행됩니다.";
 "Automatic sync skipped this task because some conflicts need a decision." = "결정이 필요한 충돌이 있어 자동 동기화에서 이 작업을 건너뛰었습니다.";
+"Automatically index external volumes" = "외장 볼륨 자동 인덱싱";
 "Available Locally" = "로컬에서 사용 가능";
 "Available actions" = "사용 가능한 동작";
 "Available on this Mac" = "이 Mac에서 사용 가능";
@@ -205,6 +207,7 @@
 "Bottom Right" = "오른쪽 아래";
 "Bring All to Front" = "모두 앞으로 가져오기";
 "Browse the folders and items you bookmarked." = "책갈피에 추가한 폴더와 항목을 탐색합니다.";
+"Browse, preview and organize desktop files. Show the system desktop at any time from the menu bar." = "데스크탑 파일을 탐색하고 미리 보고 정리합니다. 메뉴 막대에서 언제든지 시스템 데스크탑을 표시할 수 있습니다.";
 "Browsing" = "탐색";
 "Building Search Index…" = "검색 인덱스 생성 중…";
 "Building Search Index… %lld items" = "검색 인덱스 생성 중… 항목 %lld개";
@@ -285,16 +288,19 @@
 "Close Current Pane" = "현재 패널 닫기";
 "Close Floating Ball" = "플로팅 볼 닫기";
 "Close Pane" = "패널 닫기";
+"Close Search" = "검색 닫기";
 "Close Tab" = "탭 닫기";
 "Close Tabs to the Right" = "오른쪽 탭 닫기";
 "Code" = "코드";
 "Collapse All" = "모두 접기";
+"Collapse Collection" = "모음 접기";
 "Collapse Folder" = "폴더 접기";
 "Collapsed" = "접힘";
 "Collect All Items in Current Folder into New Folder" = "현재 폴더의 모든 항목을 새로운 폴더로 모으기";
 "Collect Performance Diagnostics" = "성능 진단 수집";
 "Collect Selected Items into New Folder" = "선택한 항목을 새로운 폴더로 모으기";
 "Collecting Diagnostics" = "진단 수집 중";
+"Collection Name" = "모음 이름";
 "Collection runs for 60 seconds: reproduce the slowdown or high CPU use meanwhile. You can close Settings while it runs." = "수집은 60초 동안 진행됩니다. 그동안 느려짐이나 높은 CPU 사용을 재현하세요. 수집 중에는 설정을 닫아도 됩니다.";
 "Color %lld" = "색상 %lld";
 "Color Mode" = "화면 모드";
@@ -434,6 +440,10 @@
 "Delete Workspace?" = "작업 공간을 삭제하겠습니까?";
 "Descending" = "내림차순";
 "Desktop" = "데스크탑";
+"Desktop Files" = "데스크탑 파일";
+"Desktop Management" = "데스크탑 관리";
+"Desktop Search" = "데스크탑 검색";
+"Desktop access is required. Allow access in Privacy & Security, then retry." = "데스크탑 접근 권한이 필요합니다. 개인정보 보호 및 보안에서 접근을 허용한 후 다시 시도하십시오.";
 "Destination already exists" = "대상 이름이 이미 있음";
 "Destination already exists: %@" = "대상 이름이 이미 있음: %@";
 "Detached HEAD" = "분리된 HEAD";
@@ -449,6 +459,7 @@
 "Dimensions are preserved." = "치수가 유지됩니다.";
 "Direct Children Only" = "바로 아래 항목만";
 "Disable Shortcut" = "단축키 비활성화";
+"Dismiss" = "닫기";
 "Display" = "디스플레이";
 "Display Name (Optional)" = "표시 이름(선택 사항)";
 "Dissolve Folder" = "폴더 해체";
@@ -532,6 +543,7 @@
 "Excel Spreadsheet" = "Excel 스프레드시트";
 "Exclude" = "제외";
 "Exclude Group" = "그룹 제외";
+"Existing indexed text is retained when content extraction or offline results are turned off." = "콘텐츠 추출이나 오프라인 검색 결과를 꺼도 기존에 인덱싱된 텍스트는 유지됩니다.";
 "Expand All" = "모두 펼치기";
 "Expand Folder" = "폴더 펼치기";
 "Expanded" = "펼쳐짐";
@@ -661,6 +673,7 @@
 "Green" = "초록색";
 "Green: 1 day to less than 7 days" = "초록색: 1일 이상 7일 미만";
 "Grid Thumbnail Size" = "격자 썸네일 크기";
+"Group by Type" = "유형별로 그룹화";
 "Groups checked as expanded open that way in new windows, and changes also apply to the current window. Collapsing a group in the sidebar itself leaves this default alone." = "펼침으로 선택한 그룹은 새로운 윈도우에서 펼쳐진 상태로 열리며, 변경 사항은 현재 윈도우에도 적용됩니다. 사이드바에서 직접 그룹을 접어도 이 기본값은 바뀌지 않습니다.";
 "Height" = "높이";
 "Help" = "도움말";
@@ -701,7 +714,10 @@
 "Include" = "포함";
 "Include Hidden Items" = "숨김 항목 포함";
 "Include Subfolders" = "하위 폴더 포함";
+"Include hidden files" = "숨김 파일 포함";
 "Independent implementation for personal use. All features are available; there is no trial or subscription." = "개인용으로 만든 독립적인 구현입니다. 모든 기능을 사용할 수 있으며 체험 기간이나 구독이 없습니다.";
+"Index document contents" = "문서 내용 인덱싱";
+"Index document contents on external volumes" = "외장 볼륨의 문서 내용 인덱싱";
 "Index is not ready" = "인덱스가 준비되지 않음";
 "Index resource limit reached. Choose fewer watched folders." = "인덱스 리소스 한도에 도달했습니다. 감시할 폴더 수를 줄이십시오.";
 "Indexed: %lld" = "인덱싱됨: %lld";
@@ -739,6 +755,7 @@
 "Keep Open" = "열린 상태로 유지";
 "Keep Right" = "오른쪽 유지";
 "Keep Search on Top" = "검색 윈도우를 항상 위에 유지";
+"Keep desktop management and global search available after signing in." = "로그인 후 데스크탑 관리와 전역 검색을 사용할 수 있도록 합니다.";
 "Keep only files, or only folders." = "파일만 또는 폴더만 남깁니다.";
 "Keyboard Shortcuts" = "키보드 단축키";
 "Keyboard and Pointer" = "키보드 및 포인터";
@@ -776,6 +793,7 @@
 "Lists items carrying any checked tag; names have to match exactly." = "선택한 태그 중 하나라도 지정된 항목을 나열합니다. 이름이 정확히 일치해야 합니다.";
 "Live Preview" = "실시간 미리보기";
 "Live result" = "실시간 결과";
+"Loading Desktop…" = "데스크탑 불러오는 중…";
 "Loading Search Index…" = "검색 인덱스 로드 중…";
 "Local" = "로컬 버전";
 "Local status · submodule contents not scanned" = "로컬 상태 · 하위 모듈 내용은 스캔하지 않음";
@@ -790,6 +808,7 @@
 "Make Alias" = "가상본 만들기";
 "Manage Bookmarks" = "책갈피 관리";
 "Manage Bookmarks…" = "책갈피 관리…";
+"Manage Desktop Files with Wumi" = "Wumi로 데스크탑 파일 관리";
 "Manage Workspaces…" = "작업 공간 관리…";
 "Manual Saving (Static)" = "수동 저장(정적)";
 "Markdown" = "Markdown";
@@ -810,6 +829,7 @@
 "Middle" = "가운데";
 "Middle Left" = "왼쪽 가운데";
 "Middle Right" = "오른쪽 가운데";
+"Miji Search" = "Miji 검색";
 "Minimize" = "최소화";
 "Missing" = "파일 없음";
 "Missing and future dates have no color." = "날짜가 없거나 미래 날짜인 경우 색상이 표시되지 않습니다.";
@@ -838,6 +858,8 @@
 "Move the pointer, or files you are dragging, to the position chosen below to open Floating Files. When off, the menu bar icon and the keyboard shortcut still open it." = "포인터나 드래그 중인 파일을 아래에서 선택한 위치로 이동하면 플로팅 파일이 열립니다. 끄더라도 메뉴 막대 아이콘과 키보드 단축키로 열 수 있습니다.";
 "Move to" = "이동";
 "Move to %@" = "‘%@’(으)로 이동";
+"Move to Collection" = "모음으로 이동";
+"Move to Display: %@" = "디스플레이로 이동: %@";
 "Move to More" = "‘더 보기’로 이동";
 "Move to Trash" = "휴지통으로 이동";
 "Move to “%@”" = "‘%@’(으)로 이동";
@@ -852,6 +874,7 @@
 "Music" = "음악";
 "NOT is evaluated first, then OR, then AND. Add parentheses whenever you mix them." = "NOT이 가장 먼저 평가되고, 그다음 OR, 마지막으로 AND가 평가됩니다. 섞어서 사용할 때는 괄호를 추가하십시오.";
 "Name" = "이름";
+"Name, pinyin, document text and OCR share one local index across Wumi, the desktop and Floating Files." = "Wumi, 데스크탑, 플로팅 파일이 이름, 병음, 문서 본문 및 OCR 검색에 하나의 로컬 색인을 공유합니다.";
 "Names that differ only in letter case" = "대소문자만 다른 이름";
 "Names that start with Invoice and end in four digits, created this year." = "올해 생성되었으며 이름이 Invoice로 시작하고 네 자리 숫자로 끝나는 항목.";
 "Navigate" = "탐색";
@@ -860,6 +883,7 @@
 "New" = "새로 만들기";
 "New Bookmark Folder" = "새로운 책갈피 폴더";
 "New Bookmark Folder…" = "새로운 책갈피 폴더…";
+"New Collection" = "새로운 모음";
 "New Extension" = "새로운 확장자";
 "New File" = "새로운 파일";
 "New File Templates" = "새로운 파일 템플릿";
@@ -868,6 +892,7 @@
 "New Folder Sync Task" = "새로운 폴더 동기화 작업";
 "New Subfolder" = "새 하위 폴더";
 "New Tab" = "새로운 탭";
+"New Text File" = "새로운 텍스트 파일";
 "New Window" = "새로운 윈도우";
 "New extension" = "새로운 확장자";
 "New files from this template start as an empty document of this type." = "이 템플릿으로 만든 새로운 파일은 이 유형의 빈 문서로 시작됩니다.";
@@ -923,6 +948,7 @@
 "OK" = "확인";
 "Off" = "끔";
 "Office NAS" = "사무실 NAS";
+"Offline" = "오프라인";
 "Older entries were dropped after the log reached 512 errors." = "로그가 512개 오류에 도달하여 이전 항목이 삭제되었습니다.";
 "On" = "켬";
 "On Disk" = "디스크상 크기";
@@ -935,6 +961,7 @@
 "One folder per line as an absolute path; ~ stands for your home folder. Saving different folders rebuilds the index. Folders macOS does not let Wumi read are skipped." = "한 줄에 하나씩 폴더의 절대 경로를 입력하십시오. ~는 홈 폴더를 나타냅니다. 다른 폴더를 저장하면 인덱스가 다시 생성됩니다. macOS가 Wumi에 읽기를 허용하지 않은 폴더는 건너뜁니다.";
 "One of the selected folders is no longer available." = "선택한 폴더 중 하나를 더 이상 사용할 수 없습니다.";
 "One sync folder cannot be inside the other." = "한 동기화 폴더가 다른 폴더 안에 있을 수 없습니다.";
+"Online" = "온라인";
 "Only ZIP archives can be password-protected." = "ZIP 압축 파일만 암호로 보호할 수 있습니다.";
 "Only folders can be added to Common Paths." = "자주 사용하는 경로에는 폴더만 추가할 수 있습니다.";
 "Only in the left folder" = "왼쪽 폴더에만 있음";
@@ -952,7 +979,10 @@
 "Open Floating Files from the top of the screen or from the middle of its left or right edge." = "화면 상단이나 화면 왼쪽 또는 오른쪽 가장자리 중앙에서 플로팅 파일을 엽니다.";
 "Open Folder" = "폴더 열기";
 "Open Lightning Search with Command-F or by pressing D twice. Conditions picked from the menus and queries you type run on the same search engine." = "Command-F를 누르거나 D를 두 번 누르면 번개 검색이 열립니다. 메뉴에서 선택한 조건과 입력한 검색어는 같은 검색 엔진에서 실행됩니다.";
+"Open Lightning Search with a global shortcut" = "전역 단축키로 번개 검색 열기";
 "Open Location" = "위치 열기";
+"Open Login Items Settings" = "로그인 항목 설정 열기";
+"Open Miji Search with a global shortcut" = "전역 단축키로 Miji 검색 열기";
 "Open Privacy Settings" = "개인정보 보호 설정 열기";
 "Open With" = "다음으로 열기";
 "Open Workspace" = "작업 공간 열기";
@@ -967,6 +997,7 @@
 "Open in Terminal" = "터미널에서 열기";
 "Open in Wumi" = "Wumi에서 열기";
 "Open on hover" = "포인터를 올리면 열기";
+"Open with Default Application" = "기본 응용 프로그램으로 열기";
 "Opens after the pointer stays in the hot zone this long; dragging files in opens it right away." = "포인터가 이 시간 동안 트리거 영역에 머물면 열리고, 파일을 끌고 들어오면 바로 열립니다.";
 "Opens the shared folder right from the sidebar." = "사이드바에서 공유 폴더를 바로 엽니다.";
 "Operation error sound" = "작업 오류 사운드";
@@ -976,6 +1007,7 @@
 "Original" = "원본";
 "Original image size" = "원본 이미지 크기";
 "Originals are not moved." = "원본은 이동되지 않습니다.";
+"Other Files" = "기타 파일";
 "Other file types" = "기타 파일 유형";
 "Other…" = "기타…";
 "Output format" = "출력 포맷";
@@ -1104,6 +1136,8 @@
 "Recent Batch Renames" = "최근 일괄 이름 변경";
 "Recent Error Logs" = "최근 오류 로그";
 "Recent items could not be loaded." = "최근 항목을 로드할 수 없습니다.";
+"Recognize image text on external volumes" = "외장 볼륨의 이미지 텍스트 인식";
+"Recognize text in images (OCR)" = "이미지의 텍스트 인식(OCR)";
 "Reconnect" = "다시 연결";
 "Record Shortcut" = "단축키 기록";
 "Records CPU, memory, wakeups, disk activity and main-thread responsiveness for 60 seconds while you reproduce a slowdown. You can close Settings meanwhile. The report holds no file names, contents or clipboard data and is only saved where you choose." = "속도 저하를 재현하는 동안 60초간 CPU, 메모리, 깨우기 횟수, 디스크 활동 및 메인 스레드 응답성을 기록합니다. 그동안 설정을 닫아도 됩니다. 보고서에는 파일 이름, 내용 또는 클립보드 데이터가 포함되지 않으며 사용자가 선택한 위치에만 저장됩니다.";
@@ -1124,6 +1158,7 @@
 "Remove" = "제거";
 "Remove All Tags" = "모든 태그 제거";
 "Remove Background" = "배경 제거";
+"Remove Collection" = "모음 제거";
 "Remove Condition" = "조건 제거";
 "Remove Context Menu Action" = "단축 메뉴 동작 제거";
 "Remove Duplicate Tabs" = "중복된 탭 제거";
@@ -1143,6 +1178,7 @@
 "Removes duplicate single-pane folder tabs in all windows; pinned and multi-pane tabs stay." = "모든 윈도우에서 중복된 단일 패널 폴더 탭을 제거합니다. 고정된 탭과 다중 패널 탭은 유지됩니다.";
 "Rename" = "이름 변경";
 "Rename Bookmark" = "책갈피 이름 변경";
+"Rename Collection" = "모음 이름 변경";
 "Rename Tab" = "탭 이름 변경";
 "Rename To" = "새로운 이름";
 "Rename Workspace" = "작업 공간 이름 변경";
@@ -1181,6 +1217,7 @@
 "Retry" = "재시도";
 "Retry Failed Items" = "실패한 항목 재시도";
 "Return opens the item; clicking outside closes the preview." = "Return 키를 누르면 항목이 열리고, 바깥쪽을 클릭하면 미리보기가 닫힙니다.";
+"Return to reveal · Space to preview" = "Return으로 위치 표시 · Space로 미리 보기";
 "Reveal Outputs" = "출력 파일 보기";
 "Reveal in Finder" = "Finder에서 보기";
 "Reveal in Wumi" = "Wumi에서 보기";
@@ -1212,6 +1249,7 @@
 "Save the current tab from the Workspaces menu to create one." = "‘작업 공간’ 메뉴에서 현재 탭을 저장하여 생성하십시오.";
 "Saved batch rename presets or history could not be read." = "저장된 일괄 이름 변경 사전 설정 또는 기록을 읽을 수 없습니다.";
 "Saved folder sync tasks could not be read." = "저장된 폴더 동기화 작업을 읽을 수 없습니다.";
+"Saved. Restart your Mac to apply this folder application change." = "저장했습니다. 폴더의 기본 앱 변경 사항을 적용하려면 Mac을 재시동하세요.";
 "Saved. The index is being rebuilt." = "저장되었습니다. 인덱스를 다시 생성하는 중입니다.";
 "Saved. The new folders are used when the index starts." = "저장되었습니다. 인덱싱을 시작할 때 새로운 폴더가 사용됩니다.";
 "Saves a copy turned to the left and keeps the image metadata." = "왼쪽으로 회전한 사본을 저장하고 이미지 메타데이터를 유지합니다.";
@@ -1229,11 +1267,14 @@
 "Search File Names" = "파일 이름 검색";
 "Search Mode" = "검색 모드";
 "Search Results" = "검색 결과";
+"Search Scope" = "검색 범위";
 "Search Settings" = "설정 검색";
 "Search Text" = "검색 텍스트";
 "Search Unavailable: %@" = "검색할 수 없음: %@";
+"Search files" = "파일 검색";
 "Search index unavailable" = "검색 인덱스를 사용할 수 없음";
 "Search loaded files" = "로드된 파일 검색";
+"Search names, pinyin, documents and image text" = "이름, 병음, 문서 및 이미지 텍스트 검색";
 "Search tools or extensions" = "도구 또는 확장자 검색";
 "Searches a folder and everything inside it. infolder: and parent: work the same; ~ is your home folder." = "폴더와 그 안의 모든 항목을 검색합니다. infolder:와 parent:는 같은 방식으로 작동하며, ~는 홈 폴더입니다.";
 "Searching…" = "검색 중…";
@@ -1268,6 +1309,7 @@
 "Shades dates softly by how long ago they were. The date and time format itself does not change." = "날짜가 얼마나 지났는지에 따라 부드러운 색을 입힙니다. 날짜 및 시간 형식 자체는 변경되지 않습니다.";
 "Share" = "공유";
 "Shared Folder" = "공유 폴더";
+"Shared Local Index" = "공유 로컬 인덱스";
 "Share…" = "공유…";
 "Short forms of type:audio, type:video, type:doc and type:app." = "type:audio, type:video, type:doc, type:app의 줄임형입니다.";
 "Shortcut" = "단축키";
@@ -1284,6 +1326,7 @@
 "Show Side Preview" = "측면 미리보기 보기";
 "Show Stack Items" = "스택 항목 보기";
 "Show Subfolders" = "하위 폴더 보기";
+"Show System Desktop" = "시스템 데스크탑 표시";
 "Show and Arrange Sidebar Items" = "사이드바 항목 보기 및 정렬";
 "Show context menu icons" = "단축 메뉴 아이콘 보기";
 "Show copy and cut feedback" = "복사 및 오려두기 결과 보기";
@@ -1292,12 +1335,15 @@
 "Show floating ball buttons on hover" = "포인터를 올리면 플로팅 볼 버튼 보기";
 "Show in Locations only" = "‘위치’에만 표시";
 "Show in Wumi" = "Wumi에서 보기";
+"Show indexed files from offline volumes" = "오프라인 볼륨의 인덱싱된 파일 표시";
+"Show macOS Desktop" = "macOS 데스크탑 표시";
 "Show names with toolbar icons" = "도구 막대 아이콘과 함께 이름 보기";
 "Show sizes in decimal units (1 KB = 1,000 bytes) or binary units (1 KiB = 1,024 bytes)." = "크기를 10진수 단위(1KB = 1,000바이트) 또는 2진수 단위(1KiB = 1,024바이트)로 표시합니다.";
 "Show subfolders in %@" = "‘%@’의 하위 폴더 보기";
 "Show subfolders when pointing at a path arrow" = "경로 화살표를 가리키면 하위 폴더 보기";
 "Show the Floating Files icon in the menu bar" = "메뉴 막대에 플로팅 파일 아이콘 보기";
 "Show the full date and time instead of wording such as “5 minutes ago”. When off, dates from the last two hours appear as relative times." = "‘5분 전’과 같은 표현 대신 전체 날짜와 시간을 표시합니다. 끄면 지난 2시간 이내의 날짜는 상대적 시간으로 표시됩니다.";
+"Showing %lld results" = "결과 %lld개 표시";
 "Showing the first %lld results." = "처음 %lld개의 결과를 표시합니다.";
 "Shown in Toolbar" = "도구 막대에 표시";
 "Shows a floating ball in the middle of the right edge of every pane." = "모든 패널의 오른쪽 가장자리 중앙에 플로팅 볼을 표시합니다.";
@@ -1312,6 +1358,7 @@
 "Size Unavailable" = "크기를 확인할 수 없음";
 "Size Unit" = "크기 단위";
 "Skip" = "건너뛰기";
+"Skip development caches" = "개발 캐시 건너뛰기";
 "Skipped" = "건너뜀";
 "Skipped: %lld" = "건너뜀: %lld";
 "Slowest Main-Thread Response" = "가장 느린 메인 스레드 응답";
@@ -1344,6 +1391,7 @@
 "Standard" = "표준";
 "Standard (4:3)" = "표준(4:3)";
 "Start Collection" = "수집 시작";
+"Start Wumi at login" = "로그인 시 Wumi 실행";
 "Start: %lld" = "시작 번호: %lld";
 "Starts With" = "다음으로 시작";
 "Startup folder" = "시작 폴더";
@@ -1438,6 +1486,7 @@
 "The item is no longer available." = "항목을 더 이상 사용할 수 없습니다.";
 "The item is no longer available: %@" = "항목을 더 이상 사용할 수 없습니다: %@";
 "The left folder has the newer copy" = "왼쪽 폴더의 사본이 더 최신임";
+"The managed desktop uses a static background. System widgets, dynamic wallpaper and Finder Stacks are available on the system desktop." = "관리되는 데스크탑은 정적 배경을 사용합니다. 시스템 위젯, 동적 배경화면 및 Finder 스택은 시스템 데스크탑에서 사용할 수 있습니다.";
 "The operation contains %lld pages, exceeding the %lld-page limit." = "작업에 %lld페이지가 포함되어 %lld페이지 한도를 초과합니다.";
 "The operation could not be completed." = "작업을 완료할 수 없습니다.";
 "The path could not be opened." = "경로를 열 수 없습니다.";
@@ -1449,6 +1498,7 @@
 "The right folder has the newer copy" = "오른쪽 폴더의 사본이 더 최신임";
 "The search folder does not exist" = "검색 폴더가 존재하지 않음";
 "The search index could not be saved." = "검색 인덱스를 저장할 수 없습니다.";
+"The search shortcut is already in use. Choose another shortcut or open search from the menu bar." = "검색 단축키가 이미 사용 중입니다. 다른 단축키를 선택하거나 메뉴 막대에서 검색을 여십시오.";
 "The search updates as you edit. Hiding this panel keeps the conditions until you close the window." = "편집하는 동안 검색이 업데이트됩니다. 이 패널을 가려도 윈도우를 닫을 때까지 조건이 유지됩니다.";
 "The selected application is missing or is not a valid Mac app." = "선택한 응용 프로그램이 없거나 유효한 Mac 앱이 아닙니다.";
 "The selected bookmark no longer exists." = "선택한 책갈피가 더 이상 존재하지 않습니다.";
@@ -1481,6 +1531,7 @@
 "This archive is too large to extract safely." = "이 압축 파일은 너무 커서 안전하게 압축을 풀 수 없습니다.";
 "This bookmark is currently unavailable." = "이 책갈피는 현재 사용할 수 없습니다.";
 "This check is an estimate; System Settings shows the actual permission. Reopen Wumi after you change it." = "이 확인은 추정치입니다. 실제 권한은 ‘시스템 설정’에서 확인할 수 있습니다. 변경한 후에는 Wumi를 다시 여십시오.";
+"This device is offline. Its indexed information is still available." = "이 기기는 오프라인 상태입니다. 색인된 정보는 계속 사용할 수 있습니다.";
 "This edition runs with your macOS account permissions. macOS may ask before Wumi opens protected folders." = "이 에디션은 macOS 계정 권한으로 실행됩니다. Wumi가 보호된 폴더를 열기 전에 macOS가 확인을 요청할 수 있습니다.";
 "This folder contains too many items to sync safely." = "이 폴더에는 항목이 너무 많아 안전하게 동기화할 수 없습니다.";
 "This folder has no items to show." = "이 폴더에는 표시할 항목이 없습니다.";
@@ -1551,6 +1602,7 @@
 "Unpin Tab" = "탭 고정 해제";
 "Unstaged" = "스테이징 안 됨";
 "Unsupported environment variable: %@" = "지원되지 않는 환경 변수: %@";
+"Untitled.txt" = "무제.txt";
 "Untracked" = "추적 안 됨";
 "Up One Level" = "한 단계 위로";
 "Update Both" = "양쪽 업데이트";
@@ -1581,6 +1633,7 @@
 "Version" = "버전";
 "Video" = "비디오";
 "Video or audio files bigger than 500 MB." = "500MB보다 큰 비디오 또는 오디오 파일.";
+"Videos" = "비디오";
 "View" = "보기";
 "View Mode" = "보기 모드";
 "View Photo Location" = "사진 위치 보기";
@@ -1627,6 +1680,7 @@
 "Wrap phrases in straight double quotes, and write a filter's value right after its colon." = "구절은 직선 큰따옴표로 묶고, 필터 값은 콜론 바로 뒤에 쓰십시오.";
 "Write Only" = "쓰기 전용";
 "Wumi Default" = "Wumi 기본값";
+"Wumi Desktop" = "Wumi 데스크탑";
 "Wumi Help" = "Wumi 도움말";
 "Wumi never uploads file data and has no analytics, ads, accounts, or cloud sync." = "Wumi는 파일 데이터를 업로드하지 않으며 분석, 광고, 계정, 클라우드 동기화가 없습니다.";
 "X %lld, Y %lld, width %lld, height %lld" = "X %lld, Y %lld, 너비 %lld, 높이 %lld";
@@ -1650,6 +1704,7 @@
 "iCloud Drive" = "iCloud Drive";
 "macOS could not open this server address." = "macOS에서 이 서버 주소를 열 수 없습니다.";
 "macOS denied access to this folder. Turn on Full Disk Access for Wumi in Privacy & Security, then try again." = "macOS가 이 폴더에 대한 접근을 거부했습니다. ‘개인정보 보호 및 보안’에서 Wumi의 전체 디스크 접근 권한을 켠 다음 다시 시도하십시오.";
+"macOS did not confirm the default folder application change." = "macOS에서 폴더의 기본 앱 변경을 확인하지 못했습니다.";
 "macOS handles sign-in. Passwords are never saved by Wumi." = "로그인은 macOS가 처리합니다. Wumi는 암호를 저장하지 않습니다.";
 "macOS mounts FTP servers read-only: you can browse and copy files, not upload or change them." = "macOS는 FTP 서버를 읽기 전용으로 마운트합니다. 파일을 탐색하고 복사할 수는 있지만 업로드하거나 변경할 수는 없습니다.";
 "macOS shows the Trash to Wumi only after Full Disk Access is turned on." = "macOS는 전체 디스크 접근 권한이 켜진 후에만 Wumi에 휴지통을 보여 줍니다.";

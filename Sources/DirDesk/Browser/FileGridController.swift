@@ -19,15 +19,17 @@ final class FileGridController: NSViewController, NSCollectionViewDataSource, NS
     private var springTimer: Timer?
     private var springTarget: URL?
     private var sizesEnabled = true
+    var allowsSpringLoading = true
 
     /// Spring-loaded folders: hovering a drag over a folder opens it after the configured delay.
     private func scheduleSpringLoad(_ folder: FileItem) {
+        guard allowsSpringLoading else { return }
         guard springTarget != folder.url else { return }
         springTimer?.invalidate()
         springTarget = folder.url
         springTimer = Timer.scheduledTimer(withTimeInterval: AppModel.shared.preferences.dragHoverExpansionDelay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.springTarget == folder.url else { return }
+                guard let self, self.allowsSpringLoading, self.springTarget == folder.url else { return }
                 self.springTarget = nil
                 self.pane.open(folder.url)
             }

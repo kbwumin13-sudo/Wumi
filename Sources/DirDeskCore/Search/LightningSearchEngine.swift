@@ -29,8 +29,11 @@ public struct LightningRow: Hashable, Sendable {
     public var size: Int64?
     public var modified: Date?
     public var created: Date?
+    public var isOnline: Bool
+    public var matchedIn: String?
+    public var snippet: String?
 
-    public init(path: String, name: String, isDirectory: Bool, isPackage: Bool = false, size: Int64?, modified: Date?, created: Date?) {
+    public init(path: String, name: String, isDirectory: Bool, isPackage: Bool = false, size: Int64?, modified: Date?, created: Date?, isOnline: Bool = true, matchedIn: String? = nil, snippet: String? = nil) {
         self.path = path
         self.name = name
         self.isDirectory = isDirectory
@@ -38,6 +41,9 @@ public struct LightningRow: Hashable, Sendable {
         self.size = size
         self.modified = modified
         self.created = created
+        self.isOnline = isOnline
+        self.matchedIn = matchedIn
+        self.snippet = snippet
     }
 
     public var url: URL { URL(fileURLWithPath: path, isDirectory: isDirectory) }

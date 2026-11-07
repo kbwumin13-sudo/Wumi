@@ -76,7 +76,7 @@ final class LightningSearchWindowController: NSWindowController, NSWindowDelegat
         let window = LightningSearchWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
                                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                            backing: .buffered, defer: false)
-        window.title = L("Lightning Search")
+        window.title = L("Advanced Search")
         window.minSize = NSSize(width: 780, height: 520)
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("DirDesk.LightningSearchWindow")

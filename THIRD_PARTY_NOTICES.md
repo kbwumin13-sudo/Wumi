@@ -4,7 +4,7 @@ Wumi is an independent implementation. Project code is licensed under the [MIT L
 
 ## 觅迹 / Miji
 
-The file-indexing implementation adapts file-system scanning and FSEvents patterns from [Miji](https://github.com/kbwumin13-sudo/miji), including the context lifetime pattern noted in `Sources/DirDeskCore/Search/LightningEventStream.swift`.
+Wumi embeds [Miji](https://github.com/kbwumin13-sudo/miji) Core and its on-demand `miji-extract` helper from the locally frozen worktree at HEAD `2b97bd2ec0aeab241d17c8352d99fff1ddac2ec5`, including uncommitted enhancements. Source, original license and Chinese maintenance notes are retained in `Vendor/Miji/`; per-file Core provenance is in `SOURCE_MANIFEST.json`. Wumi also adapts Miji's original search view, staged query model and keyboard handling in `Sources/DirDesk/Search/MijiSearch*.swift`. Wumi owns the shared index lifecycle and displays Miji's interface directly; a standalone Miji application is not required.
 
 MIT License
 
@@ -30,7 +30,7 @@ SOFTWARE.
 
 ## Oil Find
 
-The indexing work builds on the Miji / [Oil Find](https://github.com/oil-oil/oil-find) lineage. Oil Find's notice is retained below for this upstream work. Wumi's current package does not declare an Oil Find binary or SwiftPM dependency.
+MijiCore embeds the MIT [Oil Find](https://github.com/oil-oil/oil-find) name/pinyin core (v1.6.2, commit `0fdc2f3ebd4fb08a020358503d4401fab358b026`) with Miji's local C/Swift adaptations, including name deduplication. Source, original license and upstream notes are retained in `Vendor/Miji/Vendor/OilFind/`. These sources are statically linked into Wumi and its extraction helper; Oil Find Pro is not included.
 
 MIT License
 

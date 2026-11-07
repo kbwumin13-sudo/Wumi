@@ -137,7 +137,7 @@ enum MainMenuBuilder {
         main.addItem(submenu(L("Navigate"), [
             command(L("Edit Path"), .editPath),
             command(L("Search"), .search),
-            action(L("Lightning Search"), #selector(AppDelegate.lightningSearchAction(_:)), target: delegate),
+            action(L("Advanced Search"), #selector(AppDelegate.advancedSearchAction(_:)), target: delegate),
             .separator(),
             command(L("Back"), .navigateBack),
             command(L("Forward"), .navigateForward),

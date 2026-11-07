@@ -442,7 +442,7 @@ private struct ToolbarRowContent: View {
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(app.preferences.usesColoredToolbarIcons ? ToolbarGlyph.blue : Color.primary)
                 if expanded {
-                    Text(L("Lightning Search")).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(L("Miji Search")).font(.system(size: 12)).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 4)
                     Text("⌘F").font(.system(size: 11)).foregroundStyle(.tertiary).fixedSize()
@@ -453,8 +453,8 @@ private struct ToolbarRowContent: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
-        .help(L("Lightning Search"))
-        .accessibilityLabel(L("Lightning Search"))
+        .help(L("Miji Search"))
+        .accessibilityLabel(L("Miji Search"))
         .accessibilityIdentifier("Toolbar.Search.Field")
     }
 }
@@ -525,22 +525,16 @@ enum ToolbarGlyph {
         case .folderSync:
             return Self.folderGlyph(tint: NSColor(srgbRed: 0.33, green: 0.62, blue: 0.53, alpha: 1), overlay: "arrow.triangle.2.circlepath")
         case .symbol(let name, let tint):
-            return Self.symbolImage(name, color: NSColor(tint), stretch: name == "arrow.up.arrow.down")
+            return Self.symbolImage(name, color: NSColor(tint))
         }
     }
 
-    /// An SF Symbol in `color`, fitted to the 17 pt square, or with `stretch` its cap-height band (the sort arrows)
-    /// stretched over the whole square.
-    static func symbolImage(_ name: String, color: NSColor, stretch: Bool = false) -> NSImage {
+    /// An SF Symbol in `color`, fitted to the 17 pt square without cropping its arrowheads or other overhangs.
+    static func symbolImage(_ name: String, color: NSColor) -> NSImage {
         let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular).applying(.init(paletteColors: [color]))
         let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(configuration)
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
             guard let symbol else { return false }
-            if stretch {
-                let source = symbol.alignmentRect.isEmpty ? NSRect(origin: .zero, size: symbol.size) : symbol.alignmentRect
-                symbol.draw(in: rect, from: source, operation: .sourceOver, fraction: 1)
-                return true
-            }
             // The whole symbol image: a symbol's alignment rectangle only spans the cap height, so drawing from it
             // would crop taller glyphs such as square.and.arrow.up.
             let scale = min(rect.width / symbol.size.width, rect.height / symbol.size.height)

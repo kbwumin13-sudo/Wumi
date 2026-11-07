@@ -2,6 +2,7 @@ import AppKit
 import CoreServices
 import DirDeskCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Binding into one workspace preference.
 @MainActor
@@ -47,7 +48,10 @@ struct SettingsPane: View {
 
 private struct GeneralSettings: View {
     @ObservedObject var app = AppModel.shared
-    @State private var isDefaultFolderApp = DefaultFolderApplication.isDirDeskDefault
+    @State private var isDefaultFolderApp = DefaultFolderApplication.isConfiguredDefault
+    @State private var changingDefault = false
+    @State private var defaultFolderError: String?
+    @State private var defaultFolderPending = DefaultFolderApplication.needsRestart
     @AppStorage(DefaultsKey.defaultSortKey) private var sortKey = FileSortKey.name.rawValue
     @AppStorage(DefaultsKey.defaultSortAscending) private var sortAscending = true
     @AppStorage(DefaultsKey.rememberFolderDisplay) private var remembersFolderDisplay = false
@@ -69,11 +73,26 @@ private struct GeneralSettings: View {
                     CheckRow(L("Use Wumi to open folders by default"),
                              detail: L("When macOS opens a folder with its default app, Wumi opens it instead. Some “Show in Finder” actions still use Finder; turning this off gives folders back to the previous app."),
                              isOn: Binding(get: { isDefaultFolderApp }, set: { value in
-                                 DefaultFolderApplication.set(enabled: value)
-                                 isDefaultFolderApp = DefaultFolderApplication.isDirDeskDefault
+                                 changingDefault = true
+                                 defaultFolderError = nil
+                                 DefaultFolderApplication.set(enabled: value) { error in
+                                     changingDefault = false
+                                     isDefaultFolderApp = DefaultFolderApplication.isConfiguredDefault
+                                     defaultFolderPending = DefaultFolderApplication.needsRestart
+                                     defaultFolderError = error
+                                 }
                              }))
+                    .disabled(changingDefault)
+                    .accessibilityIdentifier("Settings.DefaultFolderApplication")
+                    if let defaultFolderError {
+                        Text(defaultFolderError).font(.system(size: 11)).foregroundStyle(.red)
+                    } else if defaultFolderPending {
+                        Text(L("Saved. Restart your Mac to apply this folder application change."))
+                            .font(.system(size: 11)).foregroundStyle(.orange)
+                    }
                 }
             }
+            IntegrationSettings()
             SettingsCard(L("Browsing")) {
                 RowStack {
                     startupRow
@@ -175,23 +194,41 @@ private struct GeneralSettings: View {
 }
 
 /// Default handler for public.folder (Launch Services), with the previous handler restored when turned off.
+@MainActor
 enum DefaultFolderApplication {
     static let previousKey = "dirdesk-previous-folder-handler-v1"
 
     static var isDirDeskDefault: Bool {
-        let handler = LSCopyDefaultRoleHandlerForContentType("public.folder" as CFString, .viewer)?.takeRetainedValue() as String?
+        let handler = LSCopyDefaultRoleHandlerForContentType("public.folder" as CFString, .all)?.takeRetainedValue() as String?
         return handler?.caseInsensitiveCompare(Bundle.main.bundleIdentifier ?? "") == .orderedSame
     }
+    static var isConfiguredDefault: Bool { FolderDefaultCompatibility.requested ?? isDirDeskDefault }
+    static var needsRestart: Bool { isConfiguredDefault != isDirDeskDefault }
 
-    static func set(enabled: Bool) {
-        guard let bundleID = Bundle.main.bundleIdentifier else { return }
-        if enabled {
-            let current = LSCopyDefaultRoleHandlerForContentType("public.folder" as CFString, .viewer)?.takeRetainedValue() as String?
-            if let current, current != bundleID { UserDefaults.standard.set(current, forKey: previousKey) }
-            LSSetDefaultRoleHandlerForContentType("public.folder" as CFString, .viewer, bundleID as CFString)
-        } else {
-            let previous = UserDefaults.standard.string(forKey: previousKey) ?? "com.apple.finder"
-            LSSetDefaultRoleHandlerForContentType("public.folder" as CFString, .viewer, previous as CFString)
+    static func set(enabled: Bool, completion: @escaping (String?) -> Void = { _ in }) {
+        guard let bundleID = Bundle.main.bundleIdentifier else { completion(L("The operation could not be completed.")); return }
+        let previous = LSCopyDefaultRoleHandlerForContentType("public.folder" as CFString, .all)?.takeRetainedValue() as String?
+        let restoredID = UserDefaults.standard.string(forKey: previousKey) ?? "com.apple.finder"
+        let desired = enabled ? Bundle.main.bundleURL :
+            (NSWorkspace.shared.urlForApplication(withBundleIdentifier: restoredID)
+             ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"))
+        guard let desired else { completion(L("The operation could not be completed.")); return }
+        let expectedID = Bundle(url: desired)?.bundleIdentifier ?? (enabled ? bundleID : restoredID)
+        NSWorkspace.shared.setDefaultApplication(at: desired, toOpen: .folder) { error in
+            Task { @MainActor in
+                if let error, !FolderDefaultCompatibility.isUnsupported(error) { completion(error.localizedDescription); return }
+                let actualID = LSCopyDefaultRoleHandlerForContentType("public.folder" as CFString, .all)?.takeRetainedValue() as String?
+                if error != nil || actualID?.caseInsensitiveCompare(expectedID) != .orderedSame {
+                    if let problem = FolderDefaultCompatibility.set(enabled: enabled, bundleID: bundleID,
+                                                                    previousHandler: previous, restoreHandler: expectedID) {
+                        completion(problem); return
+                    }
+                } else {
+                    FolderDefaultCompatibility.noteRequest(enabled)
+                }
+                if enabled, let previous, previous != bundleID { UserDefaults.standard.set(previous, forKey: previousKey) }
+                completion(nil)
+            }
         }
     }
 }
@@ -852,7 +889,7 @@ enum ShortcutTitles {
         case .reopenClosedTab: return L("Reopen Closed Tab")
         case .editPath: return L("Edit Path")
         case .search: return L("Search")
-        case .globalQuickSearch: return L("Lightning Search")
+        case .globalQuickSearch: return L("Miji Search")
         case .navigateBack: return L("Back")
         case .navigateForward: return L("Forward")
         case .navigateUp: return L("Up One Level")

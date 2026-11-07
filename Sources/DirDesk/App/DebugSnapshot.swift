@@ -16,8 +16,27 @@ enum DebugSnapshot {
                 appDelegate.activeController?.activePane.open(URL(fileURLWithPath: folder))
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                if defaults.string(forKey: "DirDeskSnapshotAction") == "windowLifetime" {
+                    DebugWindowLifetimeChecks.run(output: URL(fileURLWithPath: directory))
+                    return
+                }
                 if defaults.string(forKey: "DirDeskSnapshotAction") == "performance" {
                     DebugPerformanceRun.run(delegate: appDelegate, output: URL(fileURLWithPath: directory))
+                    return
+                }
+                if defaults.string(forKey: "DirDeskSnapshotAction") == "integration" {
+                    DebugIntegrationRun.run(output: URL(fileURLWithPath: directory))
+                    return
+                }
+                if defaults.string(forKey: "DirDeskSnapshotAction") == "mijiAcceptance" {
+                    DebugMijiRun.run(output: URL(fileURLWithPath: directory))
+                    return
+                }
+                if defaults.string(forKey: "DirDeskSnapshotAction") == "desktopAcceptance" {
+                    Task { @MainActor in
+                        await DebugDesktopRun.run(output: URL(fileURLWithPath: directory))
+                        NSApp.terminate(nil)
+                    }
                     return
                 }
                 if let action = defaults.string(forKey: "DirDeskSnapshotAction") { perform(action) }
@@ -144,6 +163,8 @@ enum DebugSnapshot {
             FloatingFilesController.shared.show()
         case "lightning":
             appDelegate.showLightningSearch(scope: nil)
+        case "globalSearch":
+            GlobalSearchController.shared.show()
         case "floatingSettings":
             // The Floating Files settings sheet on a window of its own, for rendering.
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 540), styleMask: [.titled], backing: .buffered, defer: false)

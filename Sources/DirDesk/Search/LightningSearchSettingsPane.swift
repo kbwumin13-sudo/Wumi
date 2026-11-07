@@ -1,5 +1,6 @@
 import AppKit
 import DirDeskCore
+import MijiCore
 import SwiftUI
 
 /// Settings › Lightning Search, laid out like the original: one card with the shortcut note, the watched and
@@ -15,10 +16,12 @@ struct LightningSearchSettingsPane: View {
     /// Laid out like the original's page: a filled card whose rows sit on an inner dark panel.
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L("Lightning Search"))
+            Text(L("Miji Search"))
                 .font(.system(size: 13, weight: .bold))
                 .accessibilityAddTraits(.isHeader)
             RowStack(rowPadding: 12) {
+                GlobalSearchShortcutSettings()
+                MijiIndexSettings()
                 Text(L("Open Lightning Search with Command-F or by pressing D twice. Conditions picked from the menus and queries you type run on the same search engine."))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
@@ -72,6 +75,7 @@ struct LightningSearchSettingsPane: View {
                 loaded = true
             }
             service.refreshFullDiskAccess()
+            service.refreshRoots()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             service.refreshFullDiskAccess()
@@ -150,5 +154,41 @@ struct LightningSearchSettingsPane: View {
             notice = nil
             error = L("Enter valid absolute folder paths, one per line.")
         }
+    }
+}
+
+private struct MijiIndexSettings: View {
+    @ObservedObject private var service = LightningSearchService.shared
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("Shared Local Index")).font(.system(size: 13, weight: .semibold))
+            Toggle(L("Index document contents"), isOn: preference(\.documents))
+            Toggle(L("Recognize text in images (OCR)"), isOn: preference(\.images))
+            Toggle(L("Include hidden files"), isOn: preference(\.includeHidden))
+            Toggle(L("Skip development caches"), isOn: preference(\.excludeDevelopmentCaches))
+            Toggle(L("Automatically index external volumes"), isOn: preference(\.autoAddExternal))
+            Toggle(L("Index document contents on external volumes"), isOn: preference(\.externalDocuments))
+            Toggle(L("Recognize image text on external volumes"), isOn: preference(\.externalImages))
+            Toggle(L("Show indexed files from offline volumes"), isOn: preference(\.retainOffline))
+            ForEach(service.roots) { root in
+                HStack(spacing: 8) {
+                    Toggle(isOn: Binding(get: { root.enabled }, set: { service.setRootEnabled(id: root.id, enabled: $0) })) {
+                        Text(root.name.isEmpty ? root.path : root.name).lineLimit(1)
+                    }
+                    Text(root.isOnline ? L("Online") : L("Offline")).font(.caption).foregroundStyle(.secondary)
+                    Text(root.path).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                }
+            }
+            Text(L("Existing indexed text is retained when content extraction or offline results are turned off."))
+                .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .disabled(LightningSearchService.isReadOnly)
+    }
+    private func preference(_ key: WritableKeyPath<IndexingPreferences, Bool>) -> Binding<Bool> {
+        Binding(get: { service.indexingPreferences[keyPath: key] }, set: { value in
+            var preferences = service.indexingPreferences
+            preferences[keyPath: key] = value
+            service.updateIndexingPreferences(preferences)
+        })
     }
 }

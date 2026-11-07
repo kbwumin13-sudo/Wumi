@@ -265,7 +265,7 @@ final class LightningResultsCoordinator: NSObject, NSTableViewDataSource, NSTabl
         case .path:
             let cell = textCell(tableView, identifier: identifier, withImage: false)
             let folder = (item.path as NSString).deletingLastPathComponent
-            cell.textField?.stringValue = folder
+            cell.textField?.stringValue = item.isOnline ? folder : L("Offline") + " · " + folder
             cell.toolTip = folder
             return cell
         case .size:
@@ -326,7 +326,7 @@ final class LightningResultsCoordinator: NSObject, NSTableViewDataSource, NSTabl
     }
 
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-        rows.indices.contains(row) ? rows[row].url as NSURL : nil
+        rows.indices.contains(row) && rows[row].isOnline ? rows[row].url as NSURL : nil
     }
 
     func tableView(_ tableView: NSTableView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
@@ -417,6 +417,10 @@ final class LightningResultsCoordinator: NSObject, NSTableViewDataSource, NSTabl
         menu.addItem(LightningMenuItem(L("Send to File Transit"), symbol: "shippingbox") { model.sendToFileTransit(targets) })
         menu.addItem(.separator())
         menu.addItem(LightningMenuItem(L("Move to Trash"), symbol: "trash", key: "\u{8}", modifiers: [.command]) { model.moveToTrash(targets) })
+        if !targets.allSatisfy(\.isOnline) {
+            menu.autoenablesItems = false
+            for item in menu.items where !item.isSeparatorItem && item.title != L("Copy Path") { item.isEnabled = false }
+        }
     }
 }
 
@@ -516,6 +520,7 @@ final class LightningIconCache {
 
     func image(for row: LightningRow, loaded: @escaping () -> Void) -> NSImage {
         let pathExtension = (row.name as NSString).pathExtension.lowercased()
+        if !row.isOnline { return row.isDirectory && !row.isPackage ? folderIcon : typeIcon(pathExtension, fallback: .data) }
         if row.isPackage {
             if let image = byPath[row.path] { return image }
             if !loading.contains(row.path) { loadIcon(row.path, loaded) }

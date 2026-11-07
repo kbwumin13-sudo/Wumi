@@ -121,6 +121,7 @@
 "AirDrop is unavailable." = "AirDrop ist nicht verfügbar.";
 "Alias" = "Alias";
 "Aliases Created" = "Aliasse erstellt";
+"All" = "Alle";
 "All Bookmarks" = "Alle Lesezeichen";
 "All Items" = "Alle Objekte";
 "All Subfiles of %@" = "Alle enthaltenen Dateien von %@";
@@ -176,6 +177,7 @@
 "Automatic sync is off" = "Automatische Synchronisierung ist aus";
 "Automatic sync runs while Wumi is open." = "Die automatische Synchronisierung läuft, solange Wumi geöffnet ist.";
 "Automatic sync skipped this task because some conflicts need a decision." = "Die automatische Synchronisierung hat diese Aufgabe übersprungen, weil über einige Konflikte entschieden werden muss.";
+"Automatically index external volumes" = "Externe Volumes automatisch indexieren";
 "Available Locally" = "Lokal verfügbar";
 "Available actions" = "Verfügbare Aktionen";
 "Available on this Mac" = "Auf diesem Mac verfügbar";
@@ -205,6 +207,7 @@
 "Bottom Right" = "Unten rechts";
 "Bring All to Front" = "Alle nach vorne bringen";
 "Browse the folders and items you bookmarked." = "Blättere durch die Ordner und Objekte in deinen Lesezeichen.";
+"Browse, preview and organize desktop files. Show the system desktop at any time from the menu bar." = "Dateien auf dem Schreibtisch durchsuchen, ansehen und organisieren. Der Systemschreibtisch lässt sich jederzeit über die Menüleiste anzeigen.";
 "Browsing" = "Navigation";
 "Building Search Index…" = "Suchindex wird erstellt …";
 "Building Search Index… %lld items" = "Suchindex wird erstellt … %lld Objekte";
@@ -285,16 +288,19 @@
 "Close Current Pane" = "Aktuellen Bereich schließen";
 "Close Floating Ball" = "Schwebekugel schließen";
 "Close Pane" = "Bereich schließen";
+"Close Search" = "Suche schließen";
 "Close Tab" = "Tab schließen";
 "Close Tabs to the Right" = "Tabs rechts schließen";
 "Code" = "Code";
 "Collapse All" = "Alle zuklappen";
+"Collapse Collection" = "Sammlung einklappen";
 "Collapse Folder" = "Ordner zuklappen";
 "Collapsed" = "Zugeklappt";
 "Collect All Items in Current Folder into New Folder" = "Alle Objekte im aktuellen Ordner in neuen Ordner legen";
 "Collect Performance Diagnostics" = "Leistungsdiagnose erfassen";
 "Collect Selected Items into New Folder" = "Ausgewählte Objekte in neuen Ordner legen";
 "Collecting Diagnostics" = "Diagnose wird erfasst";
+"Collection Name" = "Name der Sammlung";
 "Collection runs for 60 seconds: reproduce the slowdown or high CPU use meanwhile. You can close Settings while it runs." = "Die Erfassung dauert 60 Sekunden: Reproduziere währenddessen die Verlangsamung oder hohe CPU-Last. Du kannst die Einstellungen währenddessen schließen.";
 "Color %lld" = "Farbe %lld";
 "Color Mode" = "Farbmodus";
@@ -434,6 +440,10 @@
 "Delete Workspace?" = "Arbeitsumgebung löschen?";
 "Descending" = "Absteigend";
 "Desktop" = "Schreibtisch";
+"Desktop Files" = "Schreibtischdateien";
+"Desktop Management" = "Schreibtischverwaltung";
+"Desktop Search" = "Schreibtischsuche";
+"Desktop access is required. Allow access in Privacy & Security, then retry." = "Zugriff auf den Schreibtisch erforderlich. Erlauben Sie den Zugriff unter „Datenschutz & Sicherheit“ und versuchen Sie es erneut.";
 "Destination already exists" = "Ziel existiert bereits";
 "Destination already exists: %@" = "Ziel existiert bereits: %@";
 "Detached HEAD" = "Losgelöster HEAD";
@@ -449,6 +459,7 @@
 "Dimensions are preserved." = "Die Abmessungen bleiben erhalten.";
 "Direct Children Only" = "Nur direkt enthaltene Objekte";
 "Disable Shortcut" = "Kurzbefehl deaktivieren";
+"Dismiss" = "Schließen";
 "Display" = "Display";
 "Display Name (Optional)" = "Anzeigename (optional)";
 "Dissolve Folder" = "Ordner auflösen";
@@ -532,6 +543,7 @@
 "Excel Spreadsheet" = "Excel-Tabelle";
 "Exclude" = "Ausschließen";
 "Exclude Group" = "Gruppe ausschließen";
+"Existing indexed text is retained when content extraction or offline results are turned off." = "Bereits indexierter Text bleibt erhalten, wenn die Inhaltsextraktion oder Offline-Ergebnisse deaktiviert werden.";
 "Expand All" = "Alle aufklappen";
 "Expand Folder" = "Ordner aufklappen";
 "Expanded" = "Aufgeklappt";
@@ -661,6 +673,7 @@
 "Green" = "Grün";
 "Green: 1 day to less than 7 days" = "Grün: 1 Tag bis unter 7 Tage";
 "Grid Thumbnail Size" = "Miniaturgröße im Raster";
+"Group by Type" = "Nach Art gruppieren";
 "Groups checked as expanded open that way in new windows, and changes also apply to the current window. Collapsing a group in the sidebar itself leaves this default alone." = "Als aufgeklappt markierte Gruppen werden in neuen Fenstern aufgeklappt geöffnet, und Änderungen gelten auch für das aktuelle Fenster. Wenn du eine Gruppe direkt in der Seitenleiste zuklappst, bleibt diese Standardeinstellung unverändert.";
 "Height" = "Höhe";
 "Help" = "Hilfe";
@@ -701,7 +714,10 @@
 "Include" = "Einschließen";
 "Include Hidden Items" = "Versteckte Objekte einbeziehen";
 "Include Subfolders" = "Unterordner einbeziehen";
+"Include hidden files" = "Versteckte Dateien einschließen";
 "Independent implementation for personal use. All features are available; there is no trial or subscription." = "Unabhängige Umsetzung für den persönlichen Gebrauch. Alle Funktionen sind verfügbar; es gibt keine Testphase und kein Abonnement.";
+"Index document contents" = "Dokumentinhalte indexieren";
+"Index document contents on external volumes" = "Dokumentinhalte auf externen Volumes indexieren";
 "Index is not ready" = "Index ist nicht bereit";
 "Index resource limit reached. Choose fewer watched folders." = "Ressourcengrenze des Index erreicht. Wähle weniger überwachte Ordner.";
 "Indexed: %lld" = "Indexiert: %lld";
@@ -739,6 +755,7 @@
 "Keep Open" = "Geöffnet lassen";
 "Keep Right" = "Rechts behalten";
 "Keep Search on Top" = "Suche im Vordergrund halten";
+"Keep desktop management and global search available after signing in." = "Schreibtischverwaltung und globale Suche nach der Anmeldung verfügbar halten.";
 "Keep only files, or only folders." = "Nur Dateien oder nur Ordner behalten.";
 "Keyboard Shortcuts" = "Tastaturkurzbefehle";
 "Keyboard and Pointer" = "Tastatur und Zeiger";
@@ -776,6 +793,7 @@
 "Lists items carrying any checked tag; names have to match exactly." = "Listet Objekte mit einem der markierten Tags auf; die Namen müssen genau übereinstimmen.";
 "Live Preview" = "Live-Vorschau";
 "Live result" = "Live-Ergebnis";
+"Loading Desktop…" = "Schreibtisch wird geladen…";
 "Loading Search Index…" = "Suchindex wird geladen …";
 "Local" = "Lokal";
 "Local status · submodule contents not scanned" = "Lokaler Status · Inhalt von Submodulen nicht durchsucht";
@@ -790,6 +808,7 @@
 "Make Alias" = "Alias erzeugen";
 "Manage Bookmarks" = "Lesezeichen verwalten";
 "Manage Bookmarks…" = "Lesezeichen verwalten …";
+"Manage Desktop Files with Wumi" = "Schreibtischdateien mit Wumi verwalten";
 "Manage Workspaces…" = "Arbeitsumgebungen verwalten …";
 "Manual Saving (Static)" = "Manuell sichern (statisch)";
 "Markdown" = "Markdown";
@@ -810,6 +829,7 @@
 "Middle" = "Mitte";
 "Middle Left" = "Mitte links";
 "Middle Right" = "Mitte rechts";
+"Miji Search" = "Miji-Suche";
 "Minimize" = "Im Dock ablegen";
 "Missing" = "Fehlt";
 "Missing and future dates have no color." = "Fehlende und zukünftige Datumsangaben werden nicht eingefärbt.";
@@ -838,6 +858,8 @@
 "Move the pointer, or files you are dragging, to the position chosen below to open Floating Files. When off, the menu bar icon and the keyboard shortcut still open it." = "Bewege den Zeiger oder gezogene Dateien an die unten gewählte Position, um das Datei-Schwebefenster zu öffnen. Wenn diese Option aus ist, kannst du es weiterhin über das Symbol in der Menüleiste und den Tastaturkurzbefehl öffnen.";
 "Move to" = "Bewegen nach";
 "Move to %@" = "Nach „%@“ bewegen";
+"Move to Collection" = "In Sammlung verschieben";
+"Move to Display: %@" = "Auf Display verschieben: %@";
 "Move to More" = "Nach „Mehr“ bewegen";
 "Move to Trash" = "In den Papierkorb legen";
 "Move to “%@”" = "Nach „%@“ bewegen";
@@ -852,6 +874,7 @@
 "Music" = "Musik";
 "NOT is evaluated first, then OR, then AND. Add parentheses whenever you mix them." = "NOT wird zuerst ausgewertet, dann OR, dann AND. Setze Klammern, wenn du sie kombinierst.";
 "Name" = "Name";
+"Name, pinyin, document text and OCR share one local index across Wumi, the desktop and Floating Files." = "Wumi, der Schreibtisch und das Datei-Schwebefenster nutzen einen gemeinsamen lokalen Index für Namen, Pinyin, Dokumenttext und OCR.";
 "Names that differ only in letter case" = "Namen, die sich nur in der Groß-/Kleinschreibung unterscheiden";
 "Names that start with Invoice and end in four digits, created this year." = "Namen, die mit Invoice beginnen und auf vier Ziffern enden, in diesem Jahr erstellt.";
 "Navigate" = "Navigieren";
@@ -860,6 +883,7 @@
 "New" = "Neu";
 "New Bookmark Folder" = "Neuer Lesezeichenordner";
 "New Bookmark Folder…" = "Neuer Lesezeichenordner …";
+"New Collection" = "Neue Sammlung";
 "New Extension" = "Neues Suffix";
 "New File" = "Neue Datei";
 "New File Templates" = "Vorlagen für neue Dateien";
@@ -868,6 +892,7 @@
 "New Folder Sync Task" = "Neue Ordner-Sync-Aufgabe";
 "New Subfolder" = "Neuer Unterordner";
 "New Tab" = "Neuer Tab";
+"New Text File" = "Neue Textdatei";
 "New Window" = "Neues Fenster";
 "New extension" = "Neues Suffix";
 "New files from this template start as an empty document of this type." = "Neue Dateien aus dieser Vorlage beginnen als leeres Dokument dieses Typs.";
@@ -923,6 +948,7 @@
 "OK" = "OK";
 "Off" = "Aus";
 "Office NAS" = "Büro-NAS";
+"Offline" = "Offline";
 "Older entries were dropped after the log reached 512 errors." = "Ältere Einträge wurden verworfen, nachdem das Protokoll 512 Fehler erreicht hatte.";
 "On" = "Ein";
 "On Disk" = "Auf dem Volume";
@@ -935,6 +961,7 @@
 "One folder per line as an absolute path; ~ stands for your home folder. Saving different folders rebuilds the index. Folders macOS does not let Wumi read are skipped." = "Ein Ordner pro Zeile als absoluter Pfad; ~ steht für deinen Benutzerordner. Wenn du andere Ordner sicherst, wird der Index neu aufgebaut. Ordner, die Wumi laut macOS nicht lesen darf, werden übersprungen.";
 "One of the selected folders is no longer available." = "Einer der ausgewählten Ordner ist nicht mehr verfügbar.";
 "One sync folder cannot be inside the other." = "Ein Sync-Ordner darf nicht im anderen liegen.";
+"Online" = "Online";
 "Only ZIP archives can be password-protected." = "Nur ZIP-Archive können mit einem Passwort geschützt werden.";
 "Only folders can be added to Common Paths." = "Nur Ordner können zu den häufigen Pfaden hinzugefügt werden.";
 "Only in the left folder" = "Nur im linken Ordner";
@@ -952,7 +979,10 @@
 "Open Floating Files from the top of the screen or from the middle of its left or right edge." = "Öffne das Datei-Schwebefenster vom oberen Bildschirmrand oder von der Mitte des linken oder rechten Rands.";
 "Open Folder" = "Ordner öffnen";
 "Open Lightning Search with Command-F or by pressing D twice. Conditions picked from the menus and queries you type run on the same search engine." = "Öffne die Blitzsuche mit Befehl-F oder durch zweimaliges Drücken von D. Aus den Menüs gewählte Bedingungen und eingegebene Abfragen laufen über dieselbe Suchmaschine.";
+"Open Lightning Search with a global shortcut" = "Blitzsuche mit einem globalen Tastaturkurzbefehl öffnen";
 "Open Location" = "Ort öffnen";
+"Open Login Items Settings" = "Einstellungen für Anmeldeobjekte öffnen";
+"Open Miji Search with a global shortcut" = "Miji-Suche mit einem globalen Tastenkürzel öffnen";
 "Open Privacy Settings" = "Datenschutzeinstellungen öffnen";
 "Open With" = "Öffnen mit";
 "Open Workspace" = "Arbeitsumgebung öffnen";
@@ -967,6 +997,7 @@
 "Open in Terminal" = "Im Terminal öffnen";
 "Open in Wumi" = "In Wumi öffnen";
 "Open on hover" = "Beim Zeigen öffnen";
+"Open with Default Application" = "Mit Standard-App öffnen";
 "Opens after the pointer stays in the hot zone this long; dragging files in opens it right away." = "Öffnet, wenn der Zeiger so lange im Auslösebereich bleibt; beim Hineinziehen von Dateien sofort.";
 "Opens the shared folder right from the sidebar." = "Öffnet den freigegebenen Ordner direkt aus der Seitenleiste.";
 "Operation error sound" = "Ton bei Fehlern in Vorgängen";
@@ -976,6 +1007,7 @@
 "Original" = "Original";
 "Original image size" = "Originale Bildgröße";
 "Originals are not moved." = "Originale werden nicht bewegt.";
+"Other Files" = "Andere Dateien";
 "Other file types" = "Andere Dateitypen";
 "Other…" = "Andere …";
 "Output format" = "Ausgabeformat";
@@ -1104,6 +1136,8 @@
 "Recent Batch Renames" = "Letzte Stapelumbenennungen";
 "Recent Error Logs" = "Letzte Fehlerprotokolle";
 "Recent items could not be loaded." = "Zuletzt benutzte Objekte konnten nicht geladen werden.";
+"Recognize image text on external volumes" = "Bildtext auf externen Volumes erkennen";
+"Recognize text in images (OCR)" = "Text in Bildern erkennen (OCR)";
 "Reconnect" = "Erneut verbinden";
 "Record Shortcut" = "Kurzbefehl aufnehmen";
 "Records CPU, memory, wakeups, disk activity and main-thread responsiveness for 60 seconds while you reproduce a slowdown. You can close Settings meanwhile. The report holds no file names, contents or clipboard data and is only saved where you choose." = "Zeichnet 60 Sekunden lang CPU, Arbeitsspeicher, Aufweckvorgänge, Festplattenaktivität und Reaktionsfähigkeit des Hauptthreads auf, während du eine Verlangsamung nachstellst. Du kannst die Einstellungen währenddessen schließen. Der Bericht enthält keine Dateinamen, Inhalte oder Daten der Zwischenablage und wird nur an dem von dir gewählten Ort gesichert.";
@@ -1124,6 +1158,7 @@
 "Remove" = "Entfernen";
 "Remove All Tags" = "Alle Tags entfernen";
 "Remove Background" = "Hintergrund entfernen";
+"Remove Collection" = "Sammlung entfernen";
 "Remove Condition" = "Bedingung entfernen";
 "Remove Context Menu Action" = "Aktion aus Kontextmenü entfernen";
 "Remove Duplicate Tabs" = "Doppelte Tabs entfernen";
@@ -1143,6 +1178,7 @@
 "Removes duplicate single-pane folder tabs in all windows; pinned and multi-pane tabs stay." = "Entfernt doppelte Ordner-Tabs mit einem Bereich in allen Fenstern; angeheftete Tabs und Tabs mit mehreren Bereichen bleiben erhalten.";
 "Rename" = "Umbenennen";
 "Rename Bookmark" = "Lesezeichen umbenennen";
+"Rename Collection" = "Sammlung umbenennen";
 "Rename Tab" = "Tab umbenennen";
 "Rename To" = "Umbenennen in";
 "Rename Workspace" = "Arbeitsumgebung umbenennen";
@@ -1181,6 +1217,7 @@
 "Retry" = "Erneut versuchen";
 "Retry Failed Items" = "Fehlgeschlagene Objekte erneut versuchen";
 "Return opens the item; clicking outside closes the preview." = "Der Zeilenschalter öffnet das Objekt; ein Klick außerhalb schließt die Vorschau.";
+"Return to reveal · Space to preview" = "Return zum Anzeigen · Leertaste für Vorschau";
 "Reveal Outputs" = "Ausgabedateien zeigen";
 "Reveal in Finder" = "Im Finder zeigen";
 "Reveal in Wumi" = "In Wumi zeigen";
@@ -1212,6 +1249,7 @@
 "Save the current tab from the Workspaces menu to create one." = "Sichere den aktuellen Tab über das Menü „Arbeitsumgebungen“, um eine zu erstellen.";
 "Saved batch rename presets or history could not be read." = "Gesicherte Voreinstellungen oder der Verlauf der Stapelumbenennung konnten nicht gelesen werden.";
 "Saved folder sync tasks could not be read." = "Gesicherte Sync-Aufgaben für Ordner konnten nicht gelesen werden.";
+"Saved. Restart your Mac to apply this folder application change." = "Gespeichert. Starte deinen Mac neu, um diese Änderung der Ordner-App anzuwenden.";
 "Saved. The index is being rebuilt." = "Gesichert. Der Index wird neu aufgebaut.";
 "Saved. The new folders are used when the index starts." = "Gesichert. Die neuen Ordner werden beim Start der Indexierung verwendet.";
 "Saves a copy turned to the left and keeps the image metadata." = "Sichert eine nach links gedrehte Kopie und behält die Bildmetadaten bei.";
@@ -1229,11 +1267,14 @@
 "Search File Names" = "Dateinamen durchsuchen";
 "Search Mode" = "Suchmodus";
 "Search Results" = "Suchergebnisse";
+"Search Scope" = "Suchbereich";
 "Search Settings" = "Einstellungen durchsuchen";
 "Search Text" = "Suchtext";
 "Search Unavailable: %@" = "Suche nicht verfügbar: %@";
+"Search files" = "Dateien suchen";
 "Search index unavailable" = "Suchindex nicht verfügbar";
 "Search loaded files" = "Geladene Dateien durchsuchen";
+"Search names, pinyin, documents and image text" = "Namen, Pinyin, Dokument- und Bildtext suchen";
 "Search tools or extensions" = "Werkzeuge oder Erweiterungen suchen";
 "Searches a folder and everything inside it. infolder: and parent: work the same; ~ is your home folder." = "Durchsucht einen Ordner und alles darin. infolder: und parent: funktionieren gleich; ~ ist dein Benutzerordner.";
 "Searching…" = "Wird gesucht …";
@@ -1268,6 +1309,7 @@
 "Shades dates softly by how long ago they were. The date and time format itself does not change." = "Hinterlegt Datumsangaben dezent farbig, je nachdem, wie lange sie zurückliegen. Das Datums- und Uhrzeitformat selbst ändert sich nicht.";
 "Share" = "Teilen";
 "Shared Folder" = "Freigegebener Ordner";
+"Shared Local Index" = "Gemeinsamer lokaler Index";
 "Share…" = "Teilen …";
 "Short forms of type:audio, type:video, type:doc and type:app." = "Kurzformen von type:audio, type:video, type:doc und type:app.";
 "Shortcut" = "Kurzbefehl";
@@ -1284,6 +1326,7 @@
 "Show Side Preview" = "Seitliche Vorschau einblenden";
 "Show Stack Items" = "Stapelinhalt einblenden";
 "Show Subfolders" = "Unterordner anzeigen";
+"Show System Desktop" = "Systemschreibtisch anzeigen";
 "Show and Arrange Sidebar Items" = "Seitenleistenobjekte anzeigen und anordnen";
 "Show context menu icons" = "Symbole im Kontextmenü anzeigen";
 "Show copy and cut feedback" = "Rückmeldung zu Kopieren und Ausschneiden anzeigen";
@@ -1292,12 +1335,15 @@
 "Show floating ball buttons on hover" = "Tasten der Schwebekugel beim Zeigen einblenden";
 "Show in Locations only" = "Nur unter „Orte“ anzeigen";
 "Show in Wumi" = "In Wumi zeigen";
+"Show indexed files from offline volumes" = "Indexierte Dateien von Offline-Volumes anzeigen";
+"Show macOS Desktop" = "macOS-Schreibtisch anzeigen";
 "Show names with toolbar icons" = "Namen bei Symbolleistensymbolen anzeigen";
 "Show sizes in decimal units (1 KB = 1,000 bytes) or binary units (1 KiB = 1,024 bytes)." = "Größen in Dezimaleinheiten (1 KB = 1.000 Byte) oder Binäreinheiten (1 KiB = 1.024 Byte) anzeigen.";
 "Show subfolders in %@" = "Unterordner in „%@“ anzeigen";
 "Show subfolders when pointing at a path arrow" = "Unterordner beim Zeigen auf einen Pfadpfeil anzeigen";
 "Show the Floating Files icon in the menu bar" = "Symbol des Datei-Schwebefensters in der Menüleiste anzeigen";
 "Show the full date and time instead of wording such as “5 minutes ago”. When off, dates from the last two hours appear as relative times." = "Vollständiges Datum und Uhrzeit statt Formulierungen wie „vor 5 Minuten“ anzeigen. Wenn diese Option aus ist, erscheinen Zeitpunkte der letzten zwei Stunden relativ.";
+"Showing %lld results" = "%lld Ergebnisse angezeigt";
 "Showing the first %lld results." = "Die ersten %lld Treffer werden angezeigt.";
 "Shown in Toolbar" = "In der Symbolleiste angezeigt";
 "Shows a floating ball in the middle of the right edge of every pane." = "Zeigt eine Schwebekugel in der Mitte des rechten Rands jedes Bereichs.";
@@ -1312,6 +1358,7 @@
 "Size Unavailable" = "Größe nicht verfügbar";
 "Size Unit" = "Größeneinheit";
 "Skip" = "Überspringen";
+"Skip development caches" = "Entwicklungs-Caches überspringen";
 "Skipped" = "Übersprungen";
 "Skipped: %lld" = "Übersprungen: %lld";
 "Slowest Main-Thread Response" = "Langsamste Antwort des Hauptthreads";
@@ -1344,6 +1391,7 @@
 "Standard" = "Standard";
 "Standard (4:3)" = "Standard (4:3)";
 "Start Collection" = "Erfassung starten";
+"Start Wumi at login" = "Wumi bei der Anmeldung starten";
 "Start: %lld" = "Startwert: %lld";
 "Starts With" = "Beginnt mit";
 "Startup folder" = "Startordner";
@@ -1438,6 +1486,7 @@
 "The item is no longer available." = "Das Objekt ist nicht mehr verfügbar.";
 "The item is no longer available: %@" = "Das Objekt ist nicht mehr verfügbar: %@";
 "The left folder has the newer copy" = "Der linke Ordner enthält die neuere Version";
+"The managed desktop uses a static background. System widgets, dynamic wallpaper and Finder Stacks are available on the system desktop." = "Der verwaltete Schreibtisch verwendet einen statischen Hintergrund. Systemwidgets, dynamische Hintergrundbilder und Finder-Stapel sind auf dem Systemschreibtisch verfügbar.";
 "The operation contains %lld pages, exceeding the %lld-page limit." = "Der Vorgang umfasst %lld Seiten und überschreitet damit die Grenze von %lld Seiten.";
 "The operation could not be completed." = "Der Vorgang konnte nicht abgeschlossen werden.";
 "The path could not be opened." = "Der Pfad konnte nicht geöffnet werden.";
@@ -1449,6 +1498,7 @@
 "The right folder has the newer copy" = "Der rechte Ordner enthält die neuere Version";
 "The search folder does not exist" = "Der Suchordner existiert nicht";
 "The search index could not be saved." = "Der Suchindex konnte nicht gesichert werden.";
+"The search shortcut is already in use. Choose another shortcut or open search from the menu bar." = "Der Suchkurzbefehl wird bereits verwendet. Wählen Sie einen anderen oder öffnen Sie die Suche über die Menüleiste.";
 "The search updates as you edit. Hiding this panel keeps the conditions until you close the window." = "Die Suche wird beim Bearbeiten aktualisiert. Wenn du dieses Panel ausblendest, bleiben die Bedingungen erhalten, bis du das Fenster schließt.";
 "The selected application is missing or is not a valid Mac app." = "Die ausgewählte App fehlt oder ist keine gültige Mac-App.";
 "The selected bookmark no longer exists." = "Das ausgewählte Lesezeichen existiert nicht mehr.";
@@ -1481,6 +1531,7 @@
 "This archive is too large to extract safely." = "Dieses Archiv ist zu groß, um es sicher zu entpacken.";
 "This bookmark is currently unavailable." = "Dieses Lesezeichen ist zurzeit nicht verfügbar.";
 "This check is an estimate; System Settings shows the actual permission. Reopen Wumi after you change it." = "Diese Prüfung ist eine Schätzung; die tatsächliche Berechtigung zeigen die Systemeinstellungen. Öffne Wumi erneut, nachdem du sie geändert hast.";
+"This device is offline. Its indexed information is still available." = "Dieses Gerät ist offline. Seine indizierten Informationen sind weiterhin verfügbar.";
 "This edition runs with your macOS account permissions. macOS may ask before Wumi opens protected folders." = "Diese Edition läuft mit den Berechtigungen deines macOS-Benutzeraccounts. macOS fragt möglicherweise nach, bevor Wumi geschützte Ordner öffnet.";
 "This folder contains too many items to sync safely." = "Dieser Ordner enthält zu viele Objekte für eine sichere Synchronisierung.";
 "This folder has no items to show." = "Dieser Ordner enthält keine anzuzeigenden Objekte.";
@@ -1551,6 +1602,7 @@
 "Unpin Tab" = "Tab lösen";
 "Unstaged" = "Nicht vorgemerkt";
 "Unsupported environment variable: %@" = "Nicht unterstützte Umgebungsvariable: %@";
+"Untitled.txt" = "Ohne Titel.txt";
 "Untracked" = "Nicht versioniert";
 "Up One Level" = "Eine Ebene nach oben";
 "Update Both" = "Beide aktualisieren";
@@ -1581,6 +1633,7 @@
 "Version" = "Version";
 "Video" = "Video";
 "Video or audio files bigger than 500 MB." = "Video- oder Audiodateien über 500 MB.";
+"Videos" = "Videos";
 "View" = "Darstellung";
 "View Mode" = "Darstellung";
 "View Photo Location" = "Fotoort anzeigen";
@@ -1627,6 +1680,7 @@
 "Wrap phrases in straight double quotes, and write a filter's value right after its colon." = "Setze Wortgruppen in gerade doppelte Anführungszeichen und schreibe den Wert eines Filters direkt nach seinem Doppelpunkt.";
 "Write Only" = "Nur Schreiben";
 "Wumi Default" = "Wumi-Standard";
+"Wumi Desktop" = "Wumi-Schreibtisch";
 "Wumi Help" = "Wumi-Hilfe";
 "Wumi never uploads file data and has no analytics, ads, accounts, or cloud sync." = "Wumi lädt niemals Dateidaten hoch und hat keine Analysen, Werbung, Accounts oder Cloud-Synchronisierung.";
 "X %lld, Y %lld, width %lld, height %lld" = "X %lld, Y %lld, Breite %lld, Höhe %lld";
@@ -1650,6 +1704,7 @@
 "iCloud Drive" = "iCloud Drive";
 "macOS could not open this server address." = "macOS konnte diese Serveradresse nicht öffnen.";
 "macOS denied access to this folder. Turn on Full Disk Access for Wumi in Privacy & Security, then try again." = "macOS hat den Zugriff auf diesen Ordner verweigert. Aktiviere den Festplattenvollzugriff für Wumi unter „Datenschutz & Sicherheit“ und versuche es dann erneut.";
+"macOS did not confirm the default folder application change." = "macOS hat die Änderung der Standard-App für Ordner nicht bestätigt.";
 "macOS handles sign-in. Passwords are never saved by Wumi." = "macOS übernimmt die Anmeldung. Wumi speichert niemals Passwörter.";
 "macOS mounts FTP servers read-only: you can browse and copy files, not upload or change them." = "macOS bindet FTP-Server schreibgeschützt ein: Du kannst Dateien ansehen und kopieren, aber nicht hochladen oder ändern.";
 "macOS shows the Trash to Wumi only after Full Disk Access is turned on." = "macOS zeigt Wumi den Papierkorb erst, nachdem der Festplattenvollzugriff aktiviert wurde.";

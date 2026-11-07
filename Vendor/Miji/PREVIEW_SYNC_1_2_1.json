@@ -1,0 +1,38 @@
+{
+  "source_repository": "https://github.com/kbwumin13-sudo/miji",
+  "source_commit": "97b21e69eadeeae7e289c3e9b41214db6e2aaa92",
+  "source_version": "1.2.1",
+  "files": [
+    {
+      "source": "Sources/MijiApp/SearchPreviewPolicy.swift",
+      "source_sha256": "7ac4cd6c67db9de9238767e8a7660fc467438759ecbc5c63b9bd08a86248783f",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchPreviewPolicy.swift",
+      "adapted_sha256": "2358c9927e551c72dab84e0838853c0d40d44efee7831941acb8708b38e9a8ad"
+    },
+    {
+      "source": "Sources/MijiApp/AppModel.swift",
+      "source_sha256": "ae1715b0ff9d7af6baae3aa7cd5e5c095d9c4c7da1488c1c978dcbe20ffed8e6",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchModel.swift",
+      "adapted_sha256": "7c484f8ee40bcab7fb86dc4a76e459afd1a7d5e31b818f540d6d84328bc46234"
+    },
+    {
+      "source": "Sources/MijiApp/MainView.swift",
+      "source_sha256": "6f9060ad2744cca89a282b4dd884afa85938de83f9807841f1e154a46ff32778",
+      "adapted_path": "Sources/DirDesk/Search/MijiSearchView.swift",
+      "adapted_sha256": "ac84b3c7d4c20bc15853ac0697c817ee36a492438ec0ebc3fee8374dc21e84f2"
+    },
+    {
+      "source": "Sources/MijiApp/ResultPreviewPane.swift",
+      "source_sha256": "de59f062be33da3adf45def8fa3d1b1417d5743e8379b71c824f05b620552bbc",
+      "adapted_path": "Sources/DirDesk/Search/MijiResultPreviewPane.swift",
+      "adapted_sha256": "a1fff8b8c57633d62ab4e77fcdcaa76ed2eb024b46b308f8bc8f79b0257d91e5"
+    },
+    {
+      "source": "Sources/MijiApp/PreviewMedia.swift",
+      "source_sha256": "780bcf5b6b794a1281331d8373482c60055679c33cacfae28af4219334ce200c",
+      "adapted_path": "Sources/DirDesk/Search/MijiPreviewMedia.swift",
+      "adapted_sha256": "d187c6e806c2bf6aadd61c74c5f72eb5c768bf0db754857a566d70245aa89628"
+    }
+  ],
+  "note": "UI adaptation on delivered Wumi 1.2.4, followed by scoped Wumi preference handoff, root-list provenance, search invalidation and native-preview teardown fixes. Single index host retained; vendored scan statistics only observe existing content detachment to notify cached searches."
+}
