@@ -6,7 +6,7 @@ set -euo pipefail
 cd "${0:A:h}/.."
 
 CONFIG="${1:-release}"
-VERSION="${DIRDESK_VERSION:-1.2.6}"
+VERSION="${DIRDESK_VERSION:-1.2.7}"
 BUILD_NUMBER="${DIRDESK_BUILD:-$(date +%Y%m%d%H%M)}"
 
 swift build -c "$CONFIG" --product DirDesk

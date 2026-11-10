@@ -338,7 +338,7 @@ struct MijiSearchView: View {
                 Text(timing).monospacedDigit().foregroundStyle(.tertiary).padding(.leading, 4)
             }
         }
-        .help(expanded ? status.error ?? statusText : indexText)
+        .help(expanded ? status.error ?? (model.refreshing ? "正在后台更新搜索结果" : statusText) : indexText)
         .accessibilityElement(children: .ignore).accessibilityLabel(spoken)
     }
 

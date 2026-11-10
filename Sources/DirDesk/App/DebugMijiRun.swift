@@ -496,6 +496,7 @@ enum DebugMijiRun {
                 check("closed model stays idle after merged content invalidation", model.hits.isEmpty && !model.searching && model.previewText.isEmpty && model.previewPDF==nil)
                 model.query = "数学"
                 check("hidden model cancels search", !model.searching)
+                try await DebugMijiRefreshChecks.run(databaseURL: URL(fileURLWithPath: path), check: check)
                 check("collapsed panel height", MijiSearchModel.panelHeight(query: "", resultCount: 0) == 100)
                 check("expanded panel height", MijiSearchModel.panelHeight(query: "a", resultCount: 9) == 563)
                 let editor = NSTextView()
