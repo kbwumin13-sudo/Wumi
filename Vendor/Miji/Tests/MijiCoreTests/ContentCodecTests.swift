@@ -5,6 +5,25 @@ import CContentIndex
 @testable import MijiCore
 
 final class ContentCodecTests: XCTestCase {
+    func testFastContentReaderPreservesLegacyPayload() throws {
+        let raw=Data(#"{"text":"旧正文\nemoji 😀 / code","labels":["图片"],"pages":2,"warning":null}"#.utf8)
+        let restored=try ContentCodec.content(ContentCodec.unpack(ContentCodec.pack(raw)),decoder:JSONDecoder())
+        XCTAssertEqual(restored,try JSONDecoder().decode(ExtractedContent.self,from:raw))
+        XCTAssertNil(restored.pageRanges)
+    }
+
+    func testFastContentReaderFallsBackForPageMapAndUnknownFields() throws {
+        let content=ExtractedContent(text:"第一页\n第二页",labels:["原文"],pages:2,warning:"部分",
+                                    pageRanges:[.init(page:2,utf8Offset:10,utf8Length:9)])
+        let raw=try JSONEncoder().encode(content)
+        var object=try XCTUnwrap(JSONSerialization.jsonObject(with:raw) as? [String:Any])
+        object["futureMetadata"]=["ignored":true]
+        let extended=try JSONSerialization.data(withJSONObject:object)
+        let restored=try ContentCodec.content(ContentCodec.unpack(ContentCodec.pack(extended)),decoder:JSONDecoder())
+        XCTAssertEqual(restored,content)
+        XCTAssertEqual(restored.pageRanges?.first?.page,2)
+    }
+
     func testRoundTripAndRawFallback() throws {
         var state: UInt64 = 42
         let random = Data((0..<8192).map { _ -> UInt8 in

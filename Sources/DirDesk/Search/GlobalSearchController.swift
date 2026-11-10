@@ -139,7 +139,6 @@ final class GlobalSearchController: NSObject, ObservableObject, NSWindowDelegate
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.isMovableByWindowBackground = true
-        panel.appearance = NSAppearance(named: .darkAqua)
         panel.identifier = NSUserInterfaceItemIdentifier("Wumi.GlobalSearch")
         panel.delegate = self
         panel.model = model

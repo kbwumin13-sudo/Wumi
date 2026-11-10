@@ -38,10 +38,24 @@ enum DebugMijiRun {
                     return model.hits
                 }
                 check("Chinese filename", await search("数学分析").contains { $0.file.name == "数学分析笔记.md" })
+                let priorHit=model.hits.first!
+                let priorSnapshot=model.displayedSnapshot
                 model.query = "a different request"
-                check("debounce clears stale result actions", model.searching && model.hits.isEmpty && model.selectedID == nil)
+                check("debounce retains dimmed rows but gates stale actions", model.searching && !model.isCurrentResult(priorHit,snapshot:priorSnapshot) && model.selectedID == nil)
+                let staleBoard=NSPasteboard.withUniqueName()
+                staleBoard.setString("unchanged",forType:.string)
+                model.performFileAction(.copyPath,hit:priorHit,snapshot:priorSnapshot,pasteboard:staleBoard)
+                check("stale context callback cannot copy a previous path",staleBoard.string(forType:.string)=="unchanged")
+                staleBoard.releaseGlobally();model.message=nil
                 check("pinyin", await search("shuxue").contains { $0.file.name == "数学分析笔记.md" })
                 check("pinyin initials", await search("sxfx").contains { $0.file.name == "数学分析笔记.md" })
+                var firstBatchActionable=false
+                let phaseObserver=model.$searchPhase.sink { phase in
+                    if phase == .supplementing, let hit=model.hits.first, model.isCurrentResult(hit) { firstBatchActionable=true }
+                }
+                _ = await search("数学分析")
+                phaseObserver.cancel()
+                check("current first batch remains actionable during body search",firstBatchActionable)
                 model.scope = .name
                 check("name-only excludes body", await search("ORIGINAL_BODY_TOKEN").isEmpty)
                 model.scope = .content
@@ -75,6 +89,22 @@ enum DebugMijiRun {
                 for text in ["proof", "数学", "no-such-file-27913", "Wumi-note"] { model.query = text }
                 _ = await wait { !model.searching }
                 check("latest query owns results", model.hits.map(\.file.name) == ["Wumi-note.txt"])
+                check("complete results own current snapshot",model.currentSnapshot==model.displayedSnapshot && model.searchStatus.phase == .complete)
+                check("first and completed timings are distinct and ordered",model.firstBatchMilliseconds != nil && model.completedMilliseconds != nil && model.completedMilliseconds! >= model.firstBatchMilliseconds!)
+                let fresh=model.hits.first!
+                let freshSnapshot=model.displayedSnapshot
+                check("current readable file passes operation gate",model.fileOperationURL(for:fresh,action:.preview,snapshot:freshSnapshot)?.path==fresh.path)
+                model.context=URL(fileURLWithPath:fresh.path).deletingLastPathComponent()
+                model.currentFolderOnly=true
+                check("current folder participates in snapshot and token",!model.isCurrentResult(fresh,snapshot:freshSnapshot) && model.currentSnapshot?.currentFolderOnly==true && model.activeFilters.contains {$0.id == .currentFolder})
+                _ = await wait {!model.searching}
+                model.kind = .document;model.scope = .name;model.sort = .size
+                let savedQuery=model.query,savedPreview=model.previewMode,savedGrid=model.gridEnabled
+                model.resetInterfaceFilters()
+                check("reset keeps query and view preferences",model.query==savedQuery && model.previewMode==savedPreview && model.gridEnabled==savedGrid && model.activeFilters.isEmpty)
+                _ = await wait {!model.searching}
+                model.context=nil
+                _ = await wait {!model.searching}
                 var revealed: URL?
                 model.onReveal = { revealed = $0 }
                 model.revealSelected()
@@ -91,6 +121,12 @@ enum DebugMijiRun {
                 model.setPreviewVisible(false)
                 model.rootID = "offline"
                 check("offline results retained", await search("proof").map(\.file.name) == ["offline-proof.pdf"])
+                if let offline=model.selected {
+                    check("offline location names the volume",model.resultLocation(offline).short.contains("Wumi-Miji-Offline"))
+                    check("offline availability is explicit",model.resultAvailability(offline).state == .diskOffline)
+                    check("offline current path remains copyable",model.validateResult(offline,for:.copyPath))
+                    check("offline media operation is denied",model.fileOperationURL(for:offline,action:.preview)==nil)
+                }
                 revealed = nil
                 model.revealSelected()
                 check("offline reveal disabled", revealed == nil)
@@ -119,6 +155,29 @@ enum DebugMijiRun {
                 }
                 _ = await search("PAGE_MATCH_723")
                 check("PDF preview uses saved page map", await wait {model.previewPage==2} && model.previewPDF?.pageCount==2)
+                if let document=model.previewPDF,let page=document.page(at:1) {
+                    let window=NSWindow(contentRect:NSRect(x:2000,y:100,width:440,height:190),styleMask:[.borderless],backing:.buffered,defer:false)
+                    window.isReleasedWhenClosed=false
+                    var hosted:NSHostingView<MijiPDFDocumentPreview>?=NSHostingView(rootView:MijiPDFDocumentPreview(document:document,page:2,terms:["PAGE_MATCH_723"]))
+                    hosted?.sizingOptions=[];window.contentView=hosted;window.orderBack(nil)
+                    func pdfView(in view:NSView)->PDFView? {
+                        if let pdf=view as? PDFView {return pdf}
+                        return view.subviews.compactMap {pdfView(in:$0)}.first
+                    }
+                    @MainActor func matchVisible()->Bool {
+                        guard let hosted else {return false}
+                        hosted.layoutSubtreeIfNeeded()
+                        guard let pdf=pdfView(in:hosted),let selection=pdf.highlightedSelections?.first else {return false}
+                        let rect=pdf.convert(selection.bounds(for:page),from:page)
+                        return pdf.bounds.insetBy(dx:-1,dy:-1).contains(rect)
+                    }
+                    check("PDF match visible after initial compact viewport layout",await wait {matchVisible()})
+                    window.setContentSize(NSSize(width:588,height:190))
+                    check("PDF match stays visible after embedded viewport resize",await wait {matchVisible()})
+                    weak var releasedPDF=hosted.flatMap {pdfView(in:$0)}
+                    window.contentView=nil;hosted=nil;window.close()
+                    check("detached PDF clears document target",await wait {releasedPDF?.document == nil})
+                }
                 let offlineRoot=IndexedRoot(id:"preview-offline",path:"/Volumes/Offline",isOnline:false)
                 let offlineFile=FileRecord(id:9999,rootID:offlineRoot.id,relativePath:"pages.pdf",name:"pages.pdf",fileExtension:"pdf",kind:.document,size:1,modified:0)
                 let offlineResolution=MijiPreviewResolver.resolve(hit:SearchHit(file:offlineFile,root:offlineRoot),content:ExtractedContent(text:"前😀\n\nPAGE_MATCH_723",pages:4,pageRanges:[ContentPageRange(page:4,utf8Offset:"前😀\n\n".utf8.count,utf8Length:14)]),query:"PAGE_MATCH_723 -unrelated ext:pdf",cancelled:{false})

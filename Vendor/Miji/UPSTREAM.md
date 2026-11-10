@@ -111,3 +111,14 @@ Wumi 的本地键鼠事件接入已有 `setUserActive` 门控，输入停止 350
 原文件 Quick Look 预览以普通 `NSView` 容器承载 `QLPreviewView` 子视图，避免 SwiftUI 直接拆卸 Quick Look provider 时的激活生命周期断言。子视图关闭跟随显式 dismantle，关闭窗口后释放宿主与预览；不通过保留整棵搜索视图回避释放。
 
 宿主的 pending 与已安装状态均由同一 setupQueue 保持生命周期所有权。后继创建前完整关闭前任，迟到的已取消 MainActor 安装任务只向该队列排清理；退出同样在队列上接管并关闭，避免租约释放尚未完成就创建新宿主。
+
+
+## 内置觅迹 1.3 搜索同步（Wumi 1.2.6）
+
+来源为 Miji PR #2 的已批准 head 731345324b22ae1d383d62692428835827ca7e8e，普通 merge 39a086a1aba1ea3656e575578a91f9f9c60edca9 的 tree 相同。上游正式包源码为 13fe444c8dbb191f115471944fe4c49d00c4b3d9，到批准 head 仅评估文档变化。逐项来源、摘要和保留项见 SEARCH_SYNC_1_3_0.json；旧来源清单继续表示各自历史基线。
+
+本次定向同步有界正文候选、强正文/名称合并、请求快照与动作门禁、明确状态和系统外观。为使旧 Wumi 核心接上 1.3，另带入其 UTF-8/字形边界精确校验、locationTier 以及只读快速 JSON 读取器；遇到 pageRanges、未知字段等仍回退 JSONDecoder。ContentCodec 的 pack/unpack、持久格式和写入路径保留。
+
+Wumi 的当前目录计划、双只读查询连接、两秒通知合并、正文缓存失效、唯一索引宿主/lease、已有扫描/提取/调度/范围和高级搜索均保留。动作仍走 Wumi 原有打开、定位、Quick Look 和文件操作路由；在延后的菜单与媒体回调捕获请求快照。预览继续使用 Wumi 的 Quick Look 子容器并正常释放整棵 host，不能直接覆盖成独立 Miji 保留 panel 的实现。窄嵌入上下布局、800/1060 宽度及手动预览偏好保留。
+
+上游质量/性能结论不是 Wumi 实测。本项目测试与隔离 GUI 结果在本轮发布说明中单列；未启用语义实验，也不为升级重建生产索引。

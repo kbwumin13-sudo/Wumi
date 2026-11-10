@@ -1,0 +1,91 @@
+{
+  "source_repository": "https://github.com/kbwumin13-sudo/miji",
+  "approved_source_commit": "731345324b22ae1d383d62692428835827ca7e8e",
+  "merged_commit": "39a086a1aba1ea3656e575578a91f9f9c60edca9",
+  "package_source_commit": "13fe444c8dbb191f115471944fe4c49d00c4b3d9",
+  "source_baseline": "8be2fa1e7b97438a2137e0a77dfa13d42defcd78",
+  "wumi_base": "971e887200ad94d07a1785b849d4226edd4310d8",
+  "mappings": {
+    "query_core": {
+      "upstream": [
+        "Sources/MijiCore/SearchDatabase.swift",
+        "Sources/MijiCore/Models.swift",
+        "Sources/MijiCore/ContentCodec.swift",
+        "Sources/MijiCore/ContentRelevanceScorer.swift",
+        "Sources/MijiCore/SearchMetrics.swift",
+        "Sources/MijiCore/SearchResultMerger.swift"
+      ],
+      "local": [
+        "Vendor/Miji/Sources/MijiCore/SearchDatabase.swift",
+        "Vendor/Miji/Sources/MijiCore/Models.swift",
+        "Vendor/Miji/Sources/MijiCore/ContentCodec.swift",
+        "Vendor/Miji/Sources/MijiCore/ContentJSONReader.swift",
+        "Vendor/Miji/Sources/MijiCore/ContentRelevanceScorer.swift",
+        "Vendor/Miji/Sources/MijiCore/SearchMetrics.swift",
+        "Vendor/Miji/Sources/MijiCore/SearchResultMerger.swift"
+      ]
+    },
+    "presentation": {
+      "upstream": [
+        "Sources/MijiApp/AppModel.swift",
+        "Sources/MijiApp/MainView.swift",
+        "Sources/MijiApp/SearchAppearance.swift",
+        "Sources/MijiApp/ResultPreviewPane.swift",
+        "Sources/MijiApp/PreviewMedia.swift"
+      ],
+      "local": [
+        "Sources/DirDesk/Search/MijiSearchModel.swift",
+        "Sources/DirDesk/Search/MijiSearchPresentation.swift",
+        "Sources/DirDesk/Search/MijiSearchView.swift",
+        "Sources/DirDesk/Search/MijiSearchAppearance.swift",
+        "Sources/DirDesk/Search/MijiResultPreviewPane.swift",
+        "Sources/DirDesk/Search/MijiPreviewMedia.swift",
+        "Sources/DirDesk/Search/GlobalSearchController.swift"
+      ]
+    },
+    "regression": {
+      "upstream": [
+        "Tests/MijiCoreTests/SearchQualityTests.swift"
+      ],
+      "local": [
+        "Vendor/Miji/Tests/MijiCoreTests/SearchQualityTests.swift",
+        "Vendor/Miji/Tests/MijiCoreTests/ContentCodecTests.swift",
+        "Sources/DirDesk/App/DebugMijiRun.swift"
+      ]
+    }
+  },
+  "additional_read_dependencies": [
+    "UTF8/grapheme exact body verification and cancellation helpers from approved source",
+    "locationTier metadata ranking from approved source",
+    "ContentCodec.content and ContentJSONReader split into ContentJSONReader.swift; unknown fields/pageRanges fall back to JSONDecoder"
+  ],
+  "preserved": [
+    "ContentCodec pack/unpack envelope and stored payload schema",
+    "Wumi metadata and statistics/content-invalidation writer APIs",
+    "IndexService scanning/extraction/write/scheduling/scope behavior",
+    "one MijiIndexHost and DatabaseLease lifecycle",
+    "visibility gating, coalesced catalog/content refresh and content cache invalidation",
+    "current-folder plans and advanced search",
+    "Wumi file routers, keyboard/IME ownership, Quick Look child container and host release",
+    "PDF page map/code-line/media preview and manual preview modes",
+    "production index, configuration, session and user files"
+  ],
+  "source_hashes": {
+    "Sources/MijiCore/SearchDatabase.swift": "cca84ad9080964823223ab3fdea28613ff3f4acb4956aca7a700a7437e596870",
+    "Sources/MijiCore/Models.swift": "b8238b4900387915aae0bdd99a9ae7caea2b666acf183557e8ec74f3fd6cb77c",
+    "Sources/MijiCore/ContentCodec.swift": "c2d9b07a7f3560ee90ee6dffe5021fda693d8201d34f162bcd19aed5aab28e3c",
+    "Sources/MijiCore/ContentRelevanceScorer.swift": "22b8311510a880032cc5babdd9c1ca398f28accd10db4a8a79ead3017788b0ad",
+    "Sources/MijiCore/SearchMetrics.swift": "52d9cf25f7248280db0b314362cde080fba741f02437f1ed684ccdae06b99bc3",
+    "Sources/MijiCore/SearchResultMerger.swift": "2de712d147f166033240c6801e503f2c5421d8ba6a51b97f2ce3855ca2c86535",
+    "Sources/MijiApp/AppModel.swift": "4b02c50d16888518f96328e7ac1daa654f55fc92d9d093ac1323ae3eb4754977",
+    "Sources/MijiApp/MainView.swift": "aba7fca3b844a5db031e0233bb005f05db8a3b3ac944e3a336758bdb6b167067",
+    "Sources/MijiApp/SearchAppearance.swift": "d78f2afdb81968bedb5f2291e385ae947c33359da29a0b166ec21c97014d2393",
+    "Sources/MijiApp/ResultPreviewPane.swift": "e1b9e1c611e9ca85f78f7a7fa4d53e18781b7402e5ef020d8f96a2cf6cdab944",
+    "Sources/MijiApp/PreviewMedia.swift": "0651ba8be402ba4b6afd07ce0229ddce64047ff99d761431dddeb21a5eec9591",
+    "Tests/MijiCoreTests/SearchQualityTests.swift": "a0775e436cf78a1f517c43f6448e1a6d94ba77181314e3ed4dd06f774a64fc98"
+  },
+  "wumi_specific_presentation": [
+    "PDFView positions target selection after initial/final viewport layout and size changes; weak deferred callback; dismantle clears target and document",
+    "Grid previews run only for current displayed snapshot"
+  ]
+}
