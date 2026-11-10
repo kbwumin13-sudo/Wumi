@@ -50,7 +50,8 @@ private struct MijiSearchPlan {
             ($0.isExcluded ? "-" : "") + ($0.field == .text ? "" : $0.field.rawValue + ":") + quote($0.value)
         }.joined(separator: " ")
         return roots.compactMap { root in
-            guard root.enabled, options.rootID == nil || options.rootID == root.id else { return nil }
+            // Pausing indexing retains searchable rows; the folder boundary still applies.
+            guard options.rootID == nil || options.rootID == root.id else { return nil }
             let rootPath = URL(fileURLWithPath: root.path).standardizedFileURL.path
             let rootPrefix = rootPath == "/" ? "/" : rootPath + "/"
             var scoped = options
@@ -102,6 +103,7 @@ final class MijiSearchModel: ObservableObject {
         set { var value = service.indexingPreferences; value.retainOffline = !newValue; service.updateIndexingPreferences(value) }
     }
 
+    private let localPreviewURL: @Sendable (SearchHit) -> URL?
     private let service = LightningSearchService.shared
     private let searchQueue = DispatchQueue(label: "wumi.miji.native-search", qos: .userInitiated)
     private let contentQueue = DispatchQueue(label: "wumi.miji.native-content", qos: .utility)
@@ -149,7 +151,9 @@ final class MijiSearchModel: ObservableObject {
     private var supplementaryCache: (request: String, hits: [SearchHit], limited: Bool)?
     static let catalogRefreshInterval: TimeInterval = 2
 
-    init(context: URL? = nil, currentFolderOnly: Bool = false, onReveal: @escaping (URL) -> Void = { _ in }) {
+    init(context: URL? = nil, currentFolderOnly: Bool = false,
+         localPreviewURL: @escaping @Sendable (SearchHit) -> URL? = { MijiPreviewResolver.localURL(for:$0) }, onReveal: @escaping (URL) -> Void = { _ in }) {
+        self.localPreviewURL = localPreviewURL
         self.context = context
         self.currentFolderOnly = currentFolderOnly
         self.onReveal = onReveal
@@ -387,16 +391,16 @@ final class MijiSearchModel: ObservableObject {
                             var candidateOptions = plan.options
                             let previous = supplementary
                             repeat {
-                                var batchLimited = false
+                                var batchBudgetExhausted = false, batchTruncated = false
                                 let extra = try database.searchSupplementary(plan.query, options: candidateOptions, cancelled: { ticket.isCancelled }, onPartial: { partial in
                                     let result = Self.merge(nameHits, previous + partial.filter { plan.contains($0) }, query: typedQuery, options: options)
                                     DispatchQueue.main.async {
                                         self?.publish(result, ticket: ticket, elapsed: nil, finished: false, preserveResults: preserveResults)
                                     }
-                                }, onMetrics: { batchLimited = $0.budgetExhausted || $0.resultTruncated })
-                                limited = limited || batchLimited
+                                }, onMetrics: { batchBudgetExhausted = $0.budgetExhausted; batchTruncated = $0.resultTruncated })
                                 let scoped = extra.filter { plan.contains($0) }
-                                if batchLimited || scoped.count >= options.limit || extra.count < candidateOptions.limit {
+                                if batchBudgetExhausted || scoped.count >= options.limit || extra.count < candidateOptions.limit {
+                                    limited = limited || batchBudgetExhausted || batchTruncated
                                     supplementary += scoped.prefix(options.limit)
                                     break
                                 }
@@ -476,12 +480,13 @@ final class MijiSearchModel: ObservableObject {
         let ticket=MijiSearchTicket();previewTicket=ticket;previewLoading=true
         let query=query
         let reader=previewReader,url=engine.databaseURL
+        let resolveLocalURL=localPreviewURL
         previewQueue.async { [weak self] in
             guard !ticket.isCancelled else{return}
             let content=try? reader.open(url).storedContent(fileID:hit.id)
             var resolution=MijiPreviewResolver.resolve(hit:hit,content:content,query:query,cancelled:{ticket.isCancelled})
             guard !ticket.isCancelled else{return}
-            let localURL=MijiPreviewResolver.localURL(for:hit)
+            let localURL=resolveLocalURL(hit)
             if (hit.file.kind == .code || hit.file.fileExtension.lowercased()=="pdf"),let url=localURL,
                let signature=try? FileSignature.read(url),!signature.matches(hit.file) {
                 resolution.page=nil;resolution.line=nil
@@ -559,7 +564,12 @@ final class MijiSearchModel: ObservableObject {
         let state: MijiResultAvailabilityState
         let text: String?
         if !hit.root.isOnline { state = .diskOffline; text="磁盘「\(volume)」未连接 · 可查看已索引内容" }
-        else if MijiPreviewResolver.localURL(for:hit) == nil { state = .fileUnavailable; text="磁盘在线，但文件已移动、删除、未下载或无法读取" }
+        else if localPreviewURL(hit) == nil {
+            state = .fileUnavailable
+            text = FileManager.default.fileExists(atPath:hit.path)
+                ? "原文尚未下载或不可读取 · 仍可定位或打开原文件"
+                : "磁盘在线，但文件已移动、删除或无法访问"
+        }
         else if hit.file.contentState == "error" { state = .extractionFailed; text="内容提取失败 · 文件名仍可搜索" }
         else if selectedID == hit.id && !previewLoading && !previewText.isEmpty && hit.file.fileExtension.lowercased() == "pdf" && previewPDF == nil { state = .indexedOnly; text="原文不可预览 · 显示已索引内容" }
         else if contentMessage != nil { state = .partial; text="仅有部分已索引内容或位置受限" }
@@ -570,23 +580,30 @@ final class MijiSearchModel: ObservableObject {
         guard let current=currentSnapshot, displayedSnapshot == current,
               current == makeSnapshot(generation:generation),
               snapshot == nil || snapshot == current else { return false }
-        if let root=roots.first(where: { $0.id==hit.root.id }), (!root.enabled || root.path != hit.root.path) { return false }
+        if let root=roots.first(where: { $0.id==hit.root.id }), root.path != hit.root.path { return false }
         return hits.contains { $0.id == hit.id && $0.file.rootID == hit.file.rootID && $0.path == hit.path && $0.file.inode == hit.file.inode && $0.file.modified == hit.file.modified && $0.file.size == hit.file.size }
     }
     /// One gate for every keyboard, row, menu, Quick Look and preview action.
+    func canPerformFileAction(_ action: MijiFileAction, hit: SearchHit? = nil, snapshot: MijiSearchSnapshot? = nil) -> Bool {
+        guard let hit=hit ?? selected else {return false}
+        return operationFailure(hit,for:action,snapshot:snapshot) == nil
+    }
+    private func operationFailure(_ hit: SearchHit, for action: MijiFileAction, snapshot: MijiSearchSnapshot?) -> String? {
+        guard isCurrentResult(hit,snapshot:snapshot) else { return "搜索条件已变化，请等待当前结果返回后再操作。" }
+        if action == .copyPath { return nil }
+        let currentRoot=roots.first { $0.id == hit.root.id } ?? hit.root
+        guard currentRoot.isOnline else { return "请连接磁盘「\(Self.volumeName(currentRoot))」后再操作此文件。" }
+        // Reveal is metadata-only. Opening is an explicit request handled by
+        // Wumi's cloud-aware router; neither requires a preview download.
+        if action == .reveal || action == .revealInFinder || action == .open || action == .openAtLine {
+            return FileManager.default.fileExists(atPath:hit.path) ? nil : "文件已移动或删除：\(hit.file.name)。"
+        }
+        guard localPreviewURL(hit) != nil else { return "磁盘在线，但文件已移动、删除、尚未下载或无法读取：\(hit.file.name)。" }
+        return nil
+    }
     @discardableResult
     func validateResult(_ hit: SearchHit, for action: MijiFileAction, snapshot: MijiSearchSnapshot? = nil) -> Bool {
-        guard isCurrentResult(hit,snapshot:snapshot) else {
-            message="搜索条件已变化，请等待当前结果返回后再操作。"; return false
-        }
-        if action == .copyPath { return true }
-        let currentRoot=roots.first { $0.id == hit.root.id } ?? hit.root
-        guard currentRoot.isOnline else {
-            message="请连接磁盘「\(Self.volumeName(currentRoot))」后再操作此文件。"; return false
-        }
-        guard MijiPreviewResolver.localURL(for:hit) != nil else {
-            message="磁盘在线，但文件已移动、删除、尚未下载或无法读取：\(hit.file.name)。"; return false
-        }
+        if let failure=operationFailure(hit,for:action,snapshot:snapshot) { message=failure;return false }
         return true
     }
     func fileOperationURL(for hit: SearchHit, action: MijiFileAction, snapshot: MijiSearchSnapshot? = nil) -> URL? {

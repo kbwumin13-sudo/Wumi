@@ -243,11 +243,11 @@ struct MijiSearchView: View {
             .accessibilityAction { guard model.isCurrentResult(hit, snapshot: snapshot) else { return }; model.selectedID = hit.id; searchFocused = false; keyScope.focusResults() }
             .accessibilityAction(named: Text("打开文件")) { model.performFileAction(.open, hit: hit, snapshot: snapshot) }
             .contextMenu {
-                Button("打开") { model.selectedID = hit.id; model.performFileAction(.open, hit: hit, snapshot: snapshot) }.disabled(!hit.root.isOnline)
-                Button("在 Finder 中显示") { model.selectedID = hit.id; model.performFileAction(.revealInFinder, hit: hit, snapshot: snapshot) }.disabled(!hit.root.isOnline)
-                Button("快速查看") { model.selectedID = hit.id; model.performFileAction(.quickLook, hit: hit, snapshot: snapshot) }.disabled(!hit.root.isOnline)
+                Button("打开") { model.selectedID = hit.id; model.performFileAction(.open, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.open,hit:hit,snapshot:snapshot))
+                Button("在 Finder 中显示") { model.selectedID = hit.id; model.performFileAction(.revealInFinder, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.revealInFinder,hit:hit,snapshot:snapshot))
+                Button("快速查看") { model.selectedID = hit.id; model.performFileAction(.quickLook, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.quickLook,hit:hit,snapshot:snapshot))
                 Divider()
-                Button("复制文件") { model.selectedID = hit.id; model.performFileAction(.copyFile, hit: hit, snapshot: snapshot) }.disabled(!hit.root.isOnline)
+                Button("复制文件") { model.selectedID = hit.id; model.performFileAction(.copyFile, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.copyFile,hit:hit,snapshot:snapshot))
                 Button("复制路径") { model.selectedID = hit.id; model.performFileAction(.copyPath, hit: hit, snapshot: snapshot) }
                 Divider()
                 Button("在 Wumi 中定位") { model.performFileAction(.reveal, hit: hit, snapshot: snapshot) }
@@ -300,7 +300,7 @@ struct MijiSearchView: View {
                         .buttonStyle(MijiSearchIconButtonStyle()).help("切换列表／网格").accessibilityLabel("切换列表／网格")
                     previewMenu
                     Button { model.performFileAction(.quickLook) } label: { Image(systemName: "eye") }
-                        .buttonStyle(MijiSearchIconButtonStyle()).help("快速查看 · ⌘Y").accessibilityLabel("快速查看")
+                        .buttonStyle(MijiSearchIconButtonStyle()).help("快速查看 · ⌘Y").accessibilityLabel("快速查看").disabled(!model.canPerformFileAction(.quickLook))
                     helpButton
                 }
             } else {

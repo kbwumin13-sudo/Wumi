@@ -87,5 +87,10 @@
   "wumi_specific_presentation": [
     "PDFView positions target selection after initial/final viewport layout and size changes; weak deferred callback; dismantle clears target and document",
     "Grid previews run only for current displayed snapshot"
+  ],
+  "wumi_review_contract_fixes": [
+    "Index enabled controls scanning, not identity/eligibility of retained results including current-folder plans",
+    "Metadata reveal and explicit cloud-aware open require current snapshot, online root and existing path; local preview/playback/copy availability remains separate",
+    "Directory expansion stops for actual budget exhaustion, not ordinary top-K truncation; final batch determines limited state"
   ]
 }

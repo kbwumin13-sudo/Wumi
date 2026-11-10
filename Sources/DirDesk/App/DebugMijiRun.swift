@@ -282,6 +282,86 @@ enum DebugMijiRun {
                 check("serial shutdown releases installed handoff lease", replacing.engine==nil)
                 releasedSuccessor.shutdown()
                 let writer=try SearchDatabase(url:URL(fileURLWithPath:path))
+                // Review regressions use the actual model and explicit scratch catalog.
+                let localRoot=try writer.roots().first {$0.id=="local"}!
+                let pausedPath=URL(fileURLWithPath:localRoot.path).appendingPathComponent("paused-review")
+                try FileManager.default.createDirectory(at:pausedPath,withIntermediateDirectories:true)
+                let pausedRoot=IndexedRoot(id:"paused-review",path:pausedPath.path,enabled:false)
+                try writer.saveRoot(pausedRoot)
+                for name in ["paused-retained-a.txt","paused-retained-b.txt"] {
+                    let url=pausedPath.appendingPathComponent(name)
+                    try Data("PAUSED_BODY_TOKEN".utf8).write(to:url)
+                    try writer.upsertFiles([FileRecord(rootID:pausedRoot.id,relativePath:name,name:name,fileExtension:"txt",kind:.document,size:17,modified:1)],generation:1)
+                    let row=try writer.pendingFiles(rootID:pausedRoot.id).first!
+                    _ = try writer.completeContent(file:row,content:ExtractedContent(text:"PAUSED_BODY_TOKEN"))
+                }
+                try service.engine?.names.refresh(rootID:pausedRoot.id,relativePaths:[""],fullRescan:true)
+                service.catalogDidChange(contentChanged:true)
+                _ = await wait {model.roots.contains {$0.id==pausedRoot.id}}
+                model.rootID=pausedRoot.id;model.scope = .name;model.sort = .name;model.previewMode = .shown
+                _ = await search("paused-retained")
+                check("review paused root new query keeps retained rows",model.hits.count==2)
+                if let first=model.hits.first {
+                    check("review paused root current result is actionable",model.isCurrentResult(first) && model.validateResult(first,for:.open))
+                    model.moveSelection(1)
+                    check("review paused root keyboard selection moves",model.selectedID==model.hits.last?.id)
+                    let board=NSPasteboard.withUniqueName()
+                    model.performFileAction(.copyPath,pasteboard:board)
+                    check("review paused root copies current path",board.string(forType:.string)==model.selected?.path)
+                    board.releaseGlobally()
+                    check("review paused root preview loads indexed text",await wait {model.previewText.contains("PAUSED_BODY_TOKEN")})
+                } else {check("review paused root result fixture",false)}
+                model.context=URL(fileURLWithPath:pausedRoot.path);model.currentFolderOnly=true
+                let pausedScoped=await search("paused-retained")
+                check("review paused root current-folder query keeps retained rows",pausedScoped.count==2 && pausedScoped.allSatisfy {model.isCurrentResult($0)})
+                model.currentFolderOnly=false;model.context=nil
+                model.message=nil;model.previewMode = .hidden;model.rootID=nil;model.sort = .relevance
+                // A provider can expose a real metadata path while refusing local data,
+                // as SF_DATALESS/not-downloaded iCloud items do. No live cloud item is changed.
+                let cloud=MijiSearchModel(localPreviewURL:{_ in nil})
+                cloud.previewMode = .hidden;cloud.scope = .name;cloud.rootID="local";cloud.setSearchVisible(true);cloud.query="Wumi-note"
+                _ = await wait {!cloud.searching && !cloud.hits.isEmpty}
+                if let hit=cloud.selected {
+                    check("review placeholder fixture exists but has no local preview",FileManager.default.fileExists(atPath:hit.path) && cloud.resultAvailability(hit).state == .fileUnavailable)
+                    check("review placeholder metadata reveal allowed",cloud.canPerformFileAction(.reveal,hit:hit))
+                    check("review placeholder Finder reveal allowed",cloud.fileOperationURL(for:hit,action:.revealInFinder)?.path==hit.path)
+                    check("review placeholder explicit open allowed",cloud.canPerformFileAction(.open,hit:hit))
+                    var revealed:URL?
+                    cloud.onReveal={revealed=$0};cloud.revealSelected()
+                    check("review placeholder Command-R route reveals metadata",revealed?.path==hit.path)
+                    check("review placeholder preview playback and Quick Look stay blocked",!cloud.canPerformFileAction(.preview,hit:hit) && !cloud.canPerformFileAction(.quickLook,hit:hit) && !cloud.canPerformFileAction(.copyFile,hit:hit))
+                    do {
+                        let original=URL(fileURLWithPath:hit.path),moved=URL(fileURLWithPath:hit.path+".metadata-test")
+                        try FileManager.default.moveItem(at:original,to:moved)
+                        defer {try? FileManager.default.moveItem(at:moved,to:original)}
+                        check("review missing placeholder path blocks metadata actions",!cloud.canPerformFileAction(.reveal,hit:hit) && !cloud.canPerformFileAction(.open,hit:hit))
+                    }
+                    cloud.query="changed"
+                    check("review placeholder stale snapshot remains blocked",!cloud.canPerformFileAction(.reveal,hit:hit))
+                } else {check("review placeholder result fixture",false)}
+                cloud.setSearchVisible(false)
+                // The path: substring admits Other/Docs; only the absolute boundary
+                // distinguishes it from Docs. Older target must survive top-K expansion.
+                var scopedFiles:[FileRecord]=[]
+                for i in 0..<650 {
+                    scopedFiles.append(FileRecord(rootID:"local",relativePath:"Other/Docs/noise-\(i).txt",name:"noise-\(i).txt",fileExtension:"txt",kind:.document,size:1,modified:Double(1000+i)))
+                }
+                scopedFiles.append(FileRecord(rootID:"local",relativePath:"Docs/older-target.txt",name:"older-target.txt",fileExtension:"txt",kind:.document,size:1,modified:1))
+                try writer.upsertFiles(scopedFiles,generation:1)
+                for row in try writer.pendingFiles(rootID:"local",limit:1000) where row.name.hasPrefix("noise-") || row.name=="older-target.txt" {
+                    _ = try writer.completeContent(file:row,content:ExtractedContent(text:"SCOPED_BODY_REVIEW_TOKEN"))
+                }
+                try service.engine?.names.refresh(rootID:"local",relativePaths:[""],fullRescan:true)
+                service.catalogDidChange(contentChanged:true)
+                model.context=URL(fileURLWithPath:localRoot.path).appendingPathComponent("Docs");model.currentFolderOnly=true;model.sort = .modified
+                for queryScope in [SearchScope.content,.all] {
+                    model.scope=queryScope
+                    let scoped=await search("SCOPED_BODY_REVIEW_TOKEN")
+                    check("review \(queryScope) folder expansion survives 650 newer substring distractors",scoped.map(\.file.relativePath)==["Docs/older-target.txt"])
+                    check("review \(queryScope) expanded complete folder search is not budget-limited",!model.searchLimited)
+                }
+                model.currentFolderOnly=false;model.context=nil;model.sort = .relevance;model.scope = .all;model.message=nil
+                try writer.removeRoot(id:pausedRoot.id);service.catalogDidChange(contentChanged:true)
                 let refreshedFile=try writer.search("Wumi-note",options:SearchOptions(scope:.name)).first!.file
                 model.previewMode = .automatic;model.scope = .content;model.currentFolderOnly=false;model.rootID=nil;model.kind=nil
                 _ = await search("REFRESH_SEARCH_TOKEN")

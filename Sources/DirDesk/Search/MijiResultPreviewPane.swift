@@ -55,17 +55,16 @@ struct MijiResultPreviewPane: View {
             }
             HStack(spacing: 8) {
                 Button { model.performFileAction(.open, hit: hit, snapshot: snapshot) } label: { Text("打开").frame(minWidth: 44) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.borderedProminent).disabled(!model.canPerformFileAction(.open,hit:hit,snapshot:snapshot))
                 Button { model.performFileAction(.reveal, hit: hit, snapshot: snapshot) } label: { Label("定位", systemImage: "folder") }
-                    .help("在 Wumi 中定位")
+                    .help("在 Wumi 中定位").disabled(!model.canPerformFileAction(.reveal,hit:hit,snapshot:snapshot))
                 Button { model.performFileAction(.copyFile, hit: hit, snapshot: snapshot) } label: { Label("复制", systemImage: "doc.on.doc") }
-                    .help("复制文件").accessibilityLabel("复制文件")
+                    .help("复制文件").accessibilityLabel("复制文件").disabled(!model.canPerformFileAction(.copyFile,hit:hit,snapshot:snapshot))
                 Spacer(minLength: 0)
                 Button { model.performFileAction(.quickLook, hit: hit, snapshot: snapshot) } label: { Image(systemName: "eye") }
-                    .help("快速查看 · ⌘Y").accessibilityLabel("快速查看")
+                    .help("快速查看 · ⌘Y").accessibilityLabel("快速查看").disabled(!model.canPerformFileAction(.quickLook,hit:hit,snapshot:snapshot))
             }
             .buttonBorderShape(.capsule).controlSize(.regular)
-            .disabled(originalUnavailable || !model.isCurrentResult(hit))
             .help(availability.message ?? "打开或定位原文件，也可复制文件")
         }
     }
@@ -182,7 +181,7 @@ struct MijiResultPreviewPane: View {
                 Spacer(minLength: 0)
                 Image(nsImage: MijiFileIconCache.icon(hit)).resizable().scaledToFit().frame(width: 64, height: 64).opacity(0.8).accessibilityHidden(true)
                 Text("暂无可显示的预览").font(.system(size: 13, weight: .medium))
-                Text(hit.root.isOnline ? "可使用快速查看，或打开原文件。" : "重新连接磁盘后可查看原文件。").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(!hit.root.isOnline ? "重新连接磁盘后可查看原文件。" : model.canPerformFileAction(.quickLook,hit:hit,snapshot:snapshot) ? "可使用快速查看，或打开原文件。" : model.canPerformFileAction(.open,hit:hit,snapshot:snapshot) ? "可打开原文件，系统会按需获取内容。" : "请确认文件仍在此位置并可访问。").font(.system(size: 11)).foregroundStyle(.secondary)
                 if !hit.labels.isEmpty { Text(hit.labels).font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled).multilineTextAlignment(.center) }
                 Spacer(minLength: 0)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
