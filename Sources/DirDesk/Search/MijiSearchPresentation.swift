@@ -1,7 +1,7 @@
 import Foundation
 import MijiCore
 
-/// Every condition that affects the result set, plus a monotonic request generation.
+/// Query conditions and a monotonic input epoch; background executions share this identity.
 struct MijiSearchSnapshot: Equatable {
     let generation: UInt64
     let query: String
@@ -13,6 +13,7 @@ struct MijiSearchSnapshot: Equatable {
     let limit: Int
     let contextPath: String?
     let currentFolderOnly: Bool
+    let rootPaths: [String: String]
 }
 
 enum MijiSearchPhase: Equatable { case idle, searching, supplementing, complete, failed }
