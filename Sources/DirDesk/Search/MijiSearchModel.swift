@@ -190,8 +190,9 @@ final class MijiSearchModel: ObservableObject {
             let pathsChanged = self.rootPaths != paths
             self.rootPaths = paths
             self.roots = $0
-            if self.searchVisible, pathsChanged {
+            if pathsChanged {
                 // Mount identities are request conditions; invalidate before an A-B-A remount.
+                // Hidden sessions invalidate now; scheduleSearch defers actual work until shown.
                 self.scheduleSearch(preserveResults: true)
             }
         }.store(in: &subscriptions)
@@ -301,7 +302,7 @@ final class MijiSearchModel: ObservableObject {
 
     private func scheduleSearch(preserveResults: Bool = false, namesOnly: Bool = false) {
         let sameRequest = currentSnapshot == makeSnapshot(generation: generation)
-        let background = preserveResults && displayedSnapshot != nil && displayedSnapshot == currentSnapshot && sameRequest
+        let background = preserveResults && completedMilliseconds != nil && displayedSnapshot != nil && displayedSnapshot == currentSnapshot && sameRequest
         if previewQuery != query {previewTicket?.cancel();previewKey=nil}
         searchWork?.cancel(); searchWork = nil
         searchTicket?.cancel(); searching = false; refreshAfterSearch = false
@@ -321,6 +322,7 @@ final class MijiSearchModel: ObservableObject {
         }
         guard searchVisible, let engine = service.engine else {
             if !requestedVisible { hits=[]; selectedID=nil; displayedSnapshot=nil; searchPhase = .idle }
+            else if !windowVisible { resumeSearchWhenShown = true }
             return
         }
         let typedQuery = query
@@ -620,7 +622,16 @@ final class MijiSearchModel: ObservableObject {
         // Metadata only: never download a provider placeholder or enumerate a package.
         var info = stat()
         guard lstat(hit.path, &info) == 0 else { return "文件已移动或删除：\(hit.file.name)。" }
-        if info.st_mode & S_IFMT == S_IFREG, hit.file.inode != 0,
+        let mode = info.st_mode & S_IFMT
+        let documentPackage = hit.file.isDirectory != false && hit.file.kind == .document &&
+            FileKind.classify(extension: hit.file.fileExtension, isDirectory: true) == .document
+        let directory = hit.file.isDirectory ?? (hit.file.kind == .folder || hit.file.kind == .application)
+        let regular = !directory && !documentPackage && hit.file.kind != .other
+        if mode == S_IFLNK || (directory && mode != S_IFDIR) || (regular && mode != S_IFREG) {
+            return "文件类型已变化，请等待索引更新后再操作：\(hit.file.name)。"
+        }
+        // Document packages use a composite signature, not the directory's own inode.
+        if !(documentPackage && mode == S_IFDIR), hit.file.inode != 0,
            hit.file.inode != Int64(bitPattern: UInt64(info.st_ino)) {
             return "文件已替换，请等待索引更新后再操作：\(hit.file.name)。"
         }

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import DirDeskCore
 import MijiCore
 
@@ -79,6 +80,19 @@ enum DebugMijiRefreshChecks {
             try database.saveRoot(root); service.catalogDidChange()
             _ = await wait { !model.searching && model.roots.first { $0.id == root.id }?.path == root.path }
             check("root path A B A rejects first A callback", !model.isCurrentResult(hit, snapshot: old), "")
+            let hiddenSnapshot = model.displayedSnapshot
+            let hiddenHit = model.selected!
+            model.setWindowVisible(false)
+            try database.saveRoot(moved); service.refreshRoots()
+            _ = await wait { model.roots.first { $0.id == root.id }?.path == moved.path }
+            try database.saveRoot(root); service.refreshRoots()
+            _ = await wait { model.roots.first { $0.id == root.id }?.path == root.path }
+            model.setWindowVisible(true)
+            let resumedRoot = await wait { !model.searching && model.displayedSnapshot == model.currentSnapshot }
+            check("hidden root changes execute deferred request on show", resumedRoot && model.selected.map { model.isCurrentResult($0) } == true, "")
+            check("hidden root path A B A rejects first A menu", !model.isCurrentResult(hiddenHit, snapshot: hiddenSnapshot), "")
+            check("hidden root path A B A rejects first A media", model.fileOperationURL(for: hiddenHit, action: .preview, snapshot: hiddenSnapshot) == nil, "")
+            model.message = nil
 
             let url = URL(fileURLWithPath: root.path).appendingPathComponent("refresh-replacement.txt")
             try Data("original".utf8).write(to: url)
@@ -95,8 +109,32 @@ enum DebugMijiRefreshChecks {
             try FileManager.default.moveItem(at: replacement, to: url)
             check("same path replacement cannot open previous file identity", !model.canPerformFileAction(.open), "")
             try FileManager.default.removeItem(at: url)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+            check("file replaced by directory cannot cut or move", !model.canPerformFileAction(.cutReference) && !model.canPerformFileAction(.sendTo), "")
+            try FileManager.default.removeItem(at: url)
+            try FileManager.default.createSymbolicLink(at: url, withDestinationURL: URL(fileURLWithPath: root.path).appendingPathComponent("Wumi-note.txt"))
+            check("file replaced by symlink cannot open or copy", !model.canPerformFileAction(.open) && !model.canPerformFileAction(.copyReference), "")
+            try FileManager.default.removeItem(at: url)
             check("missing file cannot reveal previous row", !model.canPerformFileAction(.reveal), "")
         }
+
+        let resumed = MijiSearchModel()
+        var hidFirstBatch = false
+        let observer = resumed.$searchPhase.sink { phase in
+            if phase == .supplementing, !hidFirstBatch, !resumed.hits.isEmpty {
+                hidFirstBatch = true
+                resumed.setWindowVisible(false)
+            }
+        }
+        resumed.setSearchVisible(true)
+        // Drain the subscriptions' initial catalog publish before observing a user query.
+        try await Task.sleep(for: .milliseconds(2400))
+        resumed.query = "Wumi-note"
+        _ = await wait { hidFirstBatch }
+        resumed.setWindowVisible(true)
+        let completed = await wait { !resumed.searching && resumed.searchPhase == .complete }
+        check("unfinished foreground resume records completed timing", hidFirstBatch && completed && resumed.completedMilliseconds != nil && resumed.searchStatus.timing == .complete, "firstBatchCaptured=\(hidFirstBatch)")
+        observer.cancel(); resumed.setSearchVisible(false)
 
         for scope in [SearchScope.all, .content] {
             _ = try database.completeContent(file: file, content: ExtractedContent(text: "STABLE_REFRESH_TOKEN first version"))
