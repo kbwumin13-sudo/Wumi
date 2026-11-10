@@ -20,14 +20,13 @@ enum LightningSearchActions {
     static let cutMarkerType = NSPasteboard.PasteboardType("com.kbwumin13.dirdesk.cut")
 
     @MainActor
-    static func copy(_ urls: [URL]) {
-        let pasteboard = NSPasteboard.general
+    static func copy(_ urls: [URL], to pasteboard: NSPasteboard = .general) {
         pasteboard.clearContents()
         pasteboard.writeObjects(urls as [NSURL])
     }
 
     @MainActor
-    static func cut(_ urls: [URL]) {
+    static func cut(_ urls: [URL], to pasteboard: NSPasteboard = .general) {
         let items = urls.enumerated().map { offset, url -> NSPasteboardItem in
             let item = NSPasteboardItem()
             item.setString(url.absoluteString, forType: .fileURL)
@@ -36,7 +35,6 @@ enum LightningSearchActions {
             if offset == 0 { item.setString("true", forType: cutMarkerType) }
             return item
         }
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.writeObjects(items)
     }

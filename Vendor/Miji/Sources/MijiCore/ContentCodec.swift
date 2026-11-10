@@ -48,6 +48,16 @@ public enum ContentCodec {
         return result
     }
 
+    /// Cheap candidate/budget estimate from the existing envelope, never a replacement for unpack validation.
+    static func declaredRawBytes(_ header: Data) -> Int? {
+        let bytes = Array(header.prefix(16))
+        guard bytes.count == 16, Array(bytes[0..<4]) == magic, bytes[4] <= 1,
+              bytes[5..<8].allSatisfy({ $0 == 0 }) else { return nil }
+        var length: UInt64 = 0
+        for i in 0..<8 { length |= UInt64(bytes[8 + i]) << (8 * i) }
+        return length <= UInt64(maximumRawBytes) ? Int(length) : nil
+    }
+
     public static func unpack(_ packed: Data) throws -> Data {
         guard packed.count >= headerBytes else { throw ContentCodecError.invalidData }
         // Data slices need not have zero-based indices.

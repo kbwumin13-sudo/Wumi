@@ -38,10 +38,24 @@ enum DebugMijiRun {
                     return model.hits
                 }
                 check("Chinese filename", await search("数学分析").contains { $0.file.name == "数学分析笔记.md" })
+                let priorHit=model.hits.first!
+                let priorSnapshot=model.displayedSnapshot
                 model.query = "a different request"
-                check("debounce clears stale result actions", model.searching && model.hits.isEmpty && model.selectedID == nil)
+                check("debounce retains dimmed rows but gates stale actions", model.searching && !model.isCurrentResult(priorHit,snapshot:priorSnapshot) && model.selectedID == nil)
+                let staleBoard=NSPasteboard.withUniqueName()
+                staleBoard.setString("unchanged",forType:.string)
+                model.performFileAction(.copyPath,hit:priorHit,snapshot:priorSnapshot,pasteboard:staleBoard)
+                check("stale context callback cannot copy a previous path",staleBoard.string(forType:.string)=="unchanged")
+                staleBoard.releaseGlobally();model.message=nil
                 check("pinyin", await search("shuxue").contains { $0.file.name == "数学分析笔记.md" })
                 check("pinyin initials", await search("sxfx").contains { $0.file.name == "数学分析笔记.md" })
+                var firstBatchActionable=false
+                let phaseObserver=model.$searchPhase.sink { phase in
+                    if phase == .supplementing, let hit=model.hits.first, model.isCurrentResult(hit) { firstBatchActionable=true }
+                }
+                _ = await search("数学分析")
+                phaseObserver.cancel()
+                check("current first batch remains actionable during body search",firstBatchActionable)
                 model.scope = .name
                 check("name-only excludes body", await search("ORIGINAL_BODY_TOKEN").isEmpty)
                 model.scope = .content
@@ -75,6 +89,22 @@ enum DebugMijiRun {
                 for text in ["proof", "数学", "no-such-file-27913", "Wumi-note"] { model.query = text }
                 _ = await wait { !model.searching }
                 check("latest query owns results", model.hits.map(\.file.name) == ["Wumi-note.txt"])
+                check("complete results own current snapshot",model.currentSnapshot==model.displayedSnapshot && model.searchStatus.phase == .complete)
+                check("first and completed timings are distinct and ordered",model.firstBatchMilliseconds != nil && model.completedMilliseconds != nil && model.completedMilliseconds! >= model.firstBatchMilliseconds!)
+                let fresh=model.hits.first!
+                let freshSnapshot=model.displayedSnapshot
+                check("current readable file passes operation gate",model.fileOperationURL(for:fresh,action:.preview,snapshot:freshSnapshot)?.path==fresh.path)
+                model.context=URL(fileURLWithPath:fresh.path).deletingLastPathComponent()
+                model.currentFolderOnly=true
+                check("current folder participates in snapshot and token",!model.isCurrentResult(fresh,snapshot:freshSnapshot) && model.currentSnapshot?.currentFolderOnly==true && model.activeFilters.contains {$0.id == .currentFolder})
+                _ = await wait {!model.searching}
+                model.kind = .document;model.scope = .name;model.sort = .size
+                let savedQuery=model.query,savedPreview=model.previewMode,savedGrid=model.gridEnabled
+                model.resetInterfaceFilters()
+                check("reset keeps query and view preferences",model.query==savedQuery && model.previewMode==savedPreview && model.gridEnabled==savedGrid && model.activeFilters.isEmpty)
+                _ = await wait {!model.searching}
+                model.context=nil
+                _ = await wait {!model.searching}
                 var revealed: URL?
                 model.onReveal = { revealed = $0 }
                 model.revealSelected()
@@ -91,6 +121,12 @@ enum DebugMijiRun {
                 model.setPreviewVisible(false)
                 model.rootID = "offline"
                 check("offline results retained", await search("proof").map(\.file.name) == ["offline-proof.pdf"])
+                if let offline=model.selected {
+                    check("offline location names the volume",model.resultLocation(offline).short.contains("Wumi-Miji-Offline"))
+                    check("offline availability is explicit",model.resultAvailability(offline).state == .diskOffline)
+                    check("offline current path remains copyable",model.validateResult(offline,for:.copyPath))
+                    check("offline media operation is denied",model.fileOperationURL(for:offline,action:.preview)==nil)
+                }
                 revealed = nil
                 model.revealSelected()
                 check("offline reveal disabled", revealed == nil)
@@ -119,6 +155,29 @@ enum DebugMijiRun {
                 }
                 _ = await search("PAGE_MATCH_723")
                 check("PDF preview uses saved page map", await wait {model.previewPage==2} && model.previewPDF?.pageCount==2)
+                if let document=model.previewPDF,let page=document.page(at:1) {
+                    let window=NSWindow(contentRect:NSRect(x:2000,y:100,width:440,height:190),styleMask:[.borderless],backing:.buffered,defer:false)
+                    window.isReleasedWhenClosed=false
+                    var hosted:NSHostingView<MijiPDFDocumentPreview>?=NSHostingView(rootView:MijiPDFDocumentPreview(document:document,page:2,terms:["PAGE_MATCH_723"]))
+                    hosted?.sizingOptions=[];window.contentView=hosted;window.orderBack(nil)
+                    func pdfView(in view:NSView)->PDFView? {
+                        if let pdf=view as? PDFView {return pdf}
+                        return view.subviews.compactMap {pdfView(in:$0)}.first
+                    }
+                    @MainActor func matchVisible()->Bool {
+                        guard let hosted else {return false}
+                        hosted.layoutSubtreeIfNeeded()
+                        guard let pdf=pdfView(in:hosted),let selection=pdf.highlightedSelections?.first else {return false}
+                        let rect=pdf.convert(selection.bounds(for:page),from:page)
+                        return pdf.bounds.insetBy(dx:-1,dy:-1).contains(rect)
+                    }
+                    check("PDF match visible after initial compact viewport layout",await wait {matchVisible()})
+                    window.setContentSize(NSSize(width:588,height:190))
+                    check("PDF match stays visible after embedded viewport resize",await wait {matchVisible()})
+                    weak var releasedPDF=hosted.flatMap {pdfView(in:$0)}
+                    window.contentView=nil;hosted=nil;window.close()
+                    check("detached PDF clears document target",await wait {releasedPDF?.document == nil})
+                }
                 let offlineRoot=IndexedRoot(id:"preview-offline",path:"/Volumes/Offline",isOnline:false)
                 let offlineFile=FileRecord(id:9999,rootID:offlineRoot.id,relativePath:"pages.pdf",name:"pages.pdf",fileExtension:"pdf",kind:.document,size:1,modified:0)
                 let offlineResolution=MijiPreviewResolver.resolve(hit:SearchHit(file:offlineFile,root:offlineRoot),content:ExtractedContent(text:"前😀\n\nPAGE_MATCH_723",pages:4,pageRanges:[ContentPageRange(page:4,utf8Offset:"前😀\n\n".utf8.count,utf8Length:14)]),query:"PAGE_MATCH_723 -unrelated ext:pdf",cancelled:{false})
@@ -223,6 +282,118 @@ enum DebugMijiRun {
                 check("serial shutdown releases installed handoff lease", replacing.engine==nil)
                 releasedSuccessor.shutdown()
                 let writer=try SearchDatabase(url:URL(fileURLWithPath:path))
+                // Review regressions use the actual model and explicit scratch catalog.
+                let localRoot=try writer.roots().first {$0.id=="local"}!
+                let pausedPath=URL(fileURLWithPath:localRoot.path).appendingPathComponent("paused-review")
+                try FileManager.default.createDirectory(at:pausedPath,withIntermediateDirectories:true)
+                let pausedRoot=IndexedRoot(id:"paused-review",path:pausedPath.path,enabled:false)
+                try writer.saveRoot(pausedRoot)
+                for name in ["paused-retained-a.txt","paused-retained-b.txt"] {
+                    let url=pausedPath.appendingPathComponent(name)
+                    try Data("PAUSED_BODY_TOKEN".utf8).write(to:url)
+                    try writer.upsertFiles([FileRecord(rootID:pausedRoot.id,relativePath:name,name:name,fileExtension:"txt",kind:.document,size:17,modified:1)],generation:1)
+                    let row=try writer.pendingFiles(rootID:pausedRoot.id).first!
+                    _ = try writer.completeContent(file:row,content:ExtractedContent(text:"PAUSED_BODY_TOKEN"))
+                }
+                try service.engine?.names.refresh(rootID:pausedRoot.id,relativePaths:[""],fullRescan:true)
+                service.catalogDidChange(contentChanged:true)
+                _ = await wait {model.roots.contains {$0.id==pausedRoot.id}}
+                model.rootID=pausedRoot.id;model.scope = .name;model.sort = .name;model.previewMode = .shown
+                _ = await search("paused-retained")
+                check("review paused root new query keeps retained rows",model.hits.count==2)
+                if let first=model.hits.first {
+                    check("review paused root current result is actionable",model.isCurrentResult(first) && model.validateResult(first,for:.open))
+                    model.moveSelection(1)
+                    check("review paused root keyboard selection moves",model.selectedID==model.hits.last?.id)
+                    let board=NSPasteboard.withUniqueName()
+                    model.performFileAction(.copyPath,pasteboard:board)
+                    check("review paused root copies current path",board.string(forType:.string)==model.selected?.path)
+                    board.releaseGlobally()
+                    check("review paused root preview loads indexed text",await wait {model.previewText.contains("PAUSED_BODY_TOKEN")})
+                } else {check("review paused root result fixture",false)}
+                model.context=URL(fileURLWithPath:pausedRoot.path);model.currentFolderOnly=true
+                let pausedScoped=await search("paused-retained")
+                check("review paused root current-folder query keeps retained rows",pausedScoped.count==2 && pausedScoped.allSatisfy {model.isCurrentResult($0)})
+                model.currentFolderOnly=false;model.context=nil
+                model.message=nil;model.previewMode = .hidden;model.rootID=nil;model.sort = .relevance
+                // A provider can expose a real metadata path while refusing local data,
+                // as SF_DATALESS/not-downloaded iCloud items do. No live cloud item is changed.
+                let cloud=MijiSearchModel(localPreviewURL:{_ in nil})
+                cloud.previewMode = .hidden;cloud.scope = .name;cloud.rootID="local";cloud.setSearchVisible(true);cloud.query="Wumi-note"
+                _ = await wait {!cloud.searching && !cloud.hits.isEmpty}
+                if let hit=cloud.selected {
+                    check("review placeholder fixture exists but has no local preview",FileManager.default.fileExists(atPath:hit.path) && cloud.resultAvailability(hit).state == .fileUnavailable)
+                    check("review placeholder metadata reveal allowed",cloud.canPerformFileAction(.reveal,hit:hit))
+                    check("review placeholder Finder reveal allowed",cloud.fileOperationURL(for:hit,action:.revealInFinder)?.path==hit.path)
+                    check("review placeholder explicit open allowed",cloud.canPerformFileAction(.open,hit:hit))
+                    var revealed:URL?
+                    cloud.onReveal={revealed=$0};cloud.revealSelected()
+                    check("review placeholder Command-R route reveals metadata",revealed?.path==hit.path)
+                    check("review placeholder preview playback and Quick Look stay blocked",!cloud.canPerformFileAction(.preview,hit:hit) && !cloud.canPerformFileAction(.quickLook,hit:hit) && !cloud.canPerformFileAction(.copyFile,hit:hit))
+                    let references:[MijiFileAction]=[.copyReference,.cutReference,.copyTo,.sendTo,.stageFile]
+                    let board=NSPasteboard.withUniqueName()
+                    defer {board.releaseGlobally()}
+                    var destinations:[(urls:[URL],move:Bool)]=[],staged:[[URL]]=[]
+                    cloud.onChooseDestination={destinations.append(($0,$1))}
+                    cloud.onStageFiles={staged.append($0)}
+                    check("Wumi URL actions accept current cloud metadata",references.allSatisfy {cloud.canPerformFileAction($0,hit:hit)})
+                    cloud.performFileAction(.copyReference,hit:hit,pasteboard:board)
+                    check("Wumi URL copy writes private file URL",((board.readObjects(forClasses:[NSURL.self]) as? [URL])?.first?.path)==hit.path)
+                    cloud.performFileAction(.cutReference,hit:hit,pasteboard:board)
+                    check("Wumi URL cut preserves private URL and cut marker",board.pasteboardItems?.first?.string(forType:.fileURL)==URL(fileURLWithPath:hit.path).absoluteString && board.pasteboardItems?.first?.string(forType:LightningSearchActions.cutMarkerType)=="true")
+                    cloud.performFileAction(.copyTo,hit:hit)
+                    cloud.performFileAction(.sendTo,hit:hit)
+                    cloud.performFileAction(.stageFile,hit:hit)
+                    check("Wumi destination callbacks preserve URL and move intent",destinations.count==2 && destinations.allSatisfy {$0.urls.map(\.path)==[hit.path]} && destinations.map(\.move)==[false,true])
+                    check("Wumi transit callback preserves URL",staged.count==1 && staged.first?.map(\.path)==[hit.path])
+                    do {
+                        let original=URL(fileURLWithPath:hit.path),moved=URL(fileURLWithPath:hit.path+".metadata-test")
+                        try FileManager.default.moveItem(at:original,to:moved)
+                        defer {try? FileManager.default.moveItem(at:moved,to:original)}
+                        check("review missing placeholder path blocks metadata actions",!cloud.canPerformFileAction(.reveal,hit:hit) && !cloud.canPerformFileAction(.open,hit:hit))
+                        board.clearContents();board.setString("unchanged",forType:.string)
+                        for action in references {cloud.performFileAction(action,hit:hit,pasteboard:board)}
+                        check("Wumi missing URL actions have no side effects",references.allSatisfy {!cloud.canPerformFileAction($0,hit:hit)} && board.string(forType:.string)=="unchanged" && destinations.count==2 && staged.count==1)
+                    }
+                    cloud.query="changed"
+                    check("review placeholder stale snapshot remains blocked",!cloud.canPerformFileAction(.reveal,hit:hit))
+                    for action in references {cloud.performFileAction(action,hit:hit,pasteboard:board)}
+                    check("Wumi stale URL actions have no side effects",references.allSatisfy {!cloud.canPerformFileAction($0,hit:hit)} && board.string(forType:.string)=="unchanged" && destinations.count==2 && staged.count==1)
+                    var offlineRoot=pausedRoot;offlineRoot.isOnline=false;try writer.saveRoot(offlineRoot)
+                    service.catalogDidChange()
+                    _ = await wait {cloud.roots.contains {$0.id==pausedRoot.id && !$0.isOnline}}
+                    cloud.rootID=pausedRoot.id;cloud.query="paused-retained"
+                    _ = await wait {!cloud.searching && !cloud.hits.isEmpty}
+                    if let offline=cloud.selected {
+                        check("Wumi offline URL fixture retains existing metadata",FileManager.default.fileExists(atPath:offline.path) && !offline.root.isOnline)
+                        for action in references {cloud.performFileAction(action,hit:offline,pasteboard:board)}
+                        check("Wumi offline URL actions have no side effects",references.allSatisfy {!cloud.canPerformFileAction($0,hit:offline)} && board.string(forType:.string)=="unchanged" && destinations.count==2 && staged.count==1)
+                        check("Wumi offline current path is still copyable",cloud.canPerformFileAction(.copyPath,hit:offline))
+                    } else {check("Wumi offline URL result fixture",false)}
+                } else {check("review placeholder result fixture",false)}
+                cloud.setSearchVisible(false)
+                // The path: substring admits Other/Docs; only the absolute boundary
+                // distinguishes it from Docs. Older target must survive top-K expansion.
+                var scopedFiles:[FileRecord]=[]
+                for i in 0..<650 {
+                    scopedFiles.append(FileRecord(rootID:"local",relativePath:"Other/Docs/noise-\(i).txt",name:"noise-\(i).txt",fileExtension:"txt",kind:.document,size:1,modified:Double(1000+i)))
+                }
+                scopedFiles.append(FileRecord(rootID:"local",relativePath:"Docs/older-target.txt",name:"older-target.txt",fileExtension:"txt",kind:.document,size:1,modified:1))
+                try writer.upsertFiles(scopedFiles,generation:1)
+                for row in try writer.pendingFiles(rootID:"local",limit:1000) where row.name.hasPrefix("noise-") || row.name=="older-target.txt" {
+                    _ = try writer.completeContent(file:row,content:ExtractedContent(text:"SCOPED_BODY_REVIEW_TOKEN"))
+                }
+                try service.engine?.names.refresh(rootID:"local",relativePaths:[""],fullRescan:true)
+                service.catalogDidChange(contentChanged:true)
+                model.context=URL(fileURLWithPath:localRoot.path).appendingPathComponent("Docs");model.currentFolderOnly=true;model.sort = .modified
+                for queryScope in [SearchScope.content,.all] {
+                    model.scope=queryScope
+                    let scoped=await search("SCOPED_BODY_REVIEW_TOKEN")
+                    check("review \(queryScope) folder expansion survives 650 newer substring distractors",scoped.map(\.file.relativePath)==["Docs/older-target.txt"])
+                    check("review \(queryScope) expanded complete folder search is not budget-limited",!model.searchLimited)
+                }
+                model.currentFolderOnly=false;model.context=nil;model.sort = .relevance;model.scope = .all;model.message=nil
+                try writer.removeRoot(id:pausedRoot.id);service.catalogDidChange(contentChanged:true)
                 let refreshedFile=try writer.search("Wumi-note",options:SearchOptions(scope:.name)).first!.file
                 model.previewMode = .automatic;model.scope = .content;model.currentFolderOnly=false;model.rootID=nil;model.kind=nil
                 _ = await search("REFRESH_SEARCH_TOKEN")

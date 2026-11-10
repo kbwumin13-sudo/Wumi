@@ -13,6 +13,7 @@ public struct SearchDatabaseError: Error, LocalizedError, Sendable {
 public final class SearchDatabase: @unchecked Sendable {
     public let url: URL
     private let lock = NSLock()
+    private var metadataCandidates = 0
     var connection: OpaquePointer?
     let encoder = JSONEncoder()
     let decoder = JSONDecoder()
@@ -41,6 +42,15 @@ public final class SearchDatabase: @unchecked Sendable {
             sqlite3_busy_timeout(connection, 5_000)
             if readOnly { try execute("PRAGMA query_only=ON") }
             guard miji_register_tokenizer(connection) == SQLITE_OK else { throw error() }
+            sqlite3_create_function_v2(connection, "miji_raw_size", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC,
+                Unmanaged.passUnretained(self).toOpaque(), { context, _, args in
+                    guard let context, let owner = sqlite3_user_data(context), let value = args?[0],
+                          let pointer = sqlite3_value_blob(value) else { return }
+                    let db = Unmanaged<SearchDatabase>.fromOpaque(owner).takeUnretainedValue()
+                    db.metadataCandidates += 1
+                    let header = Data(bytes: pointer, count: min(16, Int(sqlite3_value_bytes(value))))
+                    sqlite3_result_int64(context, Int64(ContentCodec.declaredRawBytes(header) ?? ContentCodec.maximumRawBytes))
+                }, nil, nil, nil)
             sqlite3_create_function_v2(connection, "miji_content", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, nil, { context, _, args in
                 guard let context, let value = args?[0], let pointer = sqlite3_value_blob(value) else { sqlite3_result_null(context); return }
                 do {
@@ -547,22 +557,73 @@ public final class SearchDatabase: @unchecked Sendable {
     /// Runs independently after the filename first screen. Includes mixed
     /// filename/body terms; every candidate is verified against exact strings.
     public func searchSupplementary(_ query: String, options: SearchOptions, cancelled: @escaping () -> Bool = { false },
-                                    onPartial:(([SearchHit])->Void)?=nil) throws -> [SearchHit] {
-        try searchImpl(query, options: options, includeNames: false, cancelled: cancelled,onPartial:onPartial)
+                                    onPartial:(([SearchHit])->Void)?=nil, traceCandidates: Bool = false,
+                                    onMetrics: ((SearchMetrics) -> Void)? = nil) throws -> [SearchHit] {
+        try searchImpl(query, options: options, includeNames: false, cancelled: cancelled,onPartial:onPartial,traceCandidates:traceCandidates,onMetrics:onMetrics)
     }
 
     private func searchImpl(_ query: String, options: SearchOptions, includeNames: Bool, cancelled: @escaping () -> Bool,
-                            onPartial:(([SearchHit])->Void)?=nil) throws -> [SearchHit] {
+                            onPartial:(([SearchHit])->Void)?=nil, traceCandidates: Bool = false,
+                            onMetrics: ((SearchMetrics) -> Void)? = nil) throws -> [SearchHit] {
+        let started = DispatchTime.now().uptimeNanoseconds
+        let bounded = options.sort == .relevance && options.scope != .name
+        let deadline = started + 2_000_000_000
+        var phaseDeadline = started + 1_600_000_000
+        func expired() -> Bool { bounded && DispatchTime.now().uptimeNanoseconds >= phaseDeadline }
+        var metrics = SearchMetrics()
+        var decodedBodies = Set<Int64>()
+        func elapsed() -> Double { Double(DispatchTime.now().uptimeNanoseconds - started) / 1_000_000 }
+        defer { metrics.finalMS = elapsed(); onMetrics?(metrics) }
         if cancelled() { throw CancellationError() }
         return try synchronized {
             if cancelled() { throw CancellationError() }
             guard options.limit > 0 else { return [] }
-            let context = Unmanaged.passRetained(SearchCancellationContext(cancelled))
+            let context = Unmanaged.passRetained(SearchCancellationContext { cancelled() || expired() })
             sqlite3_progress_handler(connection, 1_000, { pointer in
                 guard let pointer else { return 0 }
                 return Unmanaged<SearchCancellationContext>.fromOpaque(pointer).takeUnretainedValue().cancelled() ? 1 : 0
             }, context.toOpaque())
             defer { sqlite3_progress_handler(connection, 0, nil, nil); context.release() }
+            try execute("BEGIN")
+            defer {
+                // Cleanup must run even after the caller or deadline interrupted SQL.
+                sqlite3_progress_handler(connection, 0, nil, nil)
+                try? execute("ROLLBACK")
+            }
+            let bodyReader = try prepare("SELECT packed FROM content_blobs WHERE id=?")
+            defer { sqlite3_finalize(bodyReader) }
+            let metadataStart = metadataCandidates
+            defer { metrics.metadataCandidates = metadataCandidates - metadataStart }
+            var cache: [Int64: ExtractedContent] = [:]
+            var cacheBytes = 0
+            typealias Summary = (content: ExtractedContent, terms: [String], labels: String, snippet: String)
+            var summaries: [Int64: Summary] = [:]
+            var summaryBytes = 0
+            var decodingLimit = bounded ? 48 * 1024 * 1024 : Int.max
+            func readContent(_ id: Int64) throws -> ExtractedContent? {
+                if let cached = cache[id] { return cached }
+                if expired() { throw ContentBudgetReached() }
+                sqlite3_reset(bodyReader); sqlite3_clear_bindings(bodyReader)
+                try bind([.integer(id)], to: bodyReader)
+                guard try next(bodyReader) else { return nil }
+                let packed = blob(bodyReader, 0)
+                if bounded, let size = ContentCodec.declaredRawBytes(packed), metrics.decompressedBytes + size > decodingLimit {
+                    throw ContentBudgetReached()
+                }
+                let raw = try ContentCodec.unpack(packed)
+                do {
+                    decodedBodies.insert(id)
+                    metrics.distinctBodies = decodedBodies.count
+                    metrics.decompressions += 1
+                    metrics.decompressedBytes += raw.count
+                }
+                let content = try ContentCodec.content(raw, decoder: decoder)
+                if raw.count + summaryBytes <= 16 * 1024 * 1024 {
+                    if cacheBytes + raw.count + summaryBytes > 16 * 1024 * 1024 { cache.removeAll(keepingCapacity: true); cacheBytes = 0 }
+                    cache[id] = content; cacheBytes += raw.count
+                }
+                return content
+            }
             let terms = QueryParser.parse(query).terms
             var filters: [String] = []
             var filterValues: [Value] = []
@@ -586,86 +647,186 @@ public final class SearchDatabase: @unchecked Sendable {
             let hanTerms = !textTerms.isEmpty && textTerms.allSatisfy {
                 !$0.value.isEmpty && $0.value.unicodeScalars.allSatisfy { (0x3400...0x9fff).contains($0.value) }
             }
-            func queryBody(_ raw:String)->String {
-                if textTerms.isEmpty {return ""}
-                if hanTerms && textTerms.allSatisfy({raw.contains($0.value)}) {return raw}
-                return QueryParser.normalize(raw)
-            }
-            // Rank metadata first. Building snippets for every match can dwarf
-            // the index lookup when only the best 500 will ever be displayed.
-            typealias Candidate=(SearchHit,Int,Int64?,String)
+            // Exact evidence ranks candidates. Useful decoded bodies retain a short excerpt;
+            // remaining selected summaries use the reserved time/byte allowance.
+            typealias Candidate=(SearchHit,Int,Int64?,String,tier:Int,strongName:Bool)
             var hits: [Candidate] = []
             var seen = Set<Int64>()
             func better(_ left:Candidate,_ right:Candidate) -> Bool {
                 switch options.sort {
-                case .relevance: if left.1 != right.1 {return left.1 > right.1}
+                case .relevance:
+                    if left.strongName != right.strongName { return left.strongName }
+                    if left.1 != right.1 { return left.1 > right.1 }
+                    if left.2 != nil && right.2 != nil {
+                        if left.tier != right.tier { return left.tier < right.tier }
+                        if left.0.file.modified != right.0.file.modified { return left.0.file.modified > right.0.file.modified }
+                    }
                 case .modified: if left.0.file.modified != right.0.file.modified {return left.0.file.modified > right.0.file.modified}
                 case .size: if left.0.file.size != right.0.file.size {return left.0.file.size > right.0.file.size}
                 case .name: break
                 }
                 let a=left.3,b=right.3
-                return a == b ? left.0.id < right.0.id : a < b
+                if a != b { return a < b }
+                if options.sort == .relevance {
+                    let l = left.0.root.id + "/" + left.0.file.relativePath, r = right.0.root.id + "/" + right.0.file.relativePath
+                    return l < r
+                }
+                return left.0.id < right.0.id
             }
             var rootCache: [String: IndexedRoot] = [:]
             var contentCacheID: Int64 = -1
-            var cachedContent: ExtractedContent?
-            var cachedBody = "", cachedLabels = ""
+            var cachedTerms: [(body: Bool, labels: Bool)] = []
+            var cachedRelevance = 0
             var lastPartial=Date.distantPast
-            func collect(_ predicates: [String], _ values: [Value], readBody: Bool) throws {
-                var sql = "SELECT \(Self.fileColumns),r.payload,f.name_search,f.pinyin_search,f.initials_search,f.content_id FROM files f JOIN roots r ON r.id=f.root_id"
-                if !predicates.isEmpty { sql += " WHERE " + predicates.joined(separator: " AND ") }
-                // Group identical bodies so one decompression can serve copies.
-                sql += readBody ? " ORDER BY f.content_id,f.id" : " ORDER BY f.id"
-                let statement = try prepare(sql)
-                defer { sqlite3_finalize(statement) }
-                try bind(values, to: statement)
-                while try next(statement) {
+            /// Generate cheap, stable candidates before bounded exact verification.
+            /// Copies share a request-local body cache; final limit is independent.
+            func collect(_ predicates: [String], _ values: [Value], readBody: Bool, focusedBody: Bool = false) throws {
+                let columns = "\(Self.fileColumns),r.payload,f.name_search,f.pinyin_search,f.initials_search,f.content_id,\(Self.locationTier("f"))"
+                let filter = predicates.isEmpty ? "" : " WHERE " + predicates.joined(separator: " AND ")
+                /// One candidate row; false once the page is full.
+                func consider(_ statement: OpaquePointer) throws -> Bool {
                     if cancelled() { throw CancellationError() }
                     let id = sqlite3_column_int64(statement, 0)
-                    if seen.contains(id) { continue }
+                    if seen.contains(id) { return true }
+                    if bounded && readBody && (metrics.candidates >= 4_000 || expired()) { throw ContentBudgetReached() }
+                    metrics.candidates += 1
+                    if traceCandidates { metrics.candidateOrder.append(text(statement, 1) + "/" + text(statement, 2)) }
                     let name = text(statement, 13), pinyin = text(statement, 14), initials = text(statement, 15)
-                    var body = "", labels = ""
+                    var found: [(body: Bool, labels: Bool)] = []
                     if readBody && !textTerms.isEmpty {
                         let contentID = sqlite3_column_int64(statement, 16)
                         if contentID != contentCacheID {
-                            cachedContent = try contentUnlocked(fileID: id)
-                            cachedBody = queryBody(cachedContent?.text ?? "")
-                            cachedLabels = QueryParser.normalize(cachedContent?.labels.joined(separator: "\n") ?? "")
+                            let content = try readContent(contentID)
+                            let body = Self.bodyHits(content?.text ?? "", textTerms.map(\.value), hanTerms: hanTerms)
+                            let labels = QueryParser.normalize(content?.labels.joined(separator: "\n") ?? "")
+                            cachedTerms = textTerms.indices.map { (body[$0], labels.contains(textTerms[$0].value)) }
+                            let indices = textTerms.indices.filter { !textTerms[$0].isExcluded }
+                            cachedRelevance = ContentRelevanceScorer.strength(text: content?.text ?? "",
+                                positive: indices.map { textTerms[$0].value }, bodyMatches: indices.map { body[$0] })
+                            if cachedRelevance >= 2, summaries[contentID] == nil, let content {
+                                let matched = indices.filter { body[$0] }.map { textTerms[$0].value }
+                                let snippet = Self.snippet(content.text, matching: matched)
+                                metrics.summariesBuilt += 1
+                                // Only the short excerpt and labels survive, charged to the same 16 MiB cache allowance.
+                                let cost = 2 * (snippet.utf8.count + labels.utf8.count + matched.reduce(0) { $0 + $1.utf8.count }) + 256
+                                if summaryBytes + cost <= 8 * 1024 * 1024 {
+                                    summaryBytes += cost
+                                    if cacheBytes + summaryBytes > 16 * 1024 * 1024 { cache.removeAll(keepingCapacity: true); cacheBytes = 0 }
+                                    summaries[contentID] = (ExtractedContent(labels: content.labels), matched, labels, snippet)
+                                }
+                            }
                             contentCacheID = contentID
                         }
-                        body = cachedBody; labels = cachedLabels
+                        found = cachedTerms
                     }
                     var score = 0
-                    var matches = true
-                    for term in textTerms {
+                    var matches = true, nameHit = false
+                    for (index, term) in textTerms.enumerated() {
+                        let inBody = !found.isEmpty && found[index].body, inLabels = !found.isEmpty && found[index].labels
                         let nameMatch = options.scope != .content && (name.contains(term.value) || pinyin.contains(term.value) || initials.contains(term.value))
-                        let bodyMatch = options.scope != .name && (body.contains(term.value) || labels.contains(term.value))
+                        if nameMatch && !term.isExcluded { nameHit = true }
+                        let bodyMatch = options.scope != .name && (inBody || inLabels)
                         if term.isExcluded ? (nameMatch || bodyMatch) : !(nameMatch || bodyMatch) { matches = false; break }
                         if !term.isExcluded {
                             if name.contains(term.value) && options.scope != .content { score += 100 }
                             else if nameMatch { score += 70 }
-                            if labels.contains(term.value) && options.scope != .name { score += 35 }
-                            if body.contains(term.value) && options.scope != .name { score += 20 }
+                            if inLabels && options.scope != .name { score += 35 }
+                            if inBody && options.scope != .name { score += 20 }
                         }
                     }
-                    guard matches else { continue }
+                    guard matches else { return true }
+                    metrics.verified += 1
                     let file = fileRecord(statement)
                     let root: IndexedRoot
                     if let cached = rootCache[file.rootID] { root = cached }
                     else { root = try decode(IndexedRoot.self, text(statement, 12)); rootCache[file.rootID] = root }
                     let bodyID=readBody && sqlite3_column_type(statement,16) != SQLITE_NULL ? sqlite3_column_int64(statement,16) : nil
-                    hits.append((SearchHit(file:file,root:root,snippet:"",matchedIn:readBody ? "内容" : "文件名",labels:""),score,bodyID,name))
+                    var hit = SearchHit(file:file,root:root,snippet:"",matchedIn:readBody ? "内容" : "文件名",labels:"")
+                    hit.contentRelevance = readBody ? cachedRelevance : 0
+                    if let bodyID, let summary = summaries[bodyID] {
+                        hit.snippet = summary.snippet
+                        hit.labels = summary.content.labels.joined(separator: "、")
+                        hit.matchedIn = nameHit ? "文件名、正文" : "正文"
+                    }
+                    if readBody { score = cachedRelevance * 1_000 + (nameHit ? 100 : 0) }
+                    let phrase = positive.map(\.value).joined(separator: " ")
+                    let strongName = options.scope != .content && !positive.isEmpty &&
+                        (name == phrase || QueryParser.normalize((file.name as NSString).deletingPathExtension) == phrase ||
+                         (positive.count == 1 && (name.hasPrefix(phrase) || pinyin.hasPrefix(phrase) || initials.hasPrefix(phrase))))
+                    hits.append((hit,score,bodyID,name,tier:Int(sqlite3_column_int(statement,17)),strongName:strongName))
                     // A broad body query can match hundreds of thousands of
                     // paths. Keep only a bounded top set, not every snippet.
                     if hits.count > max(256,options.limit*2) {
+                        metrics.resultTruncated = true
                         hits.sort(by:better)
                         hits.removeLast(hits.count-options.limit)
                     }
                     if let onPartial,Date().timeIntervalSince(lastPartial)>=0.25 {
                         // Every emitted hit has passed all exact predicates.
                         // Continue ranking and add selected snippets at completion.
+                        if metrics.firstResultMS == nil { metrics.firstResultMS = elapsed() }
                         onPartial(hits.sorted(by:better).prefix(options.limit).map(\.0))
                         lastPartial=Date()
+                    }
+                    return true
+                }
+                let focused = bounded && readBody && focusedBody
+                if focused {
+                    // Stream old/new metadata in rounds. Never wait for all headers before the first verification.
+                    var pooled = Set<Int64>()
+                    var more = [true, true]
+                    let row = try prepare("SELECT \(columns) FROM files f JOIN roots r ON r.id=f.root_id WHERE f.id=?")
+                    defer { metrics.sqlSteps += Int(sqlite3_stmt_status(row, SQLITE_STMTSTATUS_VM_STEP, 0)); sqlite3_finalize(row) }
+                    exploration: for page in 0..<4 {
+                        var pool: [(id: Int64, size: Int, path: String)] = []
+                        for lane in 0..<2 where more[lane] {
+                            let direction = lane == 0 ? "ASC" : "DESC"
+                            var count = 0
+                            let rows = try prepare("WITH lane AS MATERIALIZED (SELECT f.id,f.content_id,f.root_id || '/' || f.path_search AS path FROM files f JOIN roots r ON r.id=f.root_id\(filter) ORDER BY f.content_id \(direction),f.id LIMIT 512 OFFSET \(page * 512)) SELECT lane.id,miji_raw_size(substr(b.packed,1,16)),lane.path FROM lane JOIN content_blobs b ON b.id=lane.content_id")
+                            defer { metrics.sqlSteps += Int(sqlite3_stmt_status(rows, SQLITE_STMTSTATUS_VM_STEP, 0)); sqlite3_finalize(rows) }
+                            try bind(values, to: rows)
+                            do {
+                                while try next(rows) {
+                                    count += 1
+                                    let id = sqlite3_column_int64(rows, 0)
+                                    if pooled.insert(id).inserted { pool.append((id, Int(sqlite3_column_int64(rows, 1)), text(rows, 2))) }
+                                    if expired() { throw ContentBudgetReached() }
+                                }
+                            } catch is ContentBudgetReached { metrics.budgetExhausted = true; metrics.resultTruncated = true; break exploration }
+                            catch is CancellationError {
+                                if cancelled() { throw CancellationError() }
+                                guard expired() else { throw CancellationError() }
+                                metrics.budgetExhausted = true; metrics.resultTruncated = true; break exploration
+                            }
+                            more[lane] = count == 512
+                        }
+                        pool.sort { $0.size == $1.size ? $0.path < $1.path : $0.size < $1.size }
+                        do {
+                            for candidate in pool {
+                                sqlite3_reset(row); sqlite3_clear_bindings(row)
+                                try bind([.integer(candidate.id)], to: row)
+                                if try next(row), !(try consider(row)) { break exploration }
+                            }
+                        } catch is ContentBudgetReached { metrics.budgetExhausted = true; metrics.resultTruncated = true; break exploration }
+                        catch is CancellationError {
+                            if cancelled() { throw CancellationError() }
+                            guard expired() else { throw CancellationError() }
+                            metrics.budgetExhausted = true; metrics.resultTruncated = true; break exploration
+                        }
+                        if !more.contains(true) { break }
+                    }
+                    if more.contains(true) { metrics.budgetExhausted = true; metrics.resultTruncated = true }
+                } else {
+                    let order = readBody ? "f.content_id,f.id" : "f.id"
+                    let statement = try prepare("SELECT \(columns) FROM files f JOIN roots r ON r.id=f.root_id\(filter) ORDER BY " + order)
+                    defer { metrics.sqlSteps += Int(sqlite3_stmt_status(statement, SQLITE_STMTSTATUS_VM_STEP, 0)); sqlite3_finalize(statement) }
+                    try bind(values, to: statement)
+                    do { while try next(statement), try consider(statement) {} }
+                    catch is ContentBudgetReached { metrics.budgetExhausted = true; metrics.resultTruncated = true }
+                    catch is CancellationError {
+                        if cancelled() { throw CancellationError() }
+                        guard expired() else { throw CancellationError() }
+                        metrics.budgetExhausted = true; metrics.resultTruncated = true
                     }
                 }
             }
@@ -689,37 +850,180 @@ public final class SearchDatabase: @unchecked Sendable {
                     bodyFilters.append("f.content_id IN (SELECT rowid FROM content_fts WHERE content_fts MATCH ?)")
                     bodyValues.append(.string(expressions.map { "(" + $0 + ")" }.joined(separator: joiner)))
                 } else { bodyFilters.append("f.content_id IS NOT NULL") }
-                try collect(bodyFilters, bodyValues, readBody: true)
+                try collect(bodyFilters, bodyValues, readBody: true, focusedBody: true)
             }
             if cancelled() { throw CancellationError() }
             hits.sort(by:better)
-            // Read each selected shared body once, then restore result rank.
+            // The fixed total budget reserves time and bytes for selected summaries.
+            phaseDeadline = deadline
+            decodingLimit = bounded ? 64 * 1024 * 1024 : Int.max
+            // Decorate in rank order. Strong bodies reuse their already-built short excerpts.
+            metrics.resultTruncated = metrics.resultTruncated || hits.count > options.limit
             let selected=Array(hits.prefix(options.limit))
             var decorated=[SearchHit?](repeating:nil,count:selected.count)
-            let selectedBodies=try prepare("SELECT packed FROM content_blobs WHERE id=?")
-            defer {sqlite3_finalize(selectedBodies)}
-            var previousBody:Int64?,content:ExtractedContent?,body="",labels="",snippet=""
-            for index in selected.indices.sorted(by:{(selected[$0].2 ?? -1)<(selected[$1].2 ?? -1)}) {
+            var previousBody:Int64?,content:ExtractedContent?,bodyTerms:[String]=[],labels="",snippet=""
+            for index in selected.indices {
                 if cancelled() {throw CancellationError()}
                 let candidate=selected[index]
+                if let id = candidate.2, let summary = summaries[id] {
+                    var hit = Self.hit(file: candidate.0.file, root: candidate.0.root, content: summary.content,
+                        terms: terms, scope: options.scope, bodyTerms: summary.terms,
+                        normalizedLabels: summary.labels, cachedSnippet: summary.snippet)
+                    hit.contentRelevance = candidate.0.contentRelevance
+                    decorated[index] = hit
+                    continue
+                }
                 if candidate.2 != previousBody {
-                    content=nil;body="";labels="";snippet=""
-                    if let id=candidate.2 {
-                        sqlite3_reset(selectedBodies);sqlite3_clear_bindings(selectedBodies)
-                        try bind([.integer(id)],to:selectedBodies)
-                        if try next(selectedBodies) {
-                            content=try decoder.decode(ExtractedContent.self,from:ContentCodec.unpack(blob(selectedBodies,0)))
-                            body=queryBody(content?.text ?? "")
+                    content=nil;bodyTerms=[];labels="";snippet=""
+                    if let id=candidate.2, !expired() {
+                        let loaded: ExtractedContent?
+                        do { loaded = try readContent(id) }
+                        catch is ContentBudgetReached { loaded = nil; metrics.budgetExhausted = true; metrics.resultTruncated = true }
+                        catch is CancellationError {
+                            if cancelled() { throw CancellationError() }
+                            guard expired() else { throw CancellationError() }
+                            loaded = nil; metrics.budgetExhausted = true; metrics.resultTruncated = true
+                        }
+                        if let loaded {
+                            content=loaded
+                            // The candidate pass's check, not another scan of the body per term.
+                            let found=textTerms.isEmpty ? [] : Self.bodyHits(content?.text ?? "",textTerms.map(\.value),hanTerms:hanTerms)
+                            bodyTerms=textTerms.indices.filter {!textTerms[$0].isExcluded && found[$0]}.map {textTerms[$0].value}
                             labels=QueryParser.normalize(content?.labels.joined(separator:"\n") ?? "")
-                            snippet=Self.snippet(content?.text ?? "",matching:positive.map(\.value).filter{body.contains($0)})
+                            snippet=Self.snippet(content?.text ?? "",matching:bodyTerms)
+                            metrics.summariesBuilt += 1
                         }
                     }
                     previousBody=candidate.2
                 }
-                decorated[index]=Self.hit(file:candidate.0.file,root:candidate.0.root,content:content,terms:terms,scope:options.scope,normalizedBody:body,normalizedLabels:labels,cachedSnippet:snippet)
+                var hit = content == nil ? candidate.0 : Self.hit(file:candidate.0.file,root:candidate.0.root,content:content,terms:terms,scope:options.scope,bodyTerms:bodyTerms,normalizedLabels:labels,cachedSnippet:snippet)
+                hit.contentRelevance = candidate.0.contentRelevance
+                decorated[index] = hit
             }
+            if expired() { metrics.budgetExhausted = true; metrics.resultTruncated = true }
+            if metrics.firstResultMS == nil && !selected.isEmpty { metrics.firstResultMS = elapsed() }
             return decorated.compactMap{$0}
         }
+    }
+
+    /// Whether each normalized term occurs in a body, as Foundation's `contains`
+    /// on the body decides (the raw body when Han terms all occur in it
+    /// literally, the normalized body otherwise): whole characters (grapheme
+    /// clusters), without a character walk over every body. Pure ASCII text
+    /// normalizes to its lowercase. A byte match counts when both of its ends
+    /// are character boundaries; where that is not certain, Foundation decides.
+    static func bodyHits(_ text: String, _ terms: [String], hanTerms: Bool) -> [Bool] {
+        var raw = text
+        return raw.withUTF8 { source -> [Bool] in
+            var hits = [Bool](repeating: false, count: terms.count)
+            if hanTerms {
+                for (i, term) in terms.enumerated() {
+                    switch characterMatch(term, in: source) {
+                    case true?: hits[i] = true
+                    case false?: hits[i] = false
+                    case nil: hits[i] = text.contains(term)
+                    }
+                }
+                if hits.allSatisfy({ $0 }) { return hits }
+            }
+            func check(_ normalized: UnsafeBufferPointer<UInt8>, _ string: () -> String) {
+                for (i, term) in terms.enumerated() where !hits[i] {
+                    hits[i] = characterMatch(term, in: normalized) ?? string().contains(term)
+                }
+            }
+            if source.allSatisfy({ $0 < 128 }) {
+                let lowered = source.map { $0 >= 65 && $0 <= 90 ? $0 + 32 : $0 }
+                lowered.withUnsafeBufferPointer { bytes in check(bytes) { String(decoding: bytes, as: UTF8.self) } }
+            } else {
+                var normalized = QueryParser.normalize(text)
+                let copy = normalized
+                normalized.withUTF8 { bytes in check(bytes) { copy } }
+            }
+            return hits
+        }
+    }
+
+    /// Some occurrence of `term` in `bytes` starts and ends on character
+    /// boundaries (true), none does (false), or a boundary is not certain (nil).
+    static func characterMatch(_ term: String, in bytes: UnsafeBufferPointer<UInt8>) -> Bool? {
+        var needle = term
+        return needle.withUTF8 { key -> Bool? in
+            guard !key.isEmpty else { return true }
+            /// Foundation's NFC leaves a syllable followed by a trailing jamo
+            /// uncomposed, while Swift compares it as the composed syllable, so
+            /// no byte match is not a miss where a Hangul term meets that form.
+            func missed() -> Bool? {
+                func jamo(_ b: UnsafeBufferPointer<UInt8>) -> Bool {
+                    var i = 0
+                    while i + 2 < b.count {
+                        switch (b[i], b[i + 1]) {
+                        case (0xE1, 0x84...0x87): return true                       // U+1100-11FF
+                        case (0xEA, 0xA5) where b[i + 2] >= 0xA0: return true       // U+A960-A97F
+                        case (0xED, 0x9E) where b[i + 2] >= 0xB0, (0xED, 0x9F): return true // U+D7B0-D7FF
+                        default: i += 1
+                        }
+                    }
+                    return false
+                }
+                let hangul = term.unicodeScalars.contains {
+                    (0x1100...0x11FF).contains($0.value) || (0xA960...0xA97F).contains($0.value) || (0xAC00...0xD7FF).contains($0.value)
+                }
+                return hangul && (jamo(key) || jamo(bytes)) ? nil : false
+            }
+            guard key.count <= bytes.count, let base = bytes.baseAddress else { return missed() }
+            var from = 0, uncertain = false
+            while from <= bytes.count - key.count,
+                  let found = memmem(base + from, bytes.count - from, key.baseAddress!, key.count) {
+                let start = base.distance(to: found.assumingMemoryBound(to: UInt8.self))
+                switch (characterBoundary(bytes, start), characterBoundary(bytes, start + key.count)) {
+                case (true?, true?): return true
+                case (false?, _), (_, false?): break
+                default: uncertain = true
+                }
+                from = start + 1
+            }
+            return uncertain ? nil : missed()
+        }
+    }
+
+    /// A grapheme cluster boundary at a scalar boundary of valid UTF-8 (UAX #29),
+    /// decided only where the rules are unambiguous; nil otherwise.
+    static func characterBoundary(_ bytes: UnsafeBufferPointer<UInt8>, _ position: Int) -> Bool? {
+        if position == 0 || position == bytes.count { return true }
+        func scalar(at index: Int) -> Unicode.Scalar? {
+            var iterator = UnsafeBufferPointer(rebasing: bytes[index...]).makeIterator()
+            var decoder = UTF8()
+            if case .scalarValue(let value) = decoder.decode(&iterator) { return value }
+            return nil
+        }
+        var lead = position - 1
+        while lead > 0 && bytes[lead] & 0xC0 == 0x80 { lead -= 1 }
+        guard let before = scalar(at: lead), let after = scalar(at: position) else { return nil }
+        func regional(_ s: Unicode.Scalar) -> Bool { (0x1F1E6...0x1F1FF).contains(s.value) }
+        func jamo(_ s: Unicode.Scalar) -> Bool {
+            (0x1100...0x11FF).contains(s.value) || (0xA960...0xA97F).contains(s.value) || (0xD7B0...0xD7FF).contains(s.value)
+        }
+        func prepend(_ s: Unicode.Scalar) -> Bool {
+            [0x0600...0x0605, 0x06DD...0x06DD, 0x070F...0x070F, 0x0890...0x0891, 0x08E2...0x08E2, 0x0D4E...0x0D4E,
+             0x110BD...0x110BD, 0x110CD...0x110CD, 0x111C2...0x111C3, 0x1193F...0x1193F, 0x11941...0x11941,
+             0x11A3A...0x11A3A, 0x11A84...0x11A89, 0x11D46...0x11D46, 0x11F02...0x11F02].contains { $0.contains(s.value) }
+        }
+        let syllable: (Unicode.Scalar) -> Bool = { (0xAC00...0xD7A3).contains($0.value) }
+        if before.value == 0x0D && after.value == 0x0A { return false }                     // GB3
+        if before.properties.generalCategory == .control || after.properties.generalCategory == .control { return true } // GB4, GB5
+        let category = before.properties.generalCategory
+        if category == .format || category == .lineSeparator || category == .paragraphSeparator,
+           before.value != 0x200C, before.value != 0x200D {
+            // Controls too, apart from extenders (tags) and prepended marks.
+            return before.properties.isGraphemeExtend || prepend(before) ? nil : true       // GB4
+        }
+        if after.properties.isGraphemeExtend || after.properties.isEmojiModifier || after.value == 0x200D { return false } // GB9
+        if after.properties.generalCategory == .spacingMark
+            || after.value == 0x0E33 || after.value == 0x0EB3 { return nil }               // GB9a (Thai and Lao AM are Lo)
+        if before.properties.isGraphemeExtend || before.properties.isEmojiModifier { return nil } // GB9c conjuncts
+        if before.value == 0x200D || prepend(before) || (regional(before) && regional(after))
+            || jamo(before) || jamo(after) || (syllable(before) && jamo(after)) { return nil } // GB9b, GB11, GB12-13, GB6-8
+        return true                                                                         // GB999
     }
 
     private final class SearchCancellationContext {
@@ -728,10 +1032,9 @@ public final class SearchDatabase: @unchecked Sendable {
     }
 
     private static func hit(file: FileRecord, root: IndexedRoot, content: ExtractedContent?, terms: [QueryTerm], scope: SearchScope,
-                            normalizedBody:String?=nil,normalizedLabels:String?=nil,cachedSnippet:String?=nil) -> SearchHit {
+                            bodyTerms:[String],normalizedLabels:String?=nil,cachedSnippet:String?=nil) -> SearchHit {
         let positive = terms.filter { $0.field == .text && !$0.isExcluded }.map(\.value)
         let name = QueryParser.normalize(file.name)
-        let body = normalizedBody ?? QueryParser.normalize(content?.text ?? "")
         let labels = content?.labels.joined(separator: "、") ?? ""
         let labelSearch = normalizedLabels ?? QueryParser.normalize(content?.labels.joined(separator: "\n") ?? "")
         var locations: [String] = []
@@ -743,7 +1046,7 @@ public final class SearchDatabase: @unchecked Sendable {
             }
             if matchesName { locations.append("文件名") }
         }
-        let bodyTerms = scope == .name ? [] : positive.filter { body.contains($0) }
+        let bodyTerms = scope == .name ? [] : bodyTerms
         if !bodyTerms.isEmpty { locations.append("正文") }
         if scope != .name && positive.contains(where: { labelSearch.contains($0) }) { locations.append("图片标签") }
         if locations.isEmpty { locations.append(terms.contains(where: { $0.field == .path && !$0.isExcluded }) ? "路径" : "文件名") }
@@ -768,7 +1071,7 @@ public final class SearchDatabase: @unchecked Sendable {
         return (start == body.startIndex ? "" : "…") + piece + (end == body.endIndex ? "" : "…")
     }
 
-    private static func pinyin(_ name: String) -> (String, String) {
+    static func pinyin(_ name: String) -> (String, String) {
         let latin = (name.applyingTransform(.toLatin, reverse: false) ?? name).applyingTransform(.stripDiacritics, reverse: false) ?? name
         let words = QueryParser.normalize(latin).split(whereSeparator: { !$0.isLetter && !$0.isNumber })
         return (words.joined(), String(words.compactMap(\.first)))
@@ -795,6 +1098,18 @@ public final class SearchDatabase: @unchecked Sendable {
         FROM files INDEXED BY files_pending
         """
 
+    /// Where a file lives, for ranking: 1 under hidden folders, Library and
+    /// caches, system trees and dependency folders; 0 elsewhere, which is
+    /// where the user's own files are. `table` is the alias of `files`.
+    static func locationTier(_ table: String) -> String {
+        // Core columns only (the name engine reads no derived ones). LIKE
+        // ignores ASCII case, so no lower() copy per row.
+        let path = "('/'||\(table).relative_path)"
+        let inside = ["/.", "/library/", "/caches/", "/node\\_modules/", "/site-packages/", "/deriveddata/", "/pods/"]
+            .map { "\(path) LIKE '%\($0)%' ESCAPE '\\'" }
+        let roots = ["system/", "usr/", "opt/", "private/", "bin/", "sbin/", "cores/"].map { "\(table).relative_path LIKE '\($0)%'" }
+        return "(CASE WHEN " + (inside + roots).joined(separator: " OR ") + " THEN 1 ELSE 0 END)"
+    }
     private static let signaturePredicate = "id=? AND root_id=? AND relative_path=? AND size=? AND modified=? AND inode=?"
     static let fileColumns = "f.id,f.root_id,f.relative_path,f.name,f.extension,f.kind,f.size,f.modified,f.inode,f.content_state,f.content_error,f.generation"
 
@@ -969,3 +1284,5 @@ public final class SearchDatabase: @unchecked Sendable {
         PRAGMA user_version=2;
         """
 }
+
+private struct ContentBudgetReached: Error {}

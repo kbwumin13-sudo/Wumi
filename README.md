@@ -7,12 +7,12 @@
 
 [![macOS](https://img.shields.io/badge/macOS-15%2B-111827?style=flat-square&logo=apple&logoColor=white)](#上手)
 [![Swift](https://img.shields.io/badge/Swift-6.2%2B-F05138?style=flat-square&logo=swift&logoColor=white)](Package.swift)
-[![下载 Wumi 1.1.1](https://img.shields.io/badge/下载-Wumi_1.1.1_arm64_DMG-2563EB?style=flat-square&logo=github&logoColor=white)](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.1.1/Wumi-1.1.1-arm64.dmg)
+[![下载 Wumi 1.2.6](https://img.shields.io/badge/下载-Wumi_1.2.6_arm64_DMG-2563EB?style=flat-square&logo=github&logoColor=white)](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.6/Wumi-1.2.6-arm64.dmg)
 [![License](https://img.shields.io/badge/license-MIT-2563EB?style=flat-square)](LICENSE)
 
 **原生 macOS 文件管理器 · 多标签、多窗格、即时预览与闪电搜索**
 
-[下载 1.1.1 DMG](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.1.1/Wumi-1.1.1-arm64.dmg) · [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) · [安装](#上手) · [功能](#少切换几个窗口多留一点专注) · [开发文档](docs/构建与运行.md) · [反馈](https://github.com/kbwumin13-sudo/Wumi/issues)
+[下载 1.2.6 DMG](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.6/Wumi-1.2.6-arm64.dmg) · [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) · [安装](#上手) · [功能](#少切换几个窗口多留一点专注) · [开发文档](docs/构建与运行.md) · [反馈](https://github.com/kbwumin13-sudo/Wumi/issues)
 
 </div>
 
@@ -36,7 +36,7 @@
 
 ## 上手
 
-下载 [Wumi-1.1.1-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.1.1/Wumi-1.1.1-arm64.dmg)，适用于 **macOS 15+、Apple Silicon（arm64）**。这是已有 1.1.1 的首次 DMG 分发，没有新增功能代码。后续版本请从 [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) 选择对应资产。
+下载 [Wumi-1.2.6-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.6/Wumi-1.2.6-arm64.dmg)，适用于 **macOS 15+、Apple Silicon（arm64）**。本轮内置觅迹同步至 1.3，改进正文候选与排序、旧结果动作门禁和搜索状态呈现，保留已有索引与配置。详见 [1.2.6 改动与验证范围](docs/releases/v1.2.6.md)。后续版本可从 [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) 选择资产。
 
 1. 打开 DMG，将 `Wumi.app` 拖到 `Applications`（应用程序）文件夹。
 2. 从「应用程序」打开 Wumi。
@@ -44,7 +44,7 @@
 
 此安装包仅使用 **ad-hoc 签名**，没有 Developer ID 签名，也未经 Apple 公证。首次访问受保护目录时，按系统提示或应用「设置 → 隐私与权限」授权。
 
-[1.1.1 发布说明与 SHA-256 校验方法](docs/releases/v1.1.1.md) · [安装与开发说明](docs/构建与运行.md)
+[1.2.6 发布说明与 SHA-256 校验方法](docs/releases/v1.2.6.md) · [安装与开发说明](docs/构建与运行.md)
 
 <details>
 <summary><strong>从源码构建</strong></summary>

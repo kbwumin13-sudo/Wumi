@@ -103,8 +103,10 @@ public struct SearchHit: Identifiable, Sendable {
     public var snippet: String
     public var matchedIn: String
     public var labels: String
+    /// Bounded body evidence: 0 none, 1 mention, 2 nearby terms, 3 focused opening.
+    public var contentRelevance: Int = 0
     public var path: String { URL(fileURLWithPath: root.path).appendingPathComponent(file.relativePath).path }
-    public init(file: FileRecord, root: IndexedRoot, snippet: String = "", matchedIn: String = "文件名", labels: String = "") { self.file=file; self.root=root; self.snippet=snippet; self.matchedIn=matchedIn; self.labels=labels }
+    public init(file: FileRecord, root: IndexedRoot, snippet: String = "", matchedIn: String = "文件名", labels: String = "", contentRelevance: Int = 0) { self.contentRelevance=contentRelevance; self.file=file; self.root=root; self.snippet=snippet; self.matchedIn=matchedIn; self.labels=labels }
 }
 public struct IndexStatistics: Sendable {
     public var files: Int

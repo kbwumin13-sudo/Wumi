@@ -48,21 +48,58 @@ struct MijiFileThumbnail: View {
     let hit: SearchHit
     var pixels = 400
     var showsStatus = false
+    /// Grid cells draw thumbnails like Finder: slightly rounded with a soft page shadow.
+    var decorated = false
     @State private var image: NSImage?
     @State private var loading = true
     var body: some View {
         Group {
-            if let image { Image(nsImage: image).resizable().scaledToFit() }
+            if let image {
+                if decorated {
+                    Image(nsImage: image).resizable().scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                        .shadow(color: .black.opacity(0.22), radius: 2.5, y: 1)
+                } else { Image(nsImage: image).resizable().scaledToFit() }
+            }
             else if showsStatus {
-                if loading { ProgressView("正在载入缩略图…").controlSize(.small).font(.caption) }
-                else { Label("缩略图不可用 · 可使用快速查看", systemImage: "photo").font(.caption).foregroundStyle(.secondary) }
-            } else { Image(systemName: hit.file.kind.mijiPreviewSymbol).font(.system(size: 38, weight: .light)).foregroundStyle(.secondary) }
+                if loading { VStack(spacing: 8) { ProgressView().controlSize(.small); Text("正在载入缩略图…") }.font(.system(size: 11)).foregroundStyle(.secondary) }
+                else { VStack(spacing: 6) { Image(systemName: "photo").font(.system(size: 26, weight: .light)).foregroundStyle(.tertiary); Text("缩略图不可用").font(.system(size: 12, weight: .medium)); Text("可使用快速查看").font(.system(size: 11)).foregroundStyle(.secondary) } }
+            } else { Image(nsImage: MijiFileIconCache.icon(hit)).resizable().scaledToFit().frame(width: 64, height: 64) }
         }
         .task(id: "\(hit.path)|\(hit.file.modified)|\(hit.file.size)|\(pixels)") {
             image = nil; loading = true
             let loaded = await MijiPreviewThumbnails.load(hit, pixels: pixels)
             guard !Task.isCancelled else { return }
             image = loaded; loading = false
+        }
+    }
+}
+
+/// Position only after PDFKit has laid out the current viewport. Resizing a narrow
+/// embedded preview must keep its match visible without resetting ordinary scrolling.
+final class MijiPreviewPDFView: PDFView {
+    private var targetPage: PDFPage?
+    private var targetSelection: PDFSelection?
+    private var viewport = NSSize.zero
+    private var needsPosition = false
+    private var positionScheduled = false
+    func target(_ page: PDFPage, selection: PDFSelection?) {
+        targetPage=page;targetSelection=selection;needsPosition=true;needsLayout=true
+    }
+    func clearTarget() { targetPage=nil;targetSelection=nil;needsPosition=false }
+    override func layout() {
+        super.layout()
+        if bounds.size != viewport { viewport=bounds.size;needsPosition=true }
+        guard needsPosition, !positionScheduled, bounds.width>0, bounds.height>0 else { return }
+        positionScheduled=true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {return}
+            self.positionScheduled=false
+            guard self.needsPosition,let page=self.targetPage,self.document === page.document else {return}
+            self.needsPosition=false
+            self.layoutDocumentView()
+            if let selection=self.targetSelection {self.go(to:selection)}
+            else {self.go(to:page)}
         }
     }
 }
@@ -78,7 +115,7 @@ struct MijiPDFDocumentPreview: NSViewRepresentable {
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> PDFView {
-        let view = PDFView()
+        let view = MijiPreviewPDFView()
         view.autoScales = true
         view.displayMode = .singlePageContinuous
         view.backgroundColor = .clear
@@ -90,7 +127,6 @@ struct MijiPDFDocumentPreview: NSViewRepresentable {
         state.document = document; state.page = page; state.terms = terms
         if view.document !== document { view.document = document }
         guard let shown = document.page(at: max(0, min(document.pageCount - 1, (page ?? 1) - 1))) else { return }
-        view.go(to: shown)
         var selections: [PDFSelection] = []
         let text = (shown.string ?? "") as NSString
         for term in terms where !term.isEmpty {
@@ -104,8 +140,12 @@ struct MijiPDFDocumentPreview: NSViewRepresentable {
             }
         }
         view.highlightedSelections = selections
+        (view as? MijiPreviewPDFView)?.target(shown,selection:selections.first)
     }
-    static func dismantleNSView(_ view: PDFView, coordinator: Coordinator) { view.document = nil; coordinator.document = nil }
+    static func dismantleNSView(_ view: PDFView, coordinator: Coordinator) {
+        (view as? MijiPreviewPDFView)?.clearTarget(); view.highlightedSelections=nil
+        view.document = nil; coordinator.document = nil
+    }
 }
 
 // SwiftUI's provider teardown invokes deactivate; keep Quick Look's own private
@@ -149,6 +189,7 @@ private final class MijiPreviewPlayback: ObservableObject {
 
 struct MijiMediaFilePreview: View {
     let hit: SearchHit
+    var authorize: (() -> URL?)? = nil
     @StateObject private var playback = MijiPreviewPlayback()
     var body: some View {
         ZStack {
@@ -158,7 +199,9 @@ struct MijiMediaFilePreview: View {
                 if hit.file.kind == .video { MijiFileThumbnail(hit: hit, pixels: 800, showsStatus: true) }
                 else { Image(systemName: "waveform").font(.system(size: 32)).foregroundStyle(.secondary).offset(y: -48) }
                 Button {
-                    if let url = MijiPreviewResolver.localURL(for: hit) { playback.play(url) }
+                    let url: URL?
+                    if let authorize { url=authorize() } else { url=MijiPreviewResolver.localURL(for:hit) }
+                    if let url { playback.play(url) }
                 } label: { Image(systemName: "play.circle.fill").font(.system(size: 48)).symbolRenderingMode(.palette).foregroundStyle(.white, .black.opacity(0.6)) }
                 .buttonStyle(.plain).accessibilityLabel("播放预览")
                 .disabled(!hit.root.isOnline)
@@ -178,8 +221,8 @@ func mijiHighlightedPreview(_ text: String, query: String) -> AttributedString {
         for _ in 0..<100 {
             guard start < text.endIndex, let range = text.range(of: term, options: [.caseInsensitive, .diacriticInsensitive], range: start..<text.endIndex),
                   let mapped = Range(range, in: result) else { break }
-            result[mapped].backgroundColor = .yellow.opacity(0.25)
-            result[mapped].foregroundColor = .primary
+            result[mapped].backgroundColor = Color(nsColor: .findHighlightColor)
+            result[mapped].foregroundColor = .black
             start = range.upperBound
         }
     }
