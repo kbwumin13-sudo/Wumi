@@ -92,5 +92,26 @@
     "Index enabled controls scanning, not identity/eligibility of retained results including current-folder plans",
     "Metadata reveal and explicit cloud-aware open require current snapshot, online root and existing path; local preview/playback/copy availability remains separate",
     "Directory expansion stops for actual budget exhaustion, not ordinary top-K truncation; final batch determines limited state"
-  ]
+  ],
+  "wumi_url_action_preservation": {
+    "baseline_commit": "971e887200ad94d07a1785b849d4226edd4310d8",
+    "metadata_actions": [
+      "copyReference",
+      "cutReference",
+      "copyTo",
+      "sendTo",
+      "stageFile"
+    ],
+    "local_data_actions": [
+      "copyFile (Cmd-C and preview toolbar)",
+      "quickLook",
+      "preview/playback"
+    ],
+    "original_implementations": [
+      "LightningSearchActions.copy/cut",
+      "FileOpenRouter.chooseDestination",
+      "FileTransitStore.add"
+    ],
+    "validation": "private pasteboard URL/cut marker, destination/transit callback arguments, stale/missing/offline refusal"
+  }
 }

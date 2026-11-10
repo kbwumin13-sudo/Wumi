@@ -89,6 +89,8 @@ final class MijiSearchModel: ObservableObject {
     @Published var focusSearch = UUID()
     var onReveal: (URL) -> Void
     var onDismiss: () -> Void = {}
+    var onChooseDestination: ([URL], Bool) -> Void = { FileOpenRouter.chooseDestination(for:$0,move:$1) }
+    var onStageFiles: ([URL]) -> Void = { FileTransitStore.shared.add($0) }
 
     @Published private(set) var currentSnapshot: MijiSearchSnapshot?
     @Published private(set) var displayedSnapshot: MijiSearchSnapshot?
@@ -595,7 +597,7 @@ final class MijiSearchModel: ObservableObject {
         guard currentRoot.isOnline else { return "请连接磁盘「\(Self.volumeName(currentRoot))」后再操作此文件。" }
         // Reveal is metadata-only. Opening is an explicit request handled by
         // Wumi's cloud-aware router; neither requires a preview download.
-        if action == .reveal || action == .revealInFinder || action == .open || action == .openAtLine {
+        if !action.requiresLocalContent {
             return FileManager.default.fileExists(atPath:hit.path) ? nil : "文件已移动或删除：\(hit.file.name)。"
         }
         guard localPreviewURL(hit) != nil else { return "磁盘在线，但文件已移动、删除、尚未下载或无法读取：\(hit.file.name)。" }
@@ -618,6 +620,11 @@ final class MijiSearchModel: ObservableObject {
             pasteboard.clearContents(); pasteboard.setString(hit.path,forType:.string)
         case .copyFile:
             pasteboard.clearContents(); pasteboard.writeObjects([url as NSURL])
+        case .copyReference: LightningSearchActions.copy([url],to:pasteboard)
+        case .cutReference: LightningSearchActions.cut([url],to:pasteboard)
+        case .copyTo: onChooseDestination([url],false)
+        case .sendTo: onChooseDestination([url],true)
+        case .stageFile: onStageFiles([url])
         case .reveal: onDismiss(); onReveal(url)
         case .revealInFinder: NSWorkspace.shared.activateFileViewerSelecting([url])
         case .open, .openAtLine:

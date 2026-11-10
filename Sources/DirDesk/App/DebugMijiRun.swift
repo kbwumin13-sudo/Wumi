@@ -330,14 +330,46 @@ enum DebugMijiRun {
                     cloud.onReveal={revealed=$0};cloud.revealSelected()
                     check("review placeholder Command-R route reveals metadata",revealed?.path==hit.path)
                     check("review placeholder preview playback and Quick Look stay blocked",!cloud.canPerformFileAction(.preview,hit:hit) && !cloud.canPerformFileAction(.quickLook,hit:hit) && !cloud.canPerformFileAction(.copyFile,hit:hit))
+                    let references:[MijiFileAction]=[.copyReference,.cutReference,.copyTo,.sendTo,.stageFile]
+                    let board=NSPasteboard.withUniqueName()
+                    defer {board.releaseGlobally()}
+                    var destinations:[(urls:[URL],move:Bool)]=[],staged:[[URL]]=[]
+                    cloud.onChooseDestination={destinations.append(($0,$1))}
+                    cloud.onStageFiles={staged.append($0)}
+                    check("Wumi URL actions accept current cloud metadata",references.allSatisfy {cloud.canPerformFileAction($0,hit:hit)})
+                    cloud.performFileAction(.copyReference,hit:hit,pasteboard:board)
+                    check("Wumi URL copy writes private file URL",((board.readObjects(forClasses:[NSURL.self]) as? [URL])?.first?.path)==hit.path)
+                    cloud.performFileAction(.cutReference,hit:hit,pasteboard:board)
+                    check("Wumi URL cut preserves private URL and cut marker",board.pasteboardItems?.first?.string(forType:.fileURL)==URL(fileURLWithPath:hit.path).absoluteString && board.pasteboardItems?.first?.string(forType:LightningSearchActions.cutMarkerType)=="true")
+                    cloud.performFileAction(.copyTo,hit:hit)
+                    cloud.performFileAction(.sendTo,hit:hit)
+                    cloud.performFileAction(.stageFile,hit:hit)
+                    check("Wumi destination callbacks preserve URL and move intent",destinations.count==2 && destinations.allSatisfy {$0.urls.map(\.path)==[hit.path]} && destinations.map(\.move)==[false,true])
+                    check("Wumi transit callback preserves URL",staged.count==1 && staged.first?.map(\.path)==[hit.path])
                     do {
                         let original=URL(fileURLWithPath:hit.path),moved=URL(fileURLWithPath:hit.path+".metadata-test")
                         try FileManager.default.moveItem(at:original,to:moved)
                         defer {try? FileManager.default.moveItem(at:moved,to:original)}
                         check("review missing placeholder path blocks metadata actions",!cloud.canPerformFileAction(.reveal,hit:hit) && !cloud.canPerformFileAction(.open,hit:hit))
+                        board.clearContents();board.setString("unchanged",forType:.string)
+                        for action in references {cloud.performFileAction(action,hit:hit,pasteboard:board)}
+                        check("Wumi missing URL actions have no side effects",references.allSatisfy {!cloud.canPerformFileAction($0,hit:hit)} && board.string(forType:.string)=="unchanged" && destinations.count==2 && staged.count==1)
                     }
                     cloud.query="changed"
                     check("review placeholder stale snapshot remains blocked",!cloud.canPerformFileAction(.reveal,hit:hit))
+                    for action in references {cloud.performFileAction(action,hit:hit,pasteboard:board)}
+                    check("Wumi stale URL actions have no side effects",references.allSatisfy {!cloud.canPerformFileAction($0,hit:hit)} && board.string(forType:.string)=="unchanged" && destinations.count==2 && staged.count==1)
+                    var offlineRoot=pausedRoot;offlineRoot.isOnline=false;try writer.saveRoot(offlineRoot)
+                    service.catalogDidChange()
+                    _ = await wait {cloud.roots.contains {$0.id==pausedRoot.id && !$0.isOnline}}
+                    cloud.rootID=pausedRoot.id;cloud.query="paused-retained"
+                    _ = await wait {!cloud.searching && !cloud.hits.isEmpty}
+                    if let offline=cloud.selected {
+                        check("Wumi offline URL fixture retains existing metadata",FileManager.default.fileExists(atPath:offline.path) && !offline.root.isOnline)
+                        for action in references {cloud.performFileAction(action,hit:offline,pasteboard:board)}
+                        check("Wumi offline URL actions have no side effects",references.allSatisfy {!cloud.canPerformFileAction($0,hit:offline)} && board.string(forType:.string)=="unchanged" && destinations.count==2 && staged.count==1)
+                        check("Wumi offline current path is still copyable",cloud.canPerformFileAction(.copyPath,hit:offline))
+                    } else {check("Wumi offline URL result fixture",false)}
                 } else {check("review placeholder result fixture",false)}
                 cloud.setSearchVisible(false)
                 // The path: substring admits Other/Docs; only the absolute boundary

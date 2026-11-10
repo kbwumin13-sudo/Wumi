@@ -247,15 +247,19 @@ struct MijiSearchView: View {
                 Button("在 Finder 中显示") { model.selectedID = hit.id; model.performFileAction(.revealInFinder, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.revealInFinder,hit:hit,snapshot:snapshot))
                 Button("快速查看") { model.selectedID = hit.id; model.performFileAction(.quickLook, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.quickLook,hit:hit,snapshot:snapshot))
                 Divider()
-                Button("复制文件") { model.selectedID = hit.id; model.performFileAction(.copyFile, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.copyFile,hit:hit,snapshot:snapshot))
+                Button("复制文件") { model.selectedID = hit.id; model.performFileAction(.copyReference, hit: hit, snapshot: snapshot) }.disabled(!model.canPerformFileAction(.copyReference,hit:hit,snapshot:snapshot))
                 Button("复制路径") { model.selectedID = hit.id; model.performFileAction(.copyPath, hit: hit, snapshot: snapshot) }
                 Divider()
                 Button("在 Wumi 中定位") { model.performFileAction(.reveal, hit: hit, snapshot: snapshot) }
                 Button("查看已索引内容") { if model.isCurrentResult(hit, snapshot: snapshot) { model.selectedID = hit.id; model.previewEnabled = true } }
-                Button(L("Cut")) { if let url=model.fileOperationURL(for: hit, action: .copyFile, snapshot: snapshot) { LightningSearchActions.cut([url]) } }
-                Button(L("Copy To")) { if let url=model.fileOperationURL(for: hit, action: .copyFile, snapshot: snapshot) { FileOpenRouter.chooseDestination(for: [url], move: false) } }
-                Button(L("Send To")) { if let url=model.fileOperationURL(for: hit, action: .copyFile, snapshot: snapshot) { FileOpenRouter.chooseDestination(for: [url], move: true) } }
-                Button(L("Add to File Transit")) { if let url=model.fileOperationURL(for: hit, action: .copyFile, snapshot: snapshot) { FileTransitStore.shared.add([url]) } }
+                Button(L("Cut")) { model.performFileAction(.cutReference,hit:hit,snapshot:snapshot) }
+                    .disabled(!model.canPerformFileAction(.cutReference,hit:hit,snapshot:snapshot))
+                Button(L("Copy To")) { model.performFileAction(.copyTo,hit:hit,snapshot:snapshot) }
+                    .disabled(!model.canPerformFileAction(.copyTo,hit:hit,snapshot:snapshot))
+                Button(L("Send To")) { model.performFileAction(.sendTo,hit:hit,snapshot:snapshot) }
+                    .disabled(!model.canPerformFileAction(.sendTo,hit:hit,snapshot:snapshot))
+                Button(L("Add to File Transit")) { model.performFileAction(.stageFile,hit:hit,snapshot:snapshot) }
+                    .disabled(!model.canPerformFileAction(.stageFile,hit:hit,snapshot:snapshot))
             }.accessibilityIdentifier("Wumi.MijiSearch.Result.\(hit.id)").id(hit.id)
     }
 

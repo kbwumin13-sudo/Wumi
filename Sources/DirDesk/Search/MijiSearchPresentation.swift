@@ -41,5 +41,18 @@ struct MijiResultAvailability {
     let volumeName: String
     let contentMessage: String?
 }
-enum MijiFileAction { case open, reveal, revealInFinder, copyFile, copyPath, quickLook, preview, openAtLine }
+enum MijiFileAction {
+    case open, reveal, revealInFinder, copyFile, copyPath, quickLook, preview, openAtLine
+    case copyReference, cutReference, copyTo, sendTo, stageFile
+
+    /// Cmd-C/preview copy keeps its existing local-data rule. Wumi's context menu
+    /// passes URLs to the original clipboard/chooser/transit implementations.
+    var requiresLocalContent: Bool {
+        switch self {
+        case .copyFile, .quickLook, .preview: return true
+        case .open, .reveal, .revealInFinder, .copyPath, .openAtLine,
+             .copyReference, .cutReference, .copyTo, .sendTo, .stageFile: return false
+        }
+    }
+}
 
