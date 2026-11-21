@@ -88,6 +88,15 @@ public final class SearchDatabase: @unchecked Sendable {
         }
     }
 
+    func indexedRoot(id: String) throws -> IndexedRoot? {
+        try synchronized {
+            let statement=try prepare("SELECT payload FROM roots WHERE id=?")
+            defer {sqlite3_finalize(statement)}
+            try bind([.string(id)],to:statement)
+            return try next(statement) ? decode(IndexedRoot.self,text(statement,0)) : nil
+        }
+    }
+
     public func saveRoot(_ root: IndexedRoot) throws {
         try synchronized {
             // Stable key order makes repeated saves comparable, without changing
@@ -401,10 +410,18 @@ public final class SearchDatabase: @unchecked Sendable {
     }
 
     public func pendingFiles(rootID: String, limit: Int = 100, kind: FileKind? = nil) throws -> [FileRecord] {
+        try pendingFiles(rootID:rootID,limit:limit,kind:kind,heavy:nil)
+    }
+
+    func pendingFiles(rootID: String, limit: Int, kind: FileKind?, heavy: Bool?, afterID: Int64 = 0) throws -> [FileRecord] {
         try synchronized {
-            var sql = "SELECT \(Self.fileColumns) FROM files f WHERE f.root_id=? AND f.content_state='pending'"
-            var values: [Value] = [.string(rootID)]
+            var sql = "SELECT \(Self.fileColumns) FROM files f WHERE f.root_id=? AND f.content_state='pending' AND f.id>?"
+            var values: [Value] = [.string(rootID), .integer(afterID)]
             if let kind { sql += " AND f.kind=?"; values.append(.string(kind.rawValue)) }
+            if let heavy, kind == .document {
+                sql += heavy ? " AND f.extension IN (\(IndexService.heavyDocumentExtensionsSQL))" :
+                    " AND f.extension NOT IN (\(IndexService.heavyDocumentExtensionsSQL))"
+            }
             sql += " ORDER BY f.id LIMIT ?"
             values.append(.integer(Int64(max(0, limit))))
             let statement = try prepare(sql)
@@ -413,6 +430,15 @@ public final class SearchDatabase: @unchecked Sendable {
             var result: [FileRecord] = []
             while try next(statement) { result.append(fileRecord(statement)) }
             return result
+        }
+    }
+
+    func pendingFile(rootID: String, path: String) throws -> FileRecord? {
+        try synchronized {
+            let statement = try prepare("SELECT \(Self.fileColumns) FROM files f WHERE f.root_id=? AND f.relative_path=? AND f.content_state='pending'")
+            defer { sqlite3_finalize(statement) }
+            try bind([.string(rootID), .string(path)], to:statement)
+            return try next(statement) ? fileRecord(statement) : nil
         }
     }
 
@@ -448,15 +474,19 @@ public final class SearchDatabase: @unchecked Sendable {
 
     @discardableResult
     public func completeContent(file: FileRecord, content: ExtractedContent) throws -> Bool {
-        let raw = try encoder.encode(content)
+        try completeContent(file:file,raw:encoder.encode(content),requirePending:false)
+    }
+
+    func completeContent(file: FileRecord, raw: Data, requirePending: Bool) throws -> Bool {
+        let predicate = Self.signaturePredicate + (requirePending ? Self.activePendingPredicate : "")
         return try synchronized {
             try transaction {
-                let check = try prepare("SELECT id FROM files WHERE \(Self.signaturePredicate)")
+                let check = try prepare("SELECT id FROM files WHERE \(predicate)")
                 defer { sqlite3_finalize(check) }
                 try bind(signature(file), to: check)
                 guard try next(check) else { return false }
                 let bodyID = try insertBody(raw)
-                try run("UPDATE files SET content_id=?,content_state='done',content_error=NULL WHERE \(Self.signaturePredicate)", [.integer(bodyID)] + signature(file))
+                try run("UPDATE files SET content_id=?,content_state='done',content_error=NULL WHERE \(predicate)", [.integer(bodyID)] + signature(file))
                 return sqlite3_changes(connection) > 0
             }
         }
@@ -475,6 +505,14 @@ public final class SearchDatabase: @unchecked Sendable {
     public func failContent(file: FileRecord, message: String) throws {
         try synchronized {
             try run("UPDATE files SET content_state='error',content_error=? WHERE \(Self.signaturePredicate)", [.string(message)] + signature(file))
+        }
+    }
+
+    func failPendingContent(file: FileRecord, message: String) throws -> Bool {
+        try synchronized {
+            try run("UPDATE files SET content_state='error',content_error=? WHERE \(Self.signaturePredicate)\(Self.activePendingPredicate)",
+                    [.string(message)] + signature(file))
+            return sqlite3_changes(connection) > 0
         }
     }
 
@@ -1072,7 +1110,8 @@ public final class SearchDatabase: @unchecked Sendable {
     }
 
     static func pinyin(_ name: String) -> (String, String) {
-        let latin = (name.applyingTransform(.toLatin, reverse: false) ?? name).applyingTransform(.stripDiacritics, reverse: false) ?? name
+        let latin = name.utf8.allSatisfy { (0x20...0x7e).contains($0) } ? name :
+            (name.applyingTransform(.toLatin, reverse:false) ?? name).applyingTransform(.stripDiacritics, reverse:false) ?? name
         let words = QueryParser.normalize(latin).split(whereSeparator: { !$0.isLetter && !$0.isNumber })
         return (words.joined(), String(words.compactMap(\.first)))
     }
@@ -1110,6 +1149,7 @@ public final class SearchDatabase: @unchecked Sendable {
         let roots = ["system/", "usr/", "opt/", "private/", "bin/", "sbin/", "cores/"].map { "\(table).relative_path LIKE '\($0)%'" }
         return "(CASE WHEN " + (inside + roots).joined(separator: " OR ") + " THEN 1 ELSE 0 END)"
     }
+    private static let activePendingPredicate = " AND content_state='pending' AND EXISTS (SELECT 1 FROM roots WHERE id=files.root_id AND enabled=1 AND online=1)"
     private static let signaturePredicate = "id=? AND root_id=? AND relative_path=? AND size=? AND modified=? AND inode=?"
     static let fileColumns = "f.id,f.root_id,f.relative_path,f.name,f.extension,f.kind,f.size,f.modified,f.inode,f.content_state,f.content_error,f.generation"
 

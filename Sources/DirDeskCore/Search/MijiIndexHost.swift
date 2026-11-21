@@ -29,6 +29,8 @@ public final class MijiIndexHost: @unchecked Sendable {
     private var deliveryScheduled=false
     private var lastDelivery:TimeInterval = -.infinity
     private var compactionScheduled=false
+    private let cacheWriter=DispatchQueue(label:"wumi.miji.name-cache",qos:.utility)
+    private let cacheWrites=DispatchGroup()
     public var onCatalogChange:(()->Void)? {
         get {lock.lock();defer{lock.unlock()};return catalogObserver}
         set {lock.lock();catalogObserver=newValue;lock.unlock()}
@@ -149,11 +151,12 @@ public final class MijiIndexHost: @unchecked Sendable {
 
     public func rebuildIndex() {guard !readOnly else {return};engine.discardTemporaryIndexes();service?.requestScan()}
 
-    /// Wait for the original Miji worker to stop (including its helper), then persist names.
+    /// Join scanner, content workers and name-cache writes before releasing the lease.
     public func shutdown() {
         lock.lock();if stopped {lock.unlock();return};stopped=true;lock.unlock()
         configurationLock.lock();started=false;configurationLock.unlock()
         service?.stopAndWait()
+        cacheWrites.wait()
         if !readOnly {try? engine.names.saveCache()}
         service=nil;engine.discardTemporaryIndexes();lease=nil
     }
@@ -176,9 +179,11 @@ public final class MijiIndexHost: @unchecked Sendable {
         guard engine.names.needsCompaction else {return}
         lock.lock()
         guard !stopped,!compactionScheduled else {lock.unlock();return}
-        compactionScheduled=true;lock.unlock()
-        delivery.async { [weak self] in
-            guard let self else {return}
+        compactionScheduled=true
+        cacheWrites.enter()
+        lock.unlock()
+        cacheWriter.async { [self] in
+            defer {cacheWrites.leave()}
             do {try self.engine.names.compact()} catch {self.publish(error:error.localizedDescription)}
             self.lock.lock();self.compactionScheduled=false;self.lock.unlock()
         }

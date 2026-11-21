@@ -358,18 +358,22 @@ final class ScanSchedulingTests: XCTestCase {
             if calls.value == 1 { service.setUserActive(true) }
             XCTAssertFalse(cancelled())
             return ExtractedContent(text:"finished")
-        },contentClock:{ clock.now },watchEvents:false,resources:{ IndexResourceState() },scheduling:policy)
+        },watchEvents:false,resources:{ IndexResourceState() },scheduling:policy)
         defer { service.stopAndWait();service=nil }
         var prefs=IndexingPreferences();prefs.autoAddExternal=false
         service.configure(prefs)
         XCTAssertTrue(scheduler.runNext())
+        service.waitForContentSlice()
         XCTAssertEqual(calls.value,1)
         XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='done'"),1)
         XCTAssertFalse(service.isRunning)
         XCTAssertEqual(scheduler.pendingCount,0,"输入期间不应轮询")
         service.setUserActive(false)
         var turns=0
-        while scheduler.runNext(),turns < 200 { turns += 1 }
+        while scheduler.runNext(),turns < 200 {
+            service.waitForContentSlice()
+            turns += 1
+        }
         XCTAssertLessThan(turns,200)
         XCTAssertGreaterThan(turns,10)
         XCTAssertEqual(try paths().count,24)
@@ -631,7 +635,9 @@ final class ScanSchedulingTests: XCTestCase {
 
     func testStopAndWaitCancelsActiveExtractionAtItsCancellationBoundary() throws {
         _ = try savedRoot()
-        let entered=expectation(description:"extractor entered")
+        try write("heavy.png","fixture")
+        let entered=expectation(description:"both extractors entered")
+        entered.expectedFulfillmentCount=2
         let exited=Counter()
         let service=IndexService(database:db,extractor:{ _,cancelled in
             entered.fulfill()
@@ -645,9 +651,217 @@ final class ScanSchedulingTests: XCTestCase {
         let start=ProcessInfo.processInfo.systemUptime
         service.stopAndWait()
         XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-start,1)
-        XCTAssertEqual(exited.value,1)
+        XCTAssertEqual(exited.value,2)
         XCTAssertFalse(service.isRunning)
         XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='done'"),0)
+        service.mutate({_ in XCTFail("A stopped writer accepted a mutation")},completion:{XCTAssertNotNil($0)})
+    }
+
+    func testRealWatcherPublishesMetadataAndLightContentWhileHeavyLaneIsBusy() throws {
+        _ = try savedRoot()
+        try write("heavy.png","fixture")
+        let heavyEntered=DispatchSemaphore(value:0)
+        let releaseHeavy=DispatchSemaphore(value:0)
+        let heavyCalls=Counter()
+        let landed=expectation(description:"new light document searchable")
+        landed.assertForOverFulfill=false
+        let service=IndexService(database:db,extractor:{url,cancelled in
+            if ["png","pdf"].contains(url.pathExtension) {
+                heavyCalls.increment()
+                heavyEntered.signal()
+                while !cancelled() && releaseHeavy.wait(timeout:.now()+0.02) == .timedOut {}
+            }
+            return ExtractedContent(text:url.lastPathComponent == "arrival.txt" ? "WATCHLIGHTTOKEN" : "fixture body")
+        },resources:{IndexResourceState()})
+        defer {releaseHeavy.signal();service.stopAndWait()}
+        service.onContentChange={
+            if (try? self.db.search("WATCHLIGHTTOKEN",options:SearchOptions(scope:.content)).count) == 1 {
+                landed.fulfill()
+            }
+        }
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false
+        service.configure(prefs)
+        service.start()
+        XCTAssertEqual(heavyEntered.wait(timeout:.now()+4),.success)
+        try write("arrival.txt","new file while OCR waits")
+        try write("second.pdf","second heavy fixture")
+        wait(for:[landed],timeout:5)
+        XCTAssertEqual(heavyCalls.value,1,"A second heavy extraction must wait for the first lane claim")
+        XCTAssertTrue(try paths().contains("arrival.txt"))
+        XCTAssertEqual(FileWatcher.deliveryLatency,0.5)
+    }
+
+    func testStaleExtractionFailureDoesNotPublishAfterFileReplacement() throws {
+        let root=try savedRoot()
+        try write("replace.pdf","original document")
+        try db.execute("""
+            CREATE TEMP TABLE stale_errors(n INTEGER);
+            CREATE TEMP TRIGGER stale_claim_probe AFTER UPDATE ON files
+            WHEN new.relative_path='replace.pdf' AND new.content_state='error'
+            BEGIN INSERT INTO stale_errors VALUES(1); END;
+            """)
+        let oldEntered=DispatchSemaphore(value:0)
+        let replaceCommitted=DispatchSemaphore(value:0)
+        let attempts=Counter(),notifications=Counter()
+        let landed=expectation(description:"replacement body committed")
+        landed.assertForOverFulfill=false
+        let service=IndexService(database:db,extractor:{url,_ in
+            guard url.lastPathComponent == "replace.pdf" else {return ExtractedContent(text:"fixture")}
+            attempts.increment()
+            if attempts.value == 1 {
+                oldEntered.signal()
+                _=replaceCommitted.wait(timeout:.now()+4)
+                throw SearchDatabaseError(message:"stale failure")
+            }
+            return ExtractedContent(text:"REPLACEMENTTOKEN")
+        },watchEvents:false,resources:{IndexResourceState()})
+        defer {replaceCommitted.signal();service.stopAndWait()}
+        service.onContentChange={
+            if (try? self.db.search("REPLACEMENTTOKEN",options:SearchOptions(scope:.content)).count) == 1 {
+                notifications.increment()
+                landed.fulfill()
+            }
+        }
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false
+        service.configure(prefs)
+        XCTAssertEqual(oldEntered.wait(timeout:.now()+4),.success)
+        let original=try XCTUnwrap(db.pendingFile(rootID:root.id,path:"replace.pdf"))
+        let replacement=source.appendingPathComponent("replace.pdf")
+        try Data("updated document".utf8).write(to:replacement,options:.atomic)
+        replaceCommitted.signal()
+        wait(for:[landed],timeout:6)
+        XCTAssertEqual(attempts.value,2)
+        XCTAssertGreaterThanOrEqual(notifications.value,1)
+        XCTAssertEqual(try scalar("SELECT count(*) FROM stale_errors"),0)
+        XCTAssertEqual(try id("replace.pdf"),original.id)
+    }
+
+    func testHeavyReuseRequiresIdenticalBytesAndPreservesDistinctFileRows() throws {
+        let root=try savedRoot()
+        try write("copy-a.png","same data")
+        try write("copy-b.png","same data")
+        try write("distinct.png","new bytes")
+        let calls=Counter()
+        let done=expectation(description:"three independent image rows committed")
+        done.assertForOverFulfill=false
+        let service=IndexService(database:db,extractor:{url,_ in
+            calls.increment()
+            return ExtractedContent(text:try String(contentsOf:url,encoding:.utf8))
+        },watchEvents:false,resources:{IndexResourceState()},reuseHeavyInputs:true)
+        defer {service.stopAndWait()}
+        service.onContentChange={
+            if (try? self.db.search("same",options:SearchOptions(kind:.image,scope:.content)).count) == 2,
+               (try? self.db.search("bytes",options:SearchOptions(kind:.image,scope:.content)).count) == 1 {
+                done.fulfill()
+            }
+        }
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false;prefs.documents=false
+        service.configure(prefs)
+        wait(for:[done],timeout:5)
+        XCTAssertEqual(calls.value,2)
+        XCTAssertEqual(try db.pendingFiles(rootID:root.id,kind:.image).count,0)
+        XCTAssertNotEqual(try id("copy-a.png"),try id("copy-b.png"))
+    }
+
+    func testExactEventsBypassBroadLocalTraversalAndKeepClaimOnShutdown() throws {
+        let root=try savedRoot()
+        for index in 0..<40 {try write("sub/file\(index).txt","fixture")}
+        let stateURL=directory.appendingPathComponent("priority.json")
+        var state=IncrementalIndexState()
+        let cursor=FSEventsGetCurrentEventId()
+        state.roots[root.id] = .init(path:root.path,cursor:cursor,pending:["sub"])
+        try state.write(stateURL)
+        let scheduler=ManualIndexScheduler(),clock=SliceClock(step:0)
+        var policy=scheduler.policy(clock:clock);policy.metadataItems=2
+        func makeService() -> IndexService {
+            IndexService(database:db,extractor:{_,_ in ExtractedContent()},watchEvents:false,stateURL:stateURL,
+                         resources:{IndexResourceState()},scheduling:policy)
+        }
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false;prefs.images=false;prefs.documents=false
+        let service=makeService()
+        defer {service.stopAndWait()}
+        service.configure(prefs)
+        XCTAssertTrue(scheduler.runNext())
+        XCTAssertEqual(service.currentState.roots[root.id]?.inFlight,["sub"])
+        try write("sub/arrival.txt","exact change during broad traversal")
+        service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub/arrival.txt").path,flags:FileChangeEvent.exactFileFlag)])
+        XCTAssertTrue(scheduler.runNext())
+        XCTAssertTrue(try paths().contains("sub/arrival.txt"))
+        XCTAssertLessThan(try paths().count,10)
+        XCTAssertEqual(service.currentState.roots[root.id]?.inFlight,["sub"])
+
+        try write("sub/resume.txt","exact change awaiting restart")
+        service.onProgress={ [weak service] progress in
+            if progress.detail == "sub/resume.txt" {service?.setPaused(true)}
+        }
+        service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub/resume.txt").path,flags:FileChangeEvent.exactFileFlag)])
+        XCTAssertTrue(scheduler.runNext())
+        service.stopAndWait()
+        let durable=IncrementalIndexState.read(stateURL)
+        XCTAssertEqual(durable.roots[root.id]?.cursor,cursor)
+        XCTAssertEqual(durable.roots[root.id]?.priorityInFlight,"sub/resume.txt")
+        XCTAssertTrue(durable.roots[root.id]?.inFlight.contains("sub/resume.txt") == true)
+        XCTAssertFalse(try paths().contains("sub/resume.txt"))
+
+        let replay=makeService()
+        defer {replay.stopAndWait()}
+        replay.configure(prefs)
+        XCTAssertTrue(scheduler.runNext())
+        XCTAssertTrue(try paths().contains("sub/resume.txt"))
+        XCTAssertLessThan(try paths().count,10)
+    }
+
+    func testExactReplacementRestartsSuspendedDirectoryScope() throws {
+        let root=try savedRoot()
+        try FileManager.default.createDirectory(at:source.appendingPathComponent("target"),withIntermediateDirectories:true)
+        for index in 0..<5 {try write("target/child\(index).txt","old")}
+        let stateURL=directory.appendingPathComponent("priority-replacement.json")
+        var state=IncrementalIndexState()
+        state.roots[root.id] = .init(path:root.path,cursor:FSEventsGetCurrentEventId(),pending:["target"])
+        try state.write(stateURL)
+        let scheduler=ManualIndexScheduler(),clock=SliceClock(step:0)
+        var policy=scheduler.policy(clock:clock);policy.metadataItems=2
+        let service=IndexService(database:db,extractor:{_,_ in ExtractedContent()},watchEvents:false,stateURL:stateURL,
+                                 resources:{IndexResourceState()},scheduling:policy)
+        defer {service.stopAndWait()}
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false;prefs.images=false;prefs.documents=false
+        service.configure(prefs)
+        XCTAssertTrue(scheduler.runNext())
+        XCTAssertEqual(service.currentState.roots[root.id]?.inFlight,["target"])
+
+        let url=source.appendingPathComponent("target")
+        try FileManager.default.removeItem(at:url)
+        try Data("replacement".utf8).write(to:url,options:.atomic)
+        service.receiveEvents([FileChangeEvent(path:url.path,flags:FileChangeEvent.exactFileFlag)])
+        var turns=0
+        while scheduler.runNext(),turns<30 {turns += 1}
+        XCTAssertLessThan(turns,30)
+        let hits=try db.search("target",options:SearchOptions(scope:.name))
+        XCTAssertEqual(hits.map(\.file.kind),[.other])
+        XCTAssertFalse(try paths().contains(where:{$0.hasPrefix("target/")}))
+    }
+
+    func testPendingContentWithInaccessibleParentFailsWithoutRequeue() throws {
+        guard geteuid() != 0 else {throw XCTSkip("Root can traverse unreadable directories")}
+        let root=try savedRoot()
+        XCTAssertTrue(try FileScanner(database:db).scan(root:root,relativePath:"sub").complete)
+        let sub=source.appendingPathComponent("sub")
+        try FileManager.default.setAttributes([.posixPermissions:0],ofItemAtPath:sub.path)
+        defer {try? FileManager.default.setAttributes([.posixPermissions:0o755],ofItemAtPath:sub.path)}
+        let stateURL=directory.appendingPathComponent("permission-content.json")
+        var state=IncrementalIndexState()
+        state.roots[root.id] = .init(path:root.path,cursor:FSEventsGetCurrentEventId(),pending:[])
+        try state.write(stateURL)
+        let settled=expectation(description:"Permission error is committed")
+        let service=IndexService(database:db,extractor:{_,_ in XCTFail("Inaccessible file reached extractor"); return ExtractedContent()},
+                                 watchEvents:false,stateURL:stateURL,resources:{IndexResourceState()})
+        defer {service.stopAndWait()}
+        service.onContentChange={settled.fulfill()}
+        var prefs=IndexingPreferences();prefs.autoAddExternal=false;prefs.images=false
+        service.configure(prefs)
+        wait(for:[settled],timeout:3)
+        XCTAssertEqual(try scalar("SELECT COUNT(*) FROM files WHERE relative_path='sub/c.txt' AND content_state='error'"),1)
+        XCTAssertTrue(service.currentState.roots[root.id]?.pending.isEmpty == true)
     }
 
     func testContentNotificationsFollowCommittedSuccessOrFailureOnly() throws {
@@ -662,7 +876,10 @@ final class ScanSchedulingTests: XCTestCase {
         var prefs=IndexingPreferences();prefs.autoAddExternal=false
         service.configure(prefs)
         var turns=0
-        while scheduler.runNext(),turns<100 {turns += 1}
+        while scheduler.runNext(),turns<100 {
+            service.waitForContentSlice()
+            turns += 1
+        }
         XCTAssertLessThan(turns,100)
         XCTAssertEqual(notifications.value,3)
         XCTAssertEqual(try scalar("SELECT count(*) FROM files WHERE content_state='error'"),1)
@@ -671,7 +888,10 @@ final class ScanSchedulingTests: XCTestCase {
         service.receiveEvents([FileChangeEvent(path:source.appendingPathComponent("sub").path)])
         service.configure(prefs) // Advance the queued scope without waiting for the event debounce.
         turns=0
-        while scheduler.runNext(),turns<100 {turns += 1}
+        while scheduler.runNext(),turns<100 {
+            service.waitForContentSlice()
+            turns += 1
+        }
         XCTAssertLessThan(turns,100)
         XCTAssertEqual(notifications.value,3,"Unchanged metadata scans do not invalidate content queries")
     }

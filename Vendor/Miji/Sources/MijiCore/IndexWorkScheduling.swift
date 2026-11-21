@@ -10,6 +10,5 @@ struct IndexWorkScheduling {
     }
     var metadataSeconds: TimeInterval = 0.05
     var metadataItems = 300
-    var contentSeconds: TimeInterval = 0.05
     var continuationDelay: TimeInterval = 0.2
 }

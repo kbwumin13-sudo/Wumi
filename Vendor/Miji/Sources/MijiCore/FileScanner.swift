@@ -130,6 +130,8 @@ final class FileScanSession {
     private(set) var finished = false
     private(set) var writes = ScanWriteStatistics()
     private(set) var pruned = 0
+    private(set) var visitedLastAdvance = 0
+    private(set) var rootAvailable = true
     let startedAt = ProcessInfo.processInfo.systemUptime
 
     init(database: SearchDatabase, ignoredPaths: [String], root: IndexedRoot, scope: String, options: ScanOptions) {
@@ -161,9 +163,11 @@ final class FileScanSession {
     private func excludedPath(_ url: URL, relative: String) -> Bool {
         // Enumerated URLs extend the canonical root and never cross a symlink.
         if pathFilter.ignores(canonical:url.path) {return true}
-        let parts=relative.split(separator:"/").map(String.init)
-        if !checkpoint.options.includeHidden && parts.contains(where:{$0.hasPrefix(".")}) {return true}
-        return checkpoint.options.excludeDevelopmentCaches && (parts.contains(where:excluded.contains) || url.path == userLibrary || url.path.hasPrefix(userLibrary+"/"))
+        let options=checkpoint.options
+        guard !options.includeHidden || options.excludeDevelopmentCaches else {return false}
+        let parts=relative.split(separator:"/")
+        if !options.includeHidden && parts.contains(where:{$0.hasPrefix(".")}) {return true}
+        return options.excludeDevelopmentCaches && (parts.contains(where:{excluded.contains(String($0))}) || url.path == userLibrary || url.path.hasPrefix(userLibrary+"/"))
     }
     /// Return whether to queue the directory, without traversing packages,
     /// symlinks or physical aliases of the logical boot-volume tree.
@@ -196,13 +200,16 @@ final class FileScanSession {
         progress(checkpoint.count)
     }
     func advance(cancelled: ()->Bool, shouldYield: ()->Bool = { false }, maximumItems: Int = .max, progress: (Int)->Void) throws -> ScanResult {
-        let initialCount=checkpoint.count
+        visitedLastAdvance=0
+        let previous=root
         root=VolumeIdentity.refreshed(root)
-        try database.saveRoot(root)
-        guard root.enabled,root.isOnline,root.path == checkpoint.rootPath else {
+        if !checkpoint.started || previous != root {try saveRootPreservingScanDate()}
+        rootAvailable=root.enabled && root.isOnline && root.path == checkpoint.rootPath
+        guard rootAvailable else {
             return ScanResult(count:checkpoint.count,complete:false,errors:["索引位置未连接或已停用"])
         }
-        if !checkpoint.started && !cancelled() {
+        if !checkpoint.started && maximumItems > 0 && !cancelled() {
+            if !checkpoint.scope.isEmpty {visitedLastAdvance += 1}
             let target=checkpoint.scope.isEmpty ? base : base.appendingPathComponent(checkpoint.scope)
             var info=stat()
             if lstat(target.path,&info) == 0 {
@@ -211,7 +218,7 @@ final class FileScanSession {
             } else if errno != ENOENT && errno != ENOTDIR {recordFailure(target,NSError(domain:NSPOSIXErrorDomain,code:Int(errno)))}
             checkpoint.started=true
         }
-        while !cancelled() && !shouldYield() && checkpoint.count-initialCount < maximumItems {
+        while !cancelled() && !shouldYield() && visitedLastAdvance < maximumItems {
             if checkpoint.currentDirectory == nil {
                 checkpoint.currentDirectory=checkpoint.directories.popLast()
                 if let path=checkpoint.currentDirectory {queuedDirectories.remove(path)}
@@ -234,13 +241,17 @@ final class FileScanSession {
                     if enumerator == nil {recordFailure(url,CocoaError(.fileReadNoPermission));checkpoint.currentDirectory=nil;return}
                 }
                 guard let url=enumerator?.nextObject() as? URL else {enumerator=nil;checkpoint.currentDirectory=nil;return}
+                visitedLastAdvance += 1
                 do {if try visit(url) {queue(url)}} catch {recordFailure(url,error)}
                 if batch.count >= 300 {try flush(progress)}
             }
         }
         try autoreleasepool {try flush(progress)}
+        let beforeFinish=root
         root=VolumeIdentity.refreshed(root)
-        let reachedEnd=checkpoint.started && checkpoint.currentDirectory == nil && checkpoint.directories.isEmpty && !cancelled() && root.isOnline
+        rootAvailable=root.enabled && root.isOnline && root.path == checkpoint.rootPath
+        let reachedEnd=checkpoint.started && checkpoint.currentDirectory == nil && checkpoint.directories.isEmpty
+            && !cancelled() && rootAvailable
         if reachedEnd {
             if checkpoint.scope.isEmpty {
                 pruned=try database.finishScan(rootID:root.id,seen:seen,preservingPaths:Array(checkpoint.preservingPaths.union(reconciledScopes)))
@@ -251,7 +262,19 @@ final class FileScanSession {
             finished=true
         }
         root.lastError=checkpoint.errors.isEmpty ? nil : checkpoint.errors.joined(separator:"\n")
-        try database.saveRoot(root)
+        if root != beforeFinish {try saveRootPreservingScanDate()}
         return ScanResult(count:checkpoint.count,complete:finished && checkpoint.errors.isEmpty,errors:checkpoint.errors,preservingPaths:Array(checkpoint.preservingPaths))
     }
+
+    private func saveRootPreservingScanDate() throws {
+        // Whole and scoped sessions can interleave. A scoped session may
+        // have started before the latest completed whole scan.
+        if let saved=try database.indexedRoot(id:root.id),
+           let lastScan=saved.lastScan,
+           root.lastScan.map({$0 < lastScan}) ?? true {
+            root.lastScan=lastScan
+        }
+        try database.saveRoot(root)
+    }
+
 }

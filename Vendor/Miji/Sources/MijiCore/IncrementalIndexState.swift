@@ -113,6 +113,10 @@ struct IncrementalIndexState: Codable {
         var cursor: UInt64
         var pending: [String]
         var inFlight: [String] = []
+        /// Exact changes can interrupt broad scans. Keep both the cursor and
+        /// any claimed paths replayable across a crash or host handoff.
+        var priority: [String]? = nil
+        var priorityInFlight: String? = nil
         /// Written by earlier versions only. Interrupted scans now restart from their scope.
         var scan: FileScanCheckpoint? = nil
         var fullRescan: FullRescan? = nil
@@ -129,7 +133,11 @@ struct IncrementalIndexState: Codable {
     static func read(_ url: URL) -> IncrementalIndexState {
         (try? JSONDecoder().decode(Self.self,from:Data(contentsOf:url))) ?? Self()
     }
-    func encoded() throws -> Data { try JSONEncoder().encode(self) }
+    func encoded() throws -> Data {
+        let encoder=JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        return try encoder.encode(self)
+    }
     static func write(_ data: Data, to url: URL) throws {
         // A predictable sibling is excluded from events and enumeration too.
         // Foundation's .atomic uses random temporary names, which can otherwise
@@ -195,6 +203,10 @@ struct IncrementalIndexState: Codable {
             let wholeRoot=root.pending.contains("") || root.inFlight.contains("")
             let running=root.runningFull
             root.pending=IndexRelativePath.compacting((root.pending + root.inFlight).filter { !$0.isEmpty })
+            let priority=IndexRelativePath.coalescing([root.priorityInFlight].compactMap{$0} + (root.priority ?? []))
+                .filter { !$0.isEmpty }
+            root.priority=priority.isEmpty ? nil : priority
+            root.priorityInFlight=nil
             root.inFlight=[]
             root.scan=nil
             root.runningFull=nil

@@ -68,7 +68,8 @@ public enum QueryParser {
     }
 
     static func normalize(_ text: String) -> String {
-        text.precomposedStringWithCanonicalMapping.lowercased().precomposedStringWithCanonicalMapping
+        if text.utf8.allSatisfy({ $0 < 128 }) { return text.lowercased() }
+        return text.precomposedStringWithCanonicalMapping.lowercased().precomposedStringWithCanonicalMapping
     }
 
     static func kindValue(_ value: String) -> String {

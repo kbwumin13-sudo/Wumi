@@ -1,0 +1,19 @@
+{
+  "source_repository": "https://github.com/kbwumin13-sudo/miji",
+  "source_head": "61123c0617fc6656a3f7a096e16a00340f8009b4",
+  "source_indexing_commit": "925bcbc166e3516f79bed7a79008747b220c6d8d",
+  "source_worktree_dirty": false,
+  "wumi_base": "333806be760bf2072d678496ace4fa969090b3ba",
+  "source_sha256": {
+    "Sources/MijiCore/Extraction/ExtractionReuse.swift": "328b438c5b635ef6feb7199df4be4205aaba5e14c6d0478ee65e28afca0dae7a",
+    "Sources/MijiCore/FileScanner.swift": "0fde1bfa55801c1b3a54ed2c2a9a0c734618fb0cfc8e8a4c5bc68347ebc628b9",
+    "Sources/MijiCore/FileWatcher.swift": "7ba3fb6414e20c7a4e5c2ac5ac198036e94b96114cf38e89d5ca6890d786f88a",
+    "Sources/MijiCore/IncrementalIndexState.swift": "02a107e5c7936a1565296a48fa2a939a4890694caaf82c455e1a9f65a4032fe2",
+    "Sources/MijiCore/IndexService.swift": "bf27a42f3084bc8728d59e5de3bb55939f8426cc6a7c483ec5920fb2c704e589",
+    "Sources/MijiCore/QueryParser.swift": "d446a4892a9501a4a88d4d229e8b9cd4ac52cf788177a89bf8a580da851d6435",
+    "Sources/MijiCore/SearchDatabase.swift": "bc26ac3d8c19bb760437c8aa2764d8ae10e0a6f969fdde8e5ff4713f7fa2fc60",
+    "Tests/MijiCoreTests/IndexServiceTests.swift": "b24cdb12c73d1d850304daa09cb0f0a5546d71ee8dd4a7c8c7219979b7cfa475",
+    "Tests/MijiCoreTests/ScannerTests.swift": "4ac349c175b36b66cad1d67dfbc5f13182999bd0f2595ad617527c5109fca4dc",
+    "LICENSE": "a126ce4fff084b047a92ce4872e7a77a688b6632affd02cb22ccc45c6bb125e3"
+  }
+}

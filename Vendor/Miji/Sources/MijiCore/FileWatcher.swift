@@ -54,6 +54,10 @@ public struct FileChangeEvent: Sendable {
     }
     var historyDone: Bool { flags & UInt32(kFSEventStreamEventFlagHistoryDone) != 0 }
     var mustScanSubDirs: Bool { flags & UInt32(kFSEventStreamEventFlagMustScanSubDirs) != 0 }
+    var isExactFile: Bool {
+        flags & UInt32(kFSEventStreamEventFlagItemIsFile | kFSEventStreamEventFlagItemIsSymlink) != 0
+    }
+    static let exactFileFlag = UInt32(kFSEventStreamEventFlagItemIsFile)
     var idsWrapped: Bool { flags & UInt32(kFSEventStreamEventFlagEventIdsWrapped) != 0 }
     /// For diagnostics only.
     var recoveryDescription: String {
@@ -68,6 +72,8 @@ public struct FileChangeEvent: Sendable {
 }
 
 public final class FileWatcher {
+    static let deliveryLatency: TimeInterval = 0.5
+
     static var currentEventID: UInt64 { FSEventsGetCurrentEventId() }
     static var droppedEventFlag: UInt32 { UInt32(kFSEventStreamEventFlagUserDropped) }
     private final class Context { let changed: ([FileChangeEvent]) -> Void; init(_ changed: @escaping ([FileChangeEvent]) -> Void) { self.changed = changed } }
@@ -98,7 +104,7 @@ public final class FileWatcher {
             let changedPaths = unsafeBitCast(paths, to: NSArray.self) as? [String] ?? []
             let changes=(0..<min(count,changedPaths.count)).map { FileChangeEvent(path:changedPaths[$0],flags:flags[$0],id:ids[$0]) }
             Unmanaged<Context>.fromOpaque(context).takeUnretainedValue().changed(changes)
-        }, &context, paths as CFArray, since, 1, FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagUseCFTypes))
+        }, &context, paths as CFArray, since, Self.deliveryLatency, FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagUseCFTypes))
         if let stream { FSEventStreamSetDispatchQueue(stream,queue); isWatching=FSEventStreamStart(stream) }
     }
     deinit { if let stream { FSEventStreamStop(stream); FSEventStreamInvalidate(stream); FSEventStreamRelease(stream) } }
