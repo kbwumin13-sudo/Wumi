@@ -1,0 +1,22 @@
+{
+  "source_repository": "https://github.com/kbwumin13-sudo/miji",
+  "source_release": "v1.3.3",
+  "source_head": "afb46f02e61b360c3a93fd8fa0c60fd7c68bf512",
+  "source_core_commit": "d4b3e3e00b67aa2d9c575c079c9b8b14ce199f80",
+  "source_worktree_dirty": false,
+  "wumi_base": "d42ade8ca7c300613877ac4b756b16094a98e6d0",
+  "source_sha256": {
+    "Sources/MijiCore/NameSearchEngine.swift": "ee54b68c541ede0d85031c172facae0110aa2f0c041bd700ccdf83198d7cddae",
+    "Sources/MijiCore/SearchDatabase.swift": "918a879b392a59abbbe5a9f8acc225175df944564692b211639b46d83dab6aa2",
+    "Tests/MijiCoreTests/NameSearchEngineTests.swift": "882d5f863b81eda8032f5a54c3171ed30cf0a958b6c6208f5b146096066af912",
+    "Tests/MijiCoreTests/SearchQualityTests.swift": "af7f554111efd8afc67c396367092e72fdfca152308393c52d676246470de512",
+    "LICENSE": "a126ce4fff084b047a92ce4872e7a77a688b6632affd02cb22ccc45c6bb125e3"
+  },
+  "vendored_sha256": {
+    "Sources/MijiCore/NameSearchEngine.swift": "521139f42bfc9357256a154b11c6bd098b42c1a0d401014c7afd23122d763f1f",
+    "Sources/MijiCore/SearchDatabase.swift": "869568ac5d24b63bc3ceb3e839124350cac85e851d7cd29d63b9df839808d43a",
+    "Tests/MijiCoreTests/NameSearchEngineTests.swift": "7fbafcccbb4ebfa732c382071db9a1504e0262c3807a29d1b9f5198133ca1e33",
+    "Tests/MijiCoreTests/SearchQualityTests.swift": "af7f554111efd8afc67c396367092e72fdfca152308393c52d676246470de512",
+    "LICENSE": "a126ce4fff084b047a92ce4872e7a77a688b6632affd02cb22ccc45c6bb125e3"
+  }
+}

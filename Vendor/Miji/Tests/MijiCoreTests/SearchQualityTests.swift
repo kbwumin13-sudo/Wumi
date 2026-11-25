@@ -79,6 +79,33 @@ final class SearchQualityTests: XCTestCase {
         XCTAssertTrue(hits.allSatisfy { $0.snippet.contains("alpha beta") })
     }
 
+    func testEnvelopePrefixKeepsCandidateOrderForOverflowPages() throws {
+        let alphabet = Array("abcdefghijklmnopqrstuvwxyz0123456789".utf8)
+        var state: UInt64 = 7
+        let randomText = String(decoding: (0..<80_000).map { _ in
+            state = state &* 6_364_136_223_846_793_005 &+ 1
+            return alphabet[Int((state >> 32) % UInt64(alphabet.count))]
+        }, as: UTF8.self)
+        let db = try database("overflow", documents: [
+            ("a-large.txt", "needle " + randomText, 1),
+            ("z-small.txt", "needle short", 2)
+        ])
+        do {
+            let sizes = try db.prepare("SELECT max(length(packed)) FROM content_blobs")
+            defer { sqlite3_finalize(sizes) }
+            XCTAssertTrue(try db.next(sizes))
+            XCTAssertGreaterThan(sqlite3_column_int(sizes, 0), 16_384)
+        }
+
+        let reader = try SearchDatabase(url: db.url, readOnly: true)
+        var metrics = SearchMetrics()
+        let hits = try reader.searchSupplementary("needle", options: SearchOptions(scope: .content),
+            traceCandidates: true, onMetrics: { metrics = $0 })
+        XCTAssertEqual(metrics.candidateOrder, ["r/z-small.txt", "r/a-large.txt"])
+        XCTAssertEqual(hits.map(\.file.relativePath), ["z-small.txt", "a-large.txt"])
+        XCTAssertTrue(hits.allSatisfy { $0.snippet.contains("needle") })
+    }
+
     func testInternalTopSetTrimStillReportsResultTruncation() throws {
         let docs = (0..<1_001).map { ("copies/\($0).txt", "needle", 1.0) }
         let db = try database("trim", documents: docs)

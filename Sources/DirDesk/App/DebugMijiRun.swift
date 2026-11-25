@@ -58,6 +58,8 @@ enum DebugMijiRun {
                 check("current first batch remains actionable during body search",firstBatchActionable)
                 model.scope = .name
                 check("name-only excludes body", await search("ORIGINAL_BODY_TOKEN").isEmpty)
+                let selectivePath = await search("scope path:folder -path:foldersibling")
+                check("selective path name results preserve exclusions", selectivePath.map(\.file.relativePath) == ["Folder/scope-inside.txt"])
                 model.scope = .content
                 check("document body", await search("ORIGINAL_BODY_TOKEN").map(\.file.name) == ["Wumi-note.txt"])
                 model.scope = .all

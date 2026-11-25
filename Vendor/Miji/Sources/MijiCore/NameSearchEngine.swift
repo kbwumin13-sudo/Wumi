@@ -266,9 +266,12 @@ public final class NameSearchEngine: @unchecked Sendable {
         try reader.execute("BEGIN")
         defer { try? reader.execute("ROLLBACK") }
         let allowedRoots = try availableRoots(current, options: options, reader: reader)
-        if allowedRoots.isEmpty { return [] }
+        if !allowedRoots.contains(true) { return [] }
+        // Root keys are dense snapshot IDs. Skip even the column read when
+        // the catalog authorizes every root represented in the snapshot.
+        let filtersRoots = allowedRoots.contains(false)
         let pathTerms = parsed.terms.filter { $0.field == .path }
-        let paths = pathTerms.isEmpty ? nil : try pathMatches(pathTerms, current: current, options: options, reader: reader)
+        let filtersPaths = !pathTerms.isEmpty
         // Resolve aliases and interned keys once, before visiting candidates.
         // Missing exclusions impose no restriction; missing positive keys can
         // never match. Still visit the core to retain its cancellation checks.
@@ -296,15 +299,58 @@ public final class NameSearchEngine: @unchecked Sendable {
             let order = current.core.compareNames(a.index, b.index)
             return order == 0 ? current.ids[Int(a.index)] < current.ids[Int(b.index)] : order < 0
         }
+        // Buffer only enough candidates for cheap primary-key path reads. If
+        // the name/metadata filter is broad, switch to a single catalog pass
+        // before doing any point reads. The buffer holds only row indexes/scores.
+        let pathCandidateLimit = min(32_768, max(1_024, current.liveCount / 32))
+        var pathCandidates: [NameRankedHit] = []
+        var matchingPaths: [UInt64]?
+        func containsPath(_ index: UInt32, in bits: [UInt64]) -> Bool {
+            let i = Int(index)
+            return bits[i / 64] & (UInt64(1) << (i % 64)) != 0
+        }
         try current.core.forEachMatch(textTerms, cancelled: cancelled) { index, score in
             let i = Int(index)
-            guard filtersPossible, allowedRoots.contains(current.roots[i]), kind == nil || current.kinds[i] == kind else { return }
-            if let paths, paths[i / 64] & (UInt64(1) << (i % 64)) == 0 { return }
+            guard filtersPossible, !filtersRoots || allowedRoots[Int(current.roots[i])],
+                  kind == nil || current.kinds[i] == kind else { return }
             for filter in filters {
                 let match = (filter.isKind ? current.kinds[i] : current.extensions[i]) == filter.value
                 if filter.isExcluded ? match : !match { return }
             }
-            heap.insert(NameRankedHit(index: index, score: score))
+            let hit = NameRankedHit(index: index, score: score)
+            if !filtersPaths { heap.insert(hit); return }
+            if let matchingPaths {
+                if containsPath(index, in: matchingPaths) { heap.insert(hit) }
+            } else if pathCandidates.count < pathCandidateLimit {
+                pathCandidates.append(hit)
+            } else {
+                let paths = try pathMatches(pathTerms, current: current, options: options, reader: reader)
+                for (offset, buffered) in pathCandidates.enumerated() {
+                    if offset % 4096 == 0, cancelled() { throw CancellationError() }
+                    if containsPath(buffered.index, in: paths) { heap.insert(buffered) }
+                }
+                pathCandidates.removeAll()
+                matchingPaths = paths
+                if containsPath(index, in: paths) { heap.insert(hit) }
+            }
+        }
+        if !pathCandidates.isEmpty {
+            let row = try reader.prepare(options.rootID == nil
+                ? "SELECT relative_path FROM files WHERE id=?1"
+                : "SELECT relative_path FROM files WHERE root_id=?1 AND id=?2")
+            defer { sqlite3_finalize(row) }
+            if let root = options.rootID { try reader.bind([root], to: row) }
+            let idParameter: Int32 = options.rootID == nil ? 1 : 2
+            for hit in pathCandidates {
+                if cancelled() { throw CancellationError() }
+                let id = current.ids[Int(hit.index)]
+                guard current.index(id) == hit.index else { continue }
+                sqlite3_reset(row)
+                sqlite3_bind_int64(row, idParameter, id)
+                if try reader.next(row), autoreleasepool(invoking: { Self.matchesPath(reader.text(row, 0), terms: pathTerms) }) {
+                    heap.insert(hit)
+                }
+            }
         }
         if cancelled() { throw CancellationError() }
         return heap.sorted().map { current.ids[Int($0.index)] }
@@ -385,16 +431,16 @@ public final class NameSearchEngine: @unchecked Sendable {
         }
         return result
     }
-    private func availableRoots(_ current: NameSnapshot, options: SearchOptions, reader: NameMetadataReader) throws -> Set<UInt32> {
+    private func availableRoots(_ current: NameSnapshot, options: SearchOptions, reader: NameMetadataReader) throws -> [Bool] {
         let rows = try reader.prepare("SELECT id,online FROM roots")
         defer { sqlite3_finalize(rows) }
-        var allowed: Set<UInt32> = []
+        var allowed = [Bool](repeating: false, count: current.rootKeys.count)
         while try reader.next(rows) {
             let id = reader.text(rows, 0)
             guard options.rootID == nil || options.rootID == id,
                   !options.onlineOnly || sqlite3_column_int(rows, 1) == 1,
                   let index = current.rootKeys[id] else { continue }
-            allowed.insert(index)
+            allowed[Int(index)] = true
         }
         return allowed
     }
@@ -408,14 +454,17 @@ public final class NameSearchEngine: @unchecked Sendable {
         var bits = [UInt64](repeating: 0, count: (current.ids.count + 63) / 64)
         while try reader.next(rows) {
             autoreleasepool {
-                let path = QueryParser.normalize(reader.text(rows, 1))
-                if terms.allSatisfy({ $0.isExcluded != path.contains($0.value) }),
+                if Self.matchesPath(reader.text(rows, 1), terms: terms),
                    let index = current.index(sqlite3_column_int64(rows, 0)) {
                     bits[Int(index) / 64] |= UInt64(1) << (Int(index) % 64)
                 }
             }
         }
         return bits
+    }
+    private static func matchesPath(_ path: String, terms: [QueryTerm]) -> Bool {
+        let normalized = QueryParser.normalize(path)
+        return terms.allSatisfy { $0.isExcluded != normalized.contains($0.value) }
     }
 }
 

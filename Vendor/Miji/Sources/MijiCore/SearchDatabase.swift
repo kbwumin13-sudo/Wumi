@@ -13,7 +13,6 @@ public struct SearchDatabaseError: Error, LocalizedError, Sendable {
 public final class SearchDatabase: @unchecked Sendable {
     public let url: URL
     private let lock = NSLock()
-    private var metadataCandidates = 0
     var connection: OpaquePointer?
     let encoder = JSONEncoder()
     let decoder = JSONDecoder()
@@ -42,15 +41,6 @@ public final class SearchDatabase: @unchecked Sendable {
             sqlite3_busy_timeout(connection, 5_000)
             if readOnly { try execute("PRAGMA query_only=ON") }
             guard miji_register_tokenizer(connection) == SQLITE_OK else { throw error() }
-            sqlite3_create_function_v2(connection, "miji_raw_size", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC,
-                Unmanaged.passUnretained(self).toOpaque(), { context, _, args in
-                    guard let context, let owner = sqlite3_user_data(context), let value = args?[0],
-                          let pointer = sqlite3_value_blob(value) else { return }
-                    let db = Unmanaged<SearchDatabase>.fromOpaque(owner).takeUnretainedValue()
-                    db.metadataCandidates += 1
-                    let header = Data(bytes: pointer, count: min(16, Int(sqlite3_value_bytes(value))))
-                    sqlite3_result_int64(context, Int64(ContentCodec.declaredRawBytes(header) ?? ContentCodec.maximumRawBytes))
-                }, nil, nil, nil)
             sqlite3_create_function_v2(connection, "miji_content", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, nil, { context, _, args in
                 guard let context, let value = args?[0], let pointer = sqlite3_value_blob(value) else { sqlite3_result_null(context); return }
                 do {
@@ -630,8 +620,6 @@ public final class SearchDatabase: @unchecked Sendable {
             }
             let bodyReader = try prepare("SELECT packed FROM content_blobs WHERE id=?")
             defer { sqlite3_finalize(bodyReader) }
-            let metadataStart = metadataCandidates
-            defer { metrics.metadataCandidates = metadataCandidates - metadataStart }
             var cache: [Int64: ExtractedContent] = [:]
             var cacheBytes = 0
             typealias Summary = (content: ExtractedContent, terms: [String], labels: String, snippet: String)
@@ -813,6 +801,22 @@ public final class SearchDatabase: @unchecked Sendable {
                     // Stream old/new metadata in rounds. Never wait for all headers before the first verification.
                     var pooled = Set<Int64>()
                     var more = [true, true]
+                    // SQL substr() materializes the whole BLOB on Apple SQLite.
+                    // A reusable read-only cursor fetches just the envelope prefix
+                    // inside the same snapshot as candidate selection and verification.
+                    var headerBlob: OpaquePointer?
+                    defer { sqlite3_blob_close(headerBlob) }
+                    func declaredSize(_ id: Int64) throws -> Int {
+                        let status = headerBlob.map { sqlite3_blob_reopen($0, id) } ??
+                            sqlite3_blob_open(connection, "main", "content_blobs", "packed", id, 0, &headerBlob)
+                        guard status == SQLITE_OK, let headerBlob else { throw error() }
+                        let count = min(16, Int(sqlite3_blob_bytes(headerBlob)))
+                        guard count > 0 else { return 0 }
+                        return try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: count) { header in
+                            guard sqlite3_blob_read(headerBlob, header.baseAddress, Int32(count), 0) == SQLITE_OK else { throw error() }
+                            return ContentCodec.declaredRawBytes(Data(header)) ?? ContentCodec.maximumRawBytes
+                        }
+                    }
                     let row = try prepare("SELECT \(columns) FROM files f JOIN roots r ON r.id=f.root_id WHERE f.id=?")
                     defer { metrics.sqlSteps += Int(sqlite3_stmt_status(row, SQLITE_STMTSTATUS_VM_STEP, 0)); sqlite3_finalize(row) }
                     exploration: for page in 0..<4 {
@@ -820,14 +824,18 @@ public final class SearchDatabase: @unchecked Sendable {
                         for lane in 0..<2 where more[lane] {
                             let direction = lane == 0 ? "ASC" : "DESC"
                             var count = 0
-                            let rows = try prepare("WITH lane AS MATERIALIZED (SELECT f.id,f.content_id,f.root_id || '/' || f.path_search AS path FROM files f JOIN roots r ON r.id=f.root_id\(filter) ORDER BY f.content_id \(direction),f.id LIMIT 512 OFFSET \(page * 512)) SELECT lane.id,miji_raw_size(substr(b.packed,1,16)),lane.path FROM lane JOIN content_blobs b ON b.id=lane.content_id")
+                            let rows = try prepare("WITH lane AS MATERIALIZED (SELECT f.id,f.content_id,f.root_id || '/' || f.path_search AS path FROM files f JOIN roots r ON r.id=f.root_id\(filter) ORDER BY f.content_id \(direction),f.id LIMIT 512 OFFSET \(page * 512)) SELECT lane.id,b.id,lane.path FROM lane JOIN content_blobs b ON b.id=lane.content_id")
                             defer { metrics.sqlSteps += Int(sqlite3_stmt_status(rows, SQLITE_STMTSTATUS_VM_STEP, 0)); sqlite3_finalize(rows) }
                             try bind(values, to: rows)
                             do {
                                 while try next(rows) {
                                     count += 1
+                                    metrics.metadataCandidates += 1
                                     let id = sqlite3_column_int64(rows, 0)
-                                    if pooled.insert(id).inserted { pool.append((id, Int(sqlite3_column_int64(rows, 1)), text(rows, 2))) }
+                                    if pooled.insert(id).inserted {
+                                        let size = try declaredSize(sqlite3_column_int64(rows, 1))
+                                        pool.append((id, size, text(rows, 2)))
+                                    }
                                     if expired() { throw ContentBudgetReached() }
                                 }
                             } catch is ContentBudgetReached { metrics.budgetExhausted = true; metrics.resultTruncated = true; break exploration }

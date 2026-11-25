@@ -7,12 +7,12 @@
 
 [![macOS](https://img.shields.io/badge/macOS-15%2B-111827?style=flat-square&logo=apple&logoColor=white)](#上手)
 [![Swift](https://img.shields.io/badge/Swift-6.2%2B-F05138?style=flat-square&logo=swift&logoColor=white)](Package.swift)
-[![下载 Wumi 1.2.8](https://img.shields.io/badge/下载-Wumi_1.2.8_arm64_DMG-2563EB?style=flat-square&logo=github&logoColor=white)](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.8/Wumi-1.2.8-arm64.dmg)
+[![下载 Wumi 1.2.9](https://img.shields.io/badge/下载-Wumi_1.2.9_arm64_DMG-2563EB?style=flat-square&logo=github&logoColor=white)](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.9/Wumi-1.2.9-arm64.dmg)
 [![License](https://img.shields.io/badge/license-MIT-2563EB?style=flat-square)](LICENSE)
 
 **原生 macOS 文件管理器 · 多标签、多窗格、即时预览与闪电搜索**
 
-[下载 1.2.8 DMG](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.8/Wumi-1.2.8-arm64.dmg) · [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) · [安装](#上手) · [功能](#少切换几个窗口多留一点专注) · [开发文档](docs/构建与运行.md) · [反馈](https://github.com/kbwumin13-sudo/Wumi/issues)
+[下载 1.2.9 DMG](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.9/Wumi-1.2.9-arm64.dmg) · [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) · [安装](#上手) · [功能](#少切换几个窗口多留一点专注) · [开发文档](docs/构建与运行.md) · [反馈](https://github.com/kbwumin13-sudo/Wumi/issues)
 
 </div>
 
@@ -36,7 +36,7 @@
 
 ## 上手
 
-下载 [Wumi-1.2.8-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.8/Wumi-1.2.8-arm64.dmg)，适用于 **macOS 15+、Apple Silicon（arm64）**。本版缩短文件变更监听延迟，将图片 OCR 和较重的文档提取交给独立队列，使目录和轻量文档可以继续更新。后续版本可从 [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) 选择资产。
+下载 [Wumi-1.2.9-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.2.9/Wumi-1.2.9-arm64.dmg)，适用于 **macOS 15+、Apple Silicon（arm64）**。本版加快大目录按日期分组，同步觅迹 1.3.3 的路径与正文查询优化，兼容已有索引。后续版本可从 [最新 Release](https://github.com/kbwumin13-sudo/Wumi/releases/latest) 选择资产。
 
 1. 打开 DMG，将 `Wumi.app` 拖到 `Applications`（应用程序）文件夹。
 2. 从「应用程序」打开 Wumi。

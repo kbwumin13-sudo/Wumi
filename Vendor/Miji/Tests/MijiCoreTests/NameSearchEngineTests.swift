@@ -209,6 +209,33 @@ final class NameSearchEngineTests: XCTestCase {
         XCTAssertTrue(try e.search("数学", options: SearchOptions(rootID: "missing")).isEmpty)
     }
 
+    func testSelectivePathReadsUseCurrentPathsAndHonorRootScope() throws {
+        try add(1, "Cafe\u{301}/数学.pdf")
+        try add(2, "Café/草稿/数学.pdf")
+        try add(3, "Café/数学.pdf", root: "disk")
+        let e = try engine()
+        let query = "shuxue path:CAFÉ -path:草稿"
+        XCTAssertEqual(try e.search(query), [1, 3])
+        XCTAssertEqual(try e.search(query, options: SearchOptions(onlineOnly: true)), [1])
+        try exec("UPDATE files SET root_id='disk' WHERE id=1; DELETE FROM files WHERE id=3")
+        XCTAssertEqual(try e.search(query), [1])
+        XCTAssertEqual(try e.search(query, options: SearchOptions(rootID: "local")), [])
+    }
+
+    func testBroadPathReadsKeepHitsOnBothSidesOfCatalogScanSwitch() throws {
+        try exec("""
+            WITH RECURSIVE seq(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM seq WHERE n<1100)
+            INSERT INTO files(id,root_id,relative_path,name,extension,kind,size,modified)
+            SELECT n,'local', (CASE WHEN n IN (1,1024,1025,1100) THEN '课程/' ELSE '草稿/' END)||n,
+              '条目.pdf','pdf','document',n,n FROM seq
+            """)
+        let e = try engine()
+        let options = SearchOptions(rootID: "local", sort: .size, limit: 3)
+        XCTAssertEqual(try e.search("path:课程 -path:草稿", options: options), [1100, 1025, 1024])
+        XCTAssertEqual(try e.search("tm path:课程 -path:草稿", options: options), [1100, 1025, 1024])
+        XCTAssertEqual(try e.search("path:课程", options: SearchOptions(rootID: "local", sort: .modified)), [1100, 1025, 1024, 1])
+    }
+
     func testStableSortingExactSizesAndFractionalTimes() throws {
         try add(30, "a2.pdf", size: 4_000_000_000_001, modified: 8.25)
         try add(31, "a10.pdf", size: 4_000_000_000_002, modified: 8.75)
