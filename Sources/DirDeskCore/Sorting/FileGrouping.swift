@@ -10,7 +10,7 @@ public struct FileGroup: Identifiable, Sendable {
 }
 
 public enum FileGrouping {
-    enum DateBucket: Comparable {
+    private enum DateBucket: Comparable, Hashable {
         case future, today, yesterday, previous7, previous30, month(Int, Int), year(Int), unknown
 
         var rank: (Int, Int) {
@@ -29,21 +29,31 @@ public enum FileGrouping {
         static func < (lhs: DateBucket, rhs: DateBucket) -> Bool { lhs.rank < rhs.rank }
     }
 
-    static func dateBucket(_ date: Date?, now: Date, calendar: Calendar) -> DateBucket {
-        guard let date else { return .unknown }
-        if date > now { return .future }
-        let today = calendar.startOfDay(for: now)
-        if date >= today { return .today }
-        if let yesterday = calendar.date(byAdding: .day, value: -1, to: today), date >= yesterday { return .yesterday }
-        if let week = calendar.date(byAdding: .day, value: -7, to: today), date >= week { return .previous7 }
-        if let month = calendar.date(byAdding: .day, value: -30, to: today), date >= month { return .previous30 }
-        let parts = calendar.dateComponents([.year, .month], from: date)
-        let nowYear = calendar.component(.year, from: now)
-        if parts.year == nowYear { return .month(parts.year ?? 0, parts.month ?? 0) }
-        return .year(parts.year ?? 0)
+    private struct DateBucketer {
+        let now: Date
+        let calendar: Calendar
+
+        // These boundaries depend on the grouping pass and calendar, never on the individual file.
+        lazy var today = calendar.startOfDay(for: now)
+        lazy var yesterday = calendar.date(byAdding: .day, value: -1, to: today)
+        lazy var week = calendar.date(byAdding: .day, value: -7, to: today)
+        lazy var month = calendar.date(byAdding: .day, value: -30, to: today)
+        lazy var year = calendar.component(.year, from: now)
+
+        mutating func bucket(for date: Date?) -> DateBucket {
+            guard let date else { return .unknown }
+            if date > now { return .future }
+            if date >= today { return .today }
+            if let yesterday, date >= yesterday { return .yesterday }
+            if let week, date >= week { return .previous7 }
+            if let month, date >= month { return .previous30 }
+            let parts = calendar.dateComponents([.year, .month], from: date)
+            if parts.year == year { return .month(parts.year ?? 0, parts.month ?? 0) }
+            return .year(parts.year ?? 0)
+        }
     }
 
-    static func dateTitle(_ bucket: DateBucket, calendar: Calendar, locale: Locale) -> (String, Bool) {
+    private static func dateTitle(_ bucket: DateBucket, calendar: Calendar, locale: Locale) -> (String, Bool) {
         switch bucket {
         case .future: return ("Future", false)
         case .today: return ("Today", false)
@@ -81,6 +91,8 @@ public enum FileGrouping {
         }
         var pinned: [FileItem] = []
         var buckets: [String: (order: (Int, Int, String), title: String, literal: Bool, items: [FileItem])] = [:]
+        var dateBuckets: [DateBucket: [FileItem]] = [:]
+        var dateBucketer = DateBucketer(now: now, calendar: calendar)
         func add(_ item: FileItem, id: String, order: (Int, Int, String), title: String, literal: Bool) {
             buckets[id, default: (order, title, literal, [])].items.append(item)
         }
@@ -99,9 +111,7 @@ public enum FileGrouping {
                 case .added: item.addedDate
                 default: item.lastOpenedDate
                 }
-                let bucket = dateBucket(date, now: now, calendar: calendar)
-                let (title, literal) = dateTitle(bucket, calendar: calendar, locale: locale)
-                add(item, id: "date:\(bucket.rank.0):\(bucket.rank.1)", order: (bucket.rank.0, bucket.rank.1, ""), title: title, literal: literal)
+                dateBuckets[dateBucketer.bucket(for: date), default: []].append(item)
             case .size:
                 if item.isBrowsableFolder {
                     add(item, id: "folders", order: (0, 0, ""), title: "Folders", literal: false)
@@ -141,6 +151,11 @@ public enum FileGrouping {
             if l.1 != r.1 { return l.1 < r.1 }
             return l.2.localizedStandardCompare(r.2) == .orderedAscending
         }.map { FileGroup(id: $0.key, title: $0.value.title, isLiteral: $0.value.literal, items: $0.value.items) }
+        for (bucket, items) in dateBuckets.sorted(by: { $0.key < $1.key }) {
+            let (title, literal) = dateTitle(bucket, calendar: calendar, locale: locale)
+            let (rank, subrank) = bucket.rank
+            groups.append(FileGroup(id: "date:\(rank):\(subrank)", title: title, isLiteral: literal, items: items))
+        }
         if !pinned.isEmpty {
             groups.insert(FileGroup(id: "pinned", title: "Pinned Folders", isLiteral: false, items: pinned), at: 0)
         }

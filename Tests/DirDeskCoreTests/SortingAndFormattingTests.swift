@@ -92,6 +92,46 @@ final class SortingAndFormattingTests: XCTestCase {
         XCTAssertEqual(groups.map(\.title), ["Future", "Today", "Yesterday", "Previous 7 Days", "Previous 30 Days", "Unknown Date"])
     }
 
+    func testArchivedDateGroupsPreserveOrderAndLocalizePerCall() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+        }
+        let items = [
+            item("February B", modified: date(2026, 2, 10)),
+            item("January", modified: date(2026, 1, 15)),
+            item("February A", modified: date(2026, 2, 20)),
+            item("Pinned", folder: true, modified: date(2026, 2, 15)),
+            item("Prior year", modified: date(2025, 12, 28)),
+        ]
+        func group(locale: String) -> [FileGroup] {
+            FileGrouping.group(items, mode: .modified, pinnedPaths: ["/x/Pinned"], now: date(2026, 4, 15),
+                               calendar: calendar, locale: Locale(identifier: locale), kind: { _ in "" }, application: { _ in nil })
+        }
+        let english = group(locale: "en_US")
+        let french = group(locale: "fr_FR")
+        XCTAssertEqual(english.map(\.title), ["Pinned Folders", "February", "January", "2025"])
+        XCTAssertEqual(english.map(\.isLiteral), [false, true, true, true])
+        XCTAssertEqual(english.map { $0.items.map(\.name) }, [["Pinned"], ["February B", "February A"], ["January"], ["Prior year"]])
+        XCTAssertEqual(french.map(\.id), english.map(\.id))
+        XCTAssertEqual(french.dropFirst().map(\.title), ["février", "janvier", "2025"])
+    }
+
+    func testDateGroupingUsesCalendarDaysAcrossDaylightSaving() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 3, day: 9, hour: 12))!
+        let yesterday = calendar.date(from: DateComponents(year: 2026, month: 3, day: 8))!
+        let items = [
+            item("before midnight", modified: yesterday.addingTimeInterval(-1)),
+            item("at midnight", modified: yesterday),
+        ]
+        let groups = FileGrouping.group(items, mode: .modified, now: now, calendar: calendar, kind: { _ in "" }, application: { _ in nil })
+        XCTAssertEqual(groups.map(\.title), ["Yesterday", "Previous 7 Days"])
+        XCTAssertEqual(groups.map { $0.items.map(\.name) }, [["at midnight"], ["before midnight"]])
+    }
+
     func testSizeGroupingUsesDecimalThresholds() {
         let items = [item("a", size: 999_999), item("b", size: 1_000_000), item("c", size: 1_000_000_000), item("d", folder: true)]
         let groups = FileGrouping.group(items, mode: .size, kind: { _ in "" }, application: { _ in nil })
