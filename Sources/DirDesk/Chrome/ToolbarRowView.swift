@@ -150,16 +150,21 @@ private struct ToolbarRowContent: View {
                     .padding(.horizontal, 8)
                 moreMenu(overflow: layout.overflow).frame(width: 32, height: 32)
                 Spacer(minLength: ToolbarPresentation.trailingGap)
-                HStack(spacing: 2) {
-                    layoutButton
-                    if model.activeTab.panes.count > 1 { splitIntoTabsButton }
-                    Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1, height: 16)
-                    inspectorButton
+                WumiGlassContainer(spacing: 8) {
+                    HStack(spacing: ToolbarPresentation.trailingGap) {
+                        HStack(spacing: 2) {
+                            layoutButton
+                            if model.activeTab.panes.count > 1 { splitIntoTabsButton }
+                            Rectangle().fill(Theme.hairline(dark: colorScheme == .dark)).frame(width: 1, height: 15)
+                            inspectorButton
+                        }
+                        .padding(.horizontal, 2)
+                        .frame(width: ToolbarPresentation.utilityWidth(split: model.activeTab.panes.count > 1), height: 32)
+                        .wumiGlass(in: Capsule(), interactive: false)
+                        searchField(expanded: layout.searchWidth > ToolbarPresentation.iconWidth)
+                            .frame(width: layout.searchWidth, height: 32)
+                    }
                 }
-                .frame(width: ToolbarPresentation.utilityWidth(split: model.activeTab.panes.count > 1))
-                searchField(expanded: layout.searchWidth > ToolbarPresentation.iconWidth)
-                    .frame(width: layout.searchWidth, height: 32)
-                    .padding(.leading, ToolbarPresentation.trailingGap)
             }
             .padding(.horizontal, ToolbarPresentation.horizontalInset)
             .frame(width: geometry.size.width, height: 47)
@@ -379,17 +384,20 @@ private struct ToolbarRowContent: View {
         }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
     /// Opens the layout chooser: a popover with a 4 × 3 grid of layout thumbnails (reference toolbar-layout-chooser).
     private var layoutButton: some View {
         Button { showingLayouts.toggle() } label: {
             Image(systemName: "square.split.2x2")
-                .font(.system(size: 17))
+                .font(.system(size: 16))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(app.preferences.usesColoredToolbarIcons ? ToolbarGlyph.blue : Color.primary)
-                .frame(width: 32, height: 32)
+                .frame(width: 32, height: 30)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 7, restingFill: showingLayouts ? Color.primary.opacity(0.08) : .clear,
+                                                hoverOpacity: 0.065, pressOpacity: 0.13, pressScale: 0.96))
         .help(L("Pane Layout"))
         .accessibilityLabel(L("Pane Layout"))
         .accessibilityIdentifier("Toolbar.LayoutChooser")
@@ -405,9 +413,9 @@ private struct ToolbarRowContent: View {
     private var splitIntoTabsButton: some View {
         Button { controller.splitPanesIntoTabs() } label: {
             SplitIntoTabsGlyph(colored: app.preferences.usesColoredToolbarIcons)
-                .frame(width: 32, height: 32).contentShape(Rectangle())
+                .frame(width: 32, height: 30).contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 7, hoverOpacity: 0.065, pressOpacity: 0.13, pressScale: 0.96))
         .help(L("Dissolve Split View and Open in New Tabs"))
         .accessibilityIdentifier("Toolbar.SplitPanesIntoTabs")
         .accessibilityLabel(L("Dissolve Split View and Open in New Tabs"))
@@ -418,13 +426,21 @@ private struct ToolbarRowContent: View {
             controller.perform(.toggleInspector)
         } label: {
             Image(systemName: model.inspectorVisible ? "inset.filled.lefthalf.righthalf.rectangle" : "rectangle.split.2x1")
-                .font(.system(size: 17))
+                .font(.system(size: 16))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(model.inspectorVisible ? Color.accentColor : Color.primary)
-                .frame(width: 32, height: 32)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 32, height: 30)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(WumiInteractiveButtonStyle(
+            cornerRadius: 7,
+            restingFill: model.inspectorVisible ? Color.accentColor.opacity(colorScheme == .dark ? 0.18 : 0.12) : .clear,
+            hoverOpacity: model.inspectorVisible ? 0.0 : 0.065,
+            pressOpacity: 0.14,
+            pressScale: 0.96
+        ))
+        .animation(WumiMotion.micro, value: model.inspectorVisible)
         .help(model.inspectorVisible ? L("Hide Side Preview") : L("Show Side Preview"))
         .accessibilityIdentifier("Toolbar.Inspector")
         .accessibilityLabel(L("Inspector"))
@@ -433,26 +449,40 @@ private struct ToolbarRowContent: View {
     }
 
     private func searchField(expanded: Bool) -> some View {
-        Button {
+        let dark = colorScheme == .dark
+        return Button {
             controller.perform(.search)
         } label: {
-            HStack(spacing: expanded ? 8 : 0) {
+            HStack(spacing: expanded ? 7 : 0) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16))
+                    .font(.system(size: expanded ? 13.5 : 14.5, weight: .medium))
                     .symbolRenderingMode(.monochrome)
-                    .foregroundStyle(app.preferences.usesColoredToolbarIcons ? ToolbarGlyph.blue : Color.primary)
+                    .foregroundStyle(app.preferences.usesColoredToolbarIcons ? ToolbarGlyph.blue : (expanded ? Color.primary.opacity(0.62) : Color.primary))
                 if expanded {
-                    Text(L("Miji Search")).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(L("Miji Search")).font(.system(size: 12.5)).foregroundStyle(Color.primary.opacity(0.55))
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 4)
-                    Text("⌘F").font(.system(size: 11)).foregroundStyle(.tertiary).fixedSize()
+                    Text("⌘F")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(Color.primary.opacity(0.50))
+                        .padding(.horizontal, 5.5)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Theme.chipFill(dark: dark, hovered: false, selected: false)))
+                        .fixedSize()
                 }
             }
-            .padding(.horizontal, expanded ? 10 : 0)
-            .frame(width: expanded ? 200 : 32, height: 32)
-            .contentShape(Rectangle())
+            .padding(.horizontal, expanded ? 11 : 0)
+            .frame(width: expanded ? 200 : 32, height: 30)
+            .wumiGlass(in: Capsule(), interactive: true)
+            .contentShape(Capsule())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(WumiInteractiveButtonStyle(
+            cornerRadius: 15,
+            restingFill: .clear,
+            hoverOpacity: 0.05,
+            pressOpacity: 0.12,
+            pressScale: 0.975
+        ))
         .help(L("Miji Search"))
         .accessibilityLabel(L("Miji Search"))
         .accessibilityIdentifier("Toolbar.Search.Field")
@@ -753,7 +783,7 @@ struct ToolbarIconButton: View {
         Button(action: action) {
             ToolbarIconLabel(glyph: glyph, colored: colored, title: title, showsTitle: showsTitle)
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 9, hoverOpacity: 0.065, pressOpacity: 0.13, pressScale: 0.96))
         .help(title)
         .accessibilityIdentifier(identifier)
         .accessibilityLabel(title)
@@ -937,23 +967,29 @@ struct PaneLayoutChooser: View {
     let choose: (PaneLayout) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(L("Pane Layout")).font(.system(size: 13, weight: .semibold))
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(70), spacing: 8), count: 4), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(72), spacing: 8), count: 4), spacing: 8) {
                 ForEach(PaneLayout.allCases, id: \.self) { layout in
                     let selected = layout == current
                     Button { choose(layout) } label: {
                         VStack(spacing: 5) {
                             PaneLayoutThumbnail(layout: layout, highlighted: selected).frame(width: 52, height: 34)
-                            Text(PaneLayoutNames.title(layout)).font(.system(size: 11)).lineLimit(1)
+                            Text(PaneLayoutNames.title(layout)).font(.system(size: 11, weight: selected ? .medium : .regular)).lineLimit(1)
                                 .foregroundStyle(selected ? Color.primary : Color.secondary)
                         }
-                        .frame(width: 70, height: 62)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(selected ? Color.accentColor.opacity(0.25) : Color.primary.opacity(0.05)))
-                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
-                        .contentShape(Rectangle())
+                        .frame(width: 72, height: 64)
+                        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
+                        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(WumiInteractiveButtonStyle(
+                        cornerRadius: 9,
+                        restingFill: selected ? Color.accentColor.opacity(0.20) : Color.primary.opacity(0.045),
+                        hoverOpacity: selected ? 0.24 : 0.095,
+                        pressOpacity: selected ? 0.28 : 0.14,
+                        pressScale: 0.96
+                    ))
                     .help(PaneLayoutNames.title(layout))
                     .accessibilityIdentifier("PaneLayout.Option.\(layout.rawValue)")
                     .accessibilityLabel(PaneLayoutNames.title(layout))

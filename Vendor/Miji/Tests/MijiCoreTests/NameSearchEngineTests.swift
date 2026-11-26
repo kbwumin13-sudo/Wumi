@@ -52,6 +52,25 @@ final class NameSearchEngineTests: XCTestCase {
         return e
     }
 
+    func testRecentFilesApplyTypeAndPathBeforeRankingAndLimiting() throws {
+        try add(1, "Projects/older.txt", modified: 1)
+        try add(2, "Projects/latest.txt", modified: 20)
+        try add(3, "Projects/Editor.app", kind: .application, modified: 30)
+        try add(4, "Other/more-recent.txt", modified: 40)
+        let initial = try engine()
+        let history = try XCTUnwrap(initial.openHistory)
+        history.record(1)
+        history.record(3)
+        let reopened = try engine()
+        var options = SearchOptions(scope: .name, sort: .modified, limit: 2)
+        options.excludedKind = .application
+        let scoped = "path:Projects"
+        XCTAssertEqual(try reopened.recentFiles(query: scoped, options: options), [1, 2])
+        XCTAssertEqual(try reopened.search(scoped, options: options), [2, 1])
+        XCTAssertEqual(try reopened.recentFiles(options: options), [1, 4])
+        XCTAssertNil(try NameSearchEngine(databaseURL: url, persistsCache: false).openHistory)
+    }
+
     func testMetadataOnlyChineseShortWordsPinyinAndOriginalSQLiteIDs() throws {
         let largeID = Int64(UInt32.max) + 177
         try add(largeID, "课程/数学分析.pdf", root: "disk")

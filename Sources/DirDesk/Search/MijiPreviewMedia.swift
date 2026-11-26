@@ -221,7 +221,7 @@ func mijiHighlightedPreview(_ text: String, query: String) -> AttributedString {
         for _ in 0..<100 {
             guard start < text.endIndex, let range = text.range(of: term, options: [.caseInsensitive, .diacriticInsensitive], range: start..<text.endIndex),
                   let mapped = Range(range, in: result) else { break }
-            result[mapped].backgroundColor = Color(nsColor: .findHighlightColor)
+            result[mapped].backgroundColor = Color(nsColor: .findHighlightColor).opacity(0.9)
             result[mapped].foregroundColor = .black
             start = range.upperBound
         }

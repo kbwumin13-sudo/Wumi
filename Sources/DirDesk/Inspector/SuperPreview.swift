@@ -11,9 +11,12 @@ import SwiftUI
 final class SuperPreviewController: NSObject, NSWindowDelegate {
     static let shared = SuperPreviewController()
     private var panel: SuperPreviewPanel?
+    private var springAnimator: WumiWindowSpringAnimator?
     private var monitors: [Any] = []
     private weak var controller: WorkspaceController?
     private var item: FileItem?
+    private var originScreenRect: NSRect?
+    private var presentationGeneration = 0
 
     var isVisible: Bool { panel?.isVisible == true }
 
@@ -38,20 +41,25 @@ final class SuperPreviewController: NSObject, NSWindowDelegate {
 
     /// `archiveEntry` (an archive tree node's path) opens the preview with that entry already shown.
     func show(_ item: FileItem, controller: WorkspaceController, archiveEntry: String? = nil) {
-        close()
+        close(animated: false)
         guard let parent = controller.window else { return }
+        presentationGeneration &+= 1
         self.item = item
         self.controller = controller
+        let sourceRect = controller.selectedItemScreenRect()
+        self.originScreenRect = sourceRect
         // 980 × 680 pt centred on the main window, as in the original (smaller only when the window is).
         let size = NSSize(width: min(980, max(640, parent.frame.width - 40)), height: min(680, max(460, parent.frame.height - 40)))
-        let frame = NSRect(x: parent.frame.midX - size.width / 2, y: parent.frame.midY - size.height / 2, width: size.width, height: size.height)
-        let panel = SuperPreviewPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+        let targetFrame = NSRect(x: parent.frame.midX - size.width / 2, y: parent.frame.midY - size.height / 2, width: size.width, height: size.height)
+        let startFrame = WumiMotion.systemReduceMotion ? targetFrame : Self.anchoredZoomFrame(target: targetFrame, source: sourceRect)
+        let panel = SuperPreviewPanel(contentRect: startFrame, styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
                                       backing: .buffered, defer: false)
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.delegate = self
+        panel.alphaValue = 0
         panel.setAccessibilityIdentifier("SuperPreview.Window")
         // Only the close button, as in the original.
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
@@ -64,6 +72,16 @@ final class SuperPreviewController: NSObject, NSWindowDelegate {
         parent.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
         self.panel = panel
+        let animator = WumiWindowSpringAnimator(window: panel)
+        self.springAnimator = animator
+        animator.animate(
+            from: startFrame,
+            to: targetFrame,
+            alpha: 1,
+            alphaDuration: 0.11,
+            response: 0.25,
+            dampingRatio: 0.86
+        )
         // A click in any other window of the app closes the preview.
         monitors.append(NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             if let panel = self?.panel, event.window !== panel { self?.close() }
@@ -71,14 +89,52 @@ final class SuperPreviewController: NSObject, NSWindowDelegate {
         } as Any)
     }
 
-    func close() {
+    func close(animated: Bool = true) {
         monitors.forEach(NSEvent.removeMonitor)
         monitors.removeAll()
         guard let panel else { return }
         self.panel = nil
-        panel.parent?.removeChildWindow(panel)
-        panel.orderOut(nil)
-        controller?.window?.makeKey()
+        let animator = self.springAnimator
+        self.springAnimator = nil
+        presentationGeneration &+= 1
+        let sourceRect = originScreenRect
+        originScreenRect = nil
+        if animated && panel.isVisible {
+            let dismissFrame = WumiMotion.systemReduceMotion ? panel.frame : Self.anchoredZoomFrame(target: panel.frame, source: sourceRect)
+            let driver = animator ?? WumiWindowSpringAnimator(window: panel)
+            panel.ignoresMouseEvents = true
+            driver.animate(
+                to: dismissFrame,
+                alpha: 0,
+                alphaDuration: 0.10,
+                response: 0.16,
+                dampingRatio: 1.0
+            ) { [weak self] in
+                panel.ignoresMouseEvents = false
+                panel.parent?.removeChildWindow(panel)
+                panel.orderOut(nil)
+                self?.controller?.window?.makeKey()
+            }
+        } else {
+            animator?.stop()
+            panel.parent?.removeChildWindow(panel)
+            panel.orderOut(nil)
+            controller?.window?.makeKey()
+        }
+    }
+
+    /// Computes a subtle 94% zoomed frame biased toward the selected item's screen rect (Quick Look feel, never scale(0)).
+    private static func anchoredZoomFrame(target: NSRect, source: NSRect?) -> NSRect {
+        let scale: CGFloat = 0.94
+        let width = target.width * scale
+        let height = target.height * scale
+        var centerX = target.midX
+        var centerY = target.midY
+        if let source {
+            centerX += max(min((source.midX - target.midX) * 0.16, 48), -48)
+            centerY += max(min((source.midY - target.midY) * 0.16, 40), -40)
+        }
+        return NSRect(x: centerX - width / 2, y: centerY - height / 2, width: width, height: height)
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -189,13 +245,13 @@ private struct SuperPreviewView: View {
                 headerButton(L("Share…"), "square.and.arrow.up", id: "EnhancedPreview.Share") { controller.share([item]) }
                 if kind == .archive {
                     // Archives get "Extract Archive" in place of "Open File".
-                    headerButton(L("Extract Archive"), "archivebox", id: "EnhancedPreview.ExtractArchive") {
+                    headerButton(L("Extract Archive"), "archivebox", id: "EnhancedPreview.ExtractArchive", emphasized: true) {
                         close()
                         controller.extract(item, to: nil)
                     }
                     .keyboardShortcut(.defaultAction)
                 } else {
-                    headerButton(L("Open File"), "arrow.up.forward.square", id: "EnhancedPreview.OpenFile") {
+                    headerButton(L("Open File"), "arrow.up.forward.square", id: "EnhancedPreview.OpenFile", emphasized: true) {
                         close()
                         controller.open([item], in: controller.activePane, newTab: false)
                     }
@@ -220,19 +276,17 @@ private struct SuperPreviewView: View {
         return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
     }
 
-    private func headerButton(_ title: String, _ symbol: String, id: String, action: @escaping () -> Void) -> some View {
+    private func headerButton(_ title: String, _ symbol: String, id: String, emphasized: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: symbol).font(.system(size: 12))
+            HStack(spacing: 6.5) {
+                Image(systemName: symbol).font(.system(size: 12, weight: .medium))
                 Text(title).font(.system(size: 12, weight: .semibold))
             }
-            .padding(.leading, 12.5)
-            .padding(.trailing, 11.5)
-            .frame(height: 30)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.black.opacity(0.18)))
-            .contentShape(Rectangle())
+            .padding(.horizontal, 12.5)
+            .frame(height: 29)
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(WumiPillButtonStyle(cornerRadius: 14.5, pressScale: 0.965, emphasized: emphasized))
         .accessibilityIdentifier(id)
     }
 

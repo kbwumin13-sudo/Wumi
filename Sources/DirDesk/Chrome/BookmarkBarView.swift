@@ -51,10 +51,10 @@ struct BookmarkBarView: View {
             Spacer(minLength: 4)
 
             Button { showingAllBookmarks.toggle() } label: {
-                Image(systemName: "chevron.right.2").font(.system(size: 12, weight: .medium)).foregroundStyle(.primary)
-                    .frame(width: 20, height: 20).contentShape(Rectangle())
+                Image(systemName: "chevron.right.2").font(.system(size: 11.5, weight: .medium)).foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22).contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 6, hoverOpacity: 0.07, pressOpacity: 0.14, pressScale: 0.94))
             .help(L("All Bookmarks"))
             .accessibilityLabel(L("All Bookmarks"))
             .accessibilityIdentifier("BookmarkBar.Overflow")
@@ -127,7 +127,7 @@ private struct BookmarkChip: View {
                 .fixedSize()
             } else {
                 Button { controller.openBookmark(node) } label: { label }
-                    .buttonStyle(.plain)
+                    .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 11.5, hoverOpacity: 0.075, pressOpacity: 0.14, pressScale: 0.97))
             }
         }
         .help(node.target?.url.path ?? node.title)
@@ -136,16 +136,17 @@ private struct BookmarkChip: View {
     }
 
     private var label: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(nsImage: BookmarkBarGlyphs.icon(for: node))
             Text(node.displayTitle)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .medium))
                 .lineLimit(1)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 22)
-        .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(hovering ? 0.07 : 0)))
-        .contentShape(Rectangle())
+        .padding(.horizontal, 9.5)
+        .frame(height: 23)
+        .background(Capsule().fill(node.isFolder && hovering ? Color.primary.opacity(0.075) : .clear))
+        .contentShape(Capsule())
+        .animation(WumiMotion.micro, value: hovering)
         .onHover { hovering = $0 }
     }
 }

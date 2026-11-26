@@ -516,6 +516,33 @@ enum DebugMijiRun {
                 check("PDF text copy stays native", MijiSearchKeyAction.action(for:copy,firstResponder:pdfChild)==nil)
                 check("input copy stays native", MijiSearchKeyAction.action(for:copy,firstResponder:editor)==nil)
                 check("result copy copies file", MijiSearchKeyAction.action(for:copy,firstResponder:NSView()) == .copyFile)
+
+                let browse = MijiSearchModel()
+                browse.setSearchVisible(true)
+                browse.selectMode(.files)
+                check("1.4 recent files use the shared catalog", await wait {
+                    !browse.searching && browse.displayedSnapshot == browse.currentSnapshot && !browse.hits.isEmpty
+                })
+                check("1.4 recent files exclude applications", browse.hits.allSatisfy { $0.file.kind != .application })
+                check("1.4 recent files open in the compact layout before explicit selection",
+                      browse.floatingWidth == PanelMetrics.fileWidth && !browse.previewVisible && !browse.showsFileSelectionFeedback)
+                browse.selectFile(browse.hits.first { $0.file.kind == .document }?.id ?? -1)
+                check("1.4 selecting a recent document expands the preview", browse.previewVisible && browse.floatingWidth == PanelMetrics.previewWidth)
+                browse.clearSelectionFeedback()
+                check("1.4 Escape stage collapses recent preview", !browse.previewVisible && browse.floatingWidth == PanelMetrics.fileWidth)
+                browse.fileKind = .image
+                check("1.4 file chips filter the recent list", await wait {
+                    !browse.searching && !browse.hits.isEmpty && browse.hits.allSatisfy { $0.file.kind == .image }
+                })
+                browse.selectMode(.clipboard)
+                check("1.4 clipboard is opt-in and separate from index results",
+                      !browse.browse.recordingClipboard && browse.browse.history.isEmpty && !browse.searching && browse.hits.isEmpty)
+                browse.selectMode(.apps)
+                check("1.4 Applications use the upstream catalogue", await wait { !browse.browse.loadingApps && !browse.browse.apps.isEmpty })
+                browse.selectMode(.all)
+                check("1.4 back to all keeps the compact Spotlight geometry", browse.floatingHeight == PanelMetrics.searchHeight)
+                browse.setSearchVisible(false)
+
             } catch { checks.append(["name": "fixture and model acceptance", "passed": false, "error": error.localizedDescription]) }
             try? FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
             let result: [String: Any] = ["checks": checks, "passed": !checks.isEmpty && checks.allSatisfy { $0["passed"] as? Bool == true }]

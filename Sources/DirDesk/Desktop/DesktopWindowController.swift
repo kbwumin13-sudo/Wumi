@@ -119,13 +119,23 @@ private struct DesktopZoneView: View {
     @State private var resizeStart: DesktopRect?
     @State private var titleDraft = ""
     @State private var editingTitle = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var rect: DesktopRect { zone.frame.clamped(width: screenSize.width, height: screenSize.height) }
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Button { coordinator.updateZone(zone.id) { $0.isCollapsed.toggle() } } label: {
-                    Image(systemName: zone.isCollapsed ? "chevron.right" : "chevron.down")
-                }.buttonStyle(.plain).accessibilityLabel(L("Collapse Collection")).accessibilityIdentifier("Desktop.Zone.\(zone.id).Collapse")
+                Button {
+                    WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) {
+                        coordinator.updateZone(zone.id) { $0.isCollapsed.toggle() }
+                    }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .rotationEffect(.degrees(zone.isCollapsed ? 0 : 90))
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 5, hoverOpacity: 0.08, pressOpacity: 0.14, pressScale: 0.92))
+                .accessibilityLabel(L("Collapse Collection")).accessibilityIdentifier("Desktop.Zone.\(zone.id).Collapse")
                 if editingTitle {
                     TextField(L("Collection Name"), text: $titleDraft, onCommit: {
                         let name = titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -152,8 +162,8 @@ private struct DesktopZoneView: View {
                     }
                 } label: { Image(systemName: "ellipsis.circle") }.menuStyle(.borderlessButton).frame(width: 24)
             }
-            .padding(.horizontal, 10).frame(height: 36)
-            .background(Color(nsColor: .controlBackgroundColor))
+            .padding(.horizontal, 12).frame(height: 36)
+            .background(Color.primary.opacity(0.03))
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 5).onChanged { value in
                 if moveStart == nil { moveStart = rect }
@@ -183,10 +193,14 @@ private struct DesktopZoneView: View {
                 }.frame(height: 16)
             }
         }
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(nsColor: .separatorColor), lineWidth: 1))
+        .background {
+            WumiGlassSurface(shape: RoundedRectangle(cornerRadius: 16, style: .continuous), fallbackMaterial: .hudWindow)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.primary.opacity(0.11), lineWidth: 0.75))
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         .frame(width: rect.width, height: zone.isCollapsed ? 36 : rect.height)
+        .animation(WumiMotion.resolve(WumiMotion.snappy, reduceMotion: reduceMotion), value: zone.isCollapsed)
         .offset(x: rect.x, y: rect.y)
         .accessibilityIdentifier("Desktop.Zone.\(zone.id)")
     }

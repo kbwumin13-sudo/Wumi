@@ -9,67 +9,99 @@ struct FloatingBallView: View {
     let controller: WorkspaceController
     @State private var expanded = false
     @State private var hidden = false
+    @State private var collapseWork: DispatchWorkItem?
+    @Namespace private var glassNamespace
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let preferences = app.preferences
         let actions = preferences.floatingBallActionOrder.filter { preferences.enabledFloatingBallActions.contains($0) }
+        let dark = colorScheme == .dark
         if !hidden {
-            // Expanded buttons split around the ball like the original: the first half above it, the rest below.
+            // Expanded circular glass buttons morph smoothly out of the central orb, matching Miji's Spotlight dock.
             let above = Array(actions.prefix((actions.count + 1) / 2))
             let below = Array(actions.dropFirst(above.count))
-            // Measured from the original: 24 pt buttons every 28 pt, 14 pt clear of the 32 pt ball.
-            VStack(spacing: 4) {
-                if expanded {
-                    ForEach(above, id: \.self) { action in actionButton(action) }
-                    Color.clear.frame(width: 1, height: 6)
-                }
-                // A faint disc with a centre dot, as in the original (reference capture 01-主窗口).
-                Circle()
-                    .fill(Color.primary.opacity(expanded ? 0.16 : 0.09))
-                    .overlay(Circle().fill(Color.primary.opacity(0.6)).frame(width: 5, height: 5))
-                    .frame(width: 32, height: 32)
-                    .contentShape(Circle())
-                    .onTapGesture(count: 2) {
-                        controller.performFloatingBallAction(preferences.floatingBallDoubleClickAction, pane: pane)
+            WumiGlassContainer(spacing: 12) {
+                VStack(spacing: 5.5) {
+                    if expanded {
+                        ForEach(above, id: \.self) { action in
+                            actionButton(action)
+                                .transition(reduceMotion ? .opacity : .scale(scale: 0.76, anchor: .bottom).combined(with: .opacity))
+                        }
+                        Color.clear.frame(width: 1, height: 4)
                     }
-                    .contextMenu {
-                        Button(L("Close Floating Ball")) { hidden = true }
-                        Button(L("Configure Floating Ball")) { controller.showSettings(section: "floatingBall") }
+                    // Liquid Glass orb with a centered accent indicator dot.
+                    Circle()
+                        .fill(.clear)
+                        .frame(width: 34, height: 34)
+                        .wumiGlass(in: Circle(), interactive: true)
+                        .wumiGlassID("floating-orb", in: glassNamespace)
+                        .overlay(
+                            Circle()
+                                .fill(expanded ? Color.accentColor : Color.primary.opacity(0.62))
+                                .frame(width: expanded ? 6.5 : 5, height: expanded ? 6.5 : 5)
+                        )
+                        .shadow(color: Theme.pillShadow(dark: dark), radius: expanded ? 6 : 3, y: 1.5)
+                        .scaleEffect(expanded && !reduceMotion ? 1.04 : 1.0)
+                        .contentShape(Circle())
+                        .onTapGesture(count: 2) {
+                            controller.performFloatingBallAction(preferences.floatingBallDoubleClickAction, pane: pane)
+                        }
+                        .contextMenu {
+                            Button(L("Close Floating Ball")) { hidden = true }
+                            Button(L("Configure Floating Ball")) { controller.showSettings(section: "floatingBall") }
+                        }
+                        .help(LF("Double-click: %@", Self.title(preferences.floatingBallDoubleClickAction)))
+                        .accessibilityIdentifier("FloatingBall.Body.\(pane.id.uuidString)")
+                        .accessibilityLabel(L("Floating Ball"))
+                        .accessibilityAddTraits(.isButton)
+                    if expanded {
+                        Color.clear.frame(width: 1, height: 4)
+                        ForEach(below, id: \.self) { action in
+                            actionButton(action)
+                                .transition(reduceMotion ? .opacity : .scale(scale: 0.76, anchor: .top).combined(with: .opacity))
+                        }
                     }
-                    .help(LF("Double-click: %@", Self.title(preferences.floatingBallDoubleClickAction)))
-                    .accessibilityIdentifier("FloatingBall.Body.\(pane.id.uuidString)")
-                    .accessibilityLabel(L("Floating Ball"))
-                    .accessibilityAddTraits(.isButton)
-                if expanded {
-                    Color.clear.frame(width: 1, height: 6.5)
-                    ForEach(below, id: \.self) { action in actionButton(action) }
                 }
             }
-            .padding(4)
+            .padding(5)
             .opacity(expanded ? 1 : 1 - preferences.floatingBallTransparency)
             .onHover { hovering in
                 guard preferences.expandsFloatingBallOnHover else { return }
-                withAnimation(.easeOut(duration: 0.15)) { expanded = hovering }
+                collapseWork?.cancel()
+                collapseWork = nil
+                if hovering {
+                    WumiMotion.withPreferredAnimation(WumiMotion.morph, reduceMotion: reduceMotion) { expanded = true }
+                } else {
+                    let work = DispatchWorkItem {
+                        WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) { expanded = false }
+                    }
+                    collapseWork = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
+                }
             }
         }
     }
 
     private func actionButton(_ action: FloatingBallAction) -> some View {
         let enabled = isEnabled(action)
+        let dark = colorScheme == .dark
         return Button { controller.performFloatingBallAction(action, pane: pane) } label: {
             Image(systemName: Self.symbol(action))
-                .font(.system(size: 12))
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(Color.primary.opacity(0.06)))
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 28, height: 28)
+                .wumiGlass(in: Circle(), interactive: true)
+                .wumiGlassID("floating-action-\(action.rawValue)", in: glassNamespace)
+                .shadow(color: Theme.pillShadow(dark: dark), radius: 2.5, y: 1)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 14, hoverOpacity: 0.06, pressOpacity: 0.14, pressScale: 0.91))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .help(Self.title(action))
         .accessibilityLabel(Self.title(action))
         .accessibilityIdentifier("FloatingBall.\(action.rawValue).\(pane.id.uuidString)")
-        .transition(.opacity.combined(with: .scale(scale: 0.8)))
     }
 
     /// Back and forward need history, Up needs a parent folder; the original greys them out.

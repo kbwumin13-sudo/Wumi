@@ -73,7 +73,72 @@ private struct MijiSearchPlan {
 /// Miji's native name + supplementary search session on Wumi's single index host.
 @MainActor
 final class MijiSearchModel: ObservableObject {
-    @Published var query = "" { didSet { if query != oldValue { scheduleSearch() } } }
+    @Published var query = "" { didSet { if query != oldValue { browse.queryChanged(); scheduleSearch() } } }
+    @Published private(set) var mode: SearchMode = .all
+    @Published var fileKind: FileKind? { didSet { if fileKind != oldValue { scheduleSearch() } } }
+    @Published var panelActivation = UUID()
+    @Published private(set) var showsFileSelectionFeedback = false
+    let browse = BrowseContent()
+    var browsingRecent: Bool { mode == .files && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var showsFileGrid: Bool { gridEnabled && !browsingRecent }
+    var paused: Bool { !roots.isEmpty && roots.allSatisfy { !$0.enabled } }
+    private var effectiveKind: FileKind? { mode == .files ? fileKind : kind }
+    private var effectiveScope: SearchScope { browsingRecent ? .name : scope }
+    private var effectiveSort: SearchSort { browsingRecent ? .modified : sort }
+    private var searchLimit: Int { browsingRecent ? 32 : 500 }
+
+    func selectMode(_ next: SearchMode) {
+        if mode != next {
+            mode = next
+            hits = []; selectedID = nil
+            browse.queryChanged()
+            if next == .apps { browse.loadApps() }
+            if next == .clipboard { browse.checkClipboard() }
+            scheduleSearch()
+        }
+        focusSearch = UUID()
+    }
+
+    func selectFile(_ id: Int64) {
+        selectedID = id
+        if !showsFileSelectionFeedback {
+            showsFileSelectionFeedback = true
+            if browsingRecent { loadPreview() }
+        }
+    }
+
+    func clearSelectionFeedback() {
+        if showsFileSelectionFeedback {
+            showsFileSelectionFeedback = false
+            if browsingRecent { loadPreview() }
+        }
+    }
+
+    var floatingGridColumns: Int { max(1, Int((floatingWidth - (previewVisible ? Self.previewWidth : 0) - 24) / 180)) }
+
+    var floatingWidth: CGFloat {
+        if previewVisible && (browsingRecent || !query.isEmpty) { return PanelMetrics.previewWidth }
+        switch mode {
+        case .all: return PanelMetrics.compactWidth
+        case .apps: return PanelMetrics.appWidth
+        case .files: return PanelMetrics.fileWidth
+        case .clipboard: return PanelMetrics.clipboardWidth
+        }
+    }
+
+    var floatingHeight: CGFloat {
+        switch mode {
+        case .apps: return PanelMetrics.appHeight
+        case .clipboard: return PanelMetrics.clipboardHeight
+        case .files where browsingRecent: return PanelMetrics.fileHeight
+        case .all where query.isEmpty: return PanelMetrics.searchHeight
+        case .files, .all:
+            if previewVisible || showsFileGrid { return 563 }
+            let chrome = PanelMetrics.expandedHeaderHeight + PanelMetrics.scopeHeight + PanelMetrics.footerHeight + 12
+            return chrome + CGFloat(min(8, max(2, hits.count))) * (PanelMetrics.rowHeight + PanelMetrics.rowSpacing)
+        }
+    }
+
     @Published var hits: [SearchHit] = []
     @Published var selectedID: Int64? { didSet { if selectedID != oldValue { loadPreview() } } }
     @Published var kind: FileKind? { didSet { if kind != oldValue { scheduleSearch() } } }
@@ -140,7 +205,11 @@ final class MijiSearchModel: ObservableObject {
         get {previewMode != .hidden}
         set {previewMode = newValue ? .shown : .hidden}
     }
-    var previewVisible: Bool {searchPresented && MijiSearchPreviewPolicy.showsPane(mode:previewMode,hits:hits)}
+    var previewVisible: Bool {
+        guard searchPresented, mode.searchesIndex else { return false }
+        if browsingRecent { return showsFileSelectionFeedback && previewMode != .hidden && selected != nil }
+        return MijiSearchPreviewPolicy.showsPane(mode: previewMode, hits: hits)
+    }
     @Published var gridEnabled = false
     @Published private(set) var searchPresented = false
     @Published private(set) var previewLoading = false
@@ -252,7 +321,9 @@ final class MijiSearchModel: ObservableObject {
         service.ensureStarted(); apply(service.status)
         // The filename index may have been paged out while hidden; read it in while the user types.
         if let names = service.engine?.names { searchQueue.async { names.prefetch() } }
-        if clearedWhileHidden || (hits.isEmpty && !query.isEmpty) {
+        if mode == .apps { browse.loadApps() }
+        if mode == .clipboard { browse.checkClipboard() }
+        if clearedWhileHidden || (hits.isEmpty && (browsingRecent || !query.isEmpty)) {
             clearedWhileHidden = false; resumeSearchWhenShown = false; catalogChangedWhileHidden = false
             scheduleSearch()
         } else if resumeSearchWhenShown {
@@ -309,14 +380,15 @@ final class MijiSearchModel: ObservableObject {
         if !namesOnly { catalogRefreshWork?.cancel(); catalogRefreshWork = nil }
         refreshing = background
         if !background {
+            clearSelectionFeedback()
             generation &+= 1
             currentSnapshot = makeSnapshot(generation: generation)
             searchError = nil; firstBatchMilliseconds = nil; completedMilliseconds = nil; searchLimited = false
-            searchPhase = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .idle : .searching
+            searchPhase = mode.searchesIndex && (browsingRecent || !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? .searching : .idle
             suspendPreview()
             if !preserveResults { selectedID = nil; searchMilliseconds = 0 }
         }
-        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard mode.searchesIndex, browsingRecent || !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             hits = []; selectedID = nil; searchMilliseconds = 0; displayedSnapshot = nil
             return
         }
@@ -325,11 +397,15 @@ final class MijiSearchModel: ObservableObject {
             else if !windowVisible { resumeSearchWhenShown = true }
             return
         }
-        let typedQuery = query
-        let options = SearchOptions(kind: kind, rootID: rootID, scope: scope, sort: sort,
-                                    onlineOnly: !service.indexingPreferences.retainOffline, limit: 500)
-        let request = [query, kind?.rawValue ?? "", rootID ?? "", "\(scope)", "\(sort)", context?.path ?? "",
-                       "\(currentFolderOnly)", "\(options.onlineOnly)"].joined(separator: "\u{1f}")
+        let recent = browsingRecent
+        let typedQuery = recent ? "" : query
+        var configuredOptions = SearchOptions(kind: effectiveKind, rootID: rootID, scope: effectiveScope, sort: effectiveSort,
+                                              onlineOnly: !service.indexingPreferences.retainOffline, limit: searchLimit)
+        if mode == .files { configuredOptions.excludedKind = .application }
+        let options = configuredOptions
+        let request = [typedQuery, String(describing: mode), options.kind?.rawValue ?? "", rootID ?? "",
+                       "\(options.scope)", "\(options.sort)", context?.path ?? "", "\(currentFolderOnly)",
+                       "\(options.onlineOnly)"].joined(separator: "\u{1f}")
         // A filename refresh keeps the content matches of the same request; without
         // them (or for content-only scope) it has nothing cheaper to offer.
         let cachedSupplementary = namesOnly ? supplementaryCache.flatMap { $0.request == request ? $0.hits : nil } : nil
@@ -343,7 +419,7 @@ final class MijiSearchModel: ObservableObject {
         let ticket = MijiSearchTicket(snapshot: currentSnapshot, background: background)
         let cachedLimited = namesOnly ? (supplementaryCache?.limited ?? false) : false
         searchTicket = ticket
-        let plans = MijiSearchPlan.make(query: query, options: options,
+        let plans = MijiSearchPlan.make(query: typedQuery, options: options,
                                        folder: currentFolderOnly ? context : nil, roots: roots)
         let contentRevision=service.contentGeneration
         let typedAt = Date(), reader = searchReader, contentReader = contentReader
@@ -363,7 +439,9 @@ final class MijiSearchModel: ObservableObject {
                             let exclusions = options.scope == .all && QueryParser.parse(plan.query).terms.contains { $0.field == .text && $0.isExcluded }
                             var examined = 0, scoped: [SearchHit] = []
                             repeat {
-                                let ids = try names.search(plan.query, options: candidateOptions, cancelled: { ticket.isCancelled })
+                                let ids = try recent
+                                    ? names.recentFiles(query: plan.query, options: candidateOptions, cancelled: { ticket.isCancelled })
+                                    : names.search(plan.query, options: candidateOptions, cancelled: { ticket.isCancelled })
                                 let batch = try database.nameHits(ids: Array(ids.dropFirst(examined)), query: plan.query,
                                                                   verifyContentExclusions: exclusions, cancelled: { ticket.isCancelled })
                                 scoped += batch.filter { plan.contains($0) }
@@ -373,7 +451,7 @@ final class MijiSearchModel: ObservableObject {
                             first += scoped.prefix(options.limit)
                         }
                     }
-                    let nameHits = Self.merge(first, [], query: typedQuery, options: options)
+                    let nameHits = recent ? Array(first.prefix(options.limit)) : Self.merge(first, [], query: typedQuery, options: options)
                     if let cachedSupplementary {
                         // Re-read the cached content matches by ID: deleted files drop out,
                         // renamed or moved ones show where they are now, offline ones follow
@@ -385,7 +463,7 @@ final class MijiSearchModel: ObservableObject {
                                   plans.contains(where: { $0.contains(row) }) else { return nil }
                             return SearchHit(file: row.file, root: row.root, snippet: hit.snippet, matchedIn: hit.matchedIn, labels: hit.labels, contentRelevance: hit.contentRelevance)
                         }
-                        let result = Self.merge(nameHits, refreshed, query: typedQuery, options: options)
+                        let result = recent ? nameHits : Self.merge(nameHits, refreshed, query: typedQuery, options: options)
                         DispatchQueue.main.async {
                             self?.publish(result, ticket: ticket, elapsed: nil, finished: true, preserveResults: true, limited: cachedLimited)
                         }
@@ -540,10 +618,10 @@ final class MijiSearchModel: ObservableObject {
     func moveSelection(_ step: Int) {
         guard let first=hits.first,isCurrentResult(first) else { return }
         let current = hits.firstIndex { $0.id == selectedID } ?? (step > 0 ? -1 : hits.count)
-        selectedID = hits[min(max(current + step, 0), hits.count - 1)].id
+        selectFile(hits[min(max(current + step, 0), hits.count - 1)].id)
     }
     private func makeSnapshot(generation: UInt64) -> MijiSearchSnapshot {
-        MijiSearchSnapshot(generation:generation,query:query,kind:kind,rootID:rootID,scope:scope,sort:sort,onlineOnly:onlineOnly,limit:500,contextPath:context?.standardizedFileURL.path,currentFolderOnly:currentFolderOnly,rootPaths:rootPaths)
+        MijiSearchSnapshot(generation:generation,mode:mode,query:query,kind:effectiveKind,rootID:rootID,scope:effectiveScope,sort:effectiveSort,onlineOnly:onlineOnly,limit:searchLimit,contextPath:context?.standardizedFileURL.path,currentFolderOnly:currentFolderOnly,rootPaths:rootPaths)
     }
     var searchStatus: MijiSearchStatus {
         MijiSearchStatus(phase:searchPhase,count:displayedSnapshot == currentSnapshot ? hits.count : 0,
@@ -552,7 +630,7 @@ final class MijiSearchModel: ObservableObject {
     }
     var activeFilters: [MijiSearchFilter] {
         var result: [MijiSearchFilter] = []
-        if let kind { result.append(MijiSearchFilter(id:.kind,label:kind.title)) }
+        if let kind = effectiveKind { result.append(MijiSearchFilter(id:.kind,label:kind.title)) }
         if let rootID { result.append(MijiSearchFilter(id:.root,label:roots.first { $0.id == rootID }?.name ?? "指定位置")) }
         if scope != .all { result.append(MijiSearchFilter(id:.scope,label:scope == .name ? "仅文件名" : "仅内容")) }
         if sort != .relevance { result.append(MijiSearchFilter(id:.sort,label:sort == .modified ? "最近修改" : sort == .size ? "按大小" : "按名称")) }
@@ -562,7 +640,7 @@ final class MijiSearchModel: ObservableObject {
     }
     func removeFilter(_ id: MijiSearchFilterID) {
         switch id {
-        case .kind: kind=nil
+        case .kind: if mode == .files { fileKind = nil } else { kind = nil }
         case .root: rootID=nil
         case .scope: scope = .all
         case .sort: sort = .relevance
@@ -571,7 +649,7 @@ final class MijiSearchModel: ObservableObject {
         }
     }
     func resetInterfaceFilters() {
-        kind=nil; rootID=nil; scope = .all; sort = .relevance; currentFolderOnly=false
+        if mode == .files { fileKind = nil } else { kind = nil }; rootID=nil; scope = .all; sort = .relevance; currentFolderOnly=false
         if onlineOnly { onlineOnly=false }
     }
     private static func volumeName(_ root: IndexedRoot) -> String {
@@ -653,7 +731,7 @@ final class MijiSearchModel: ObservableObject {
     }
     func performFileAction(_ action: MijiFileAction, hit: SearchHit? = nil, snapshot: MijiSearchSnapshot? = nil,
                            line: Int? = nil, pasteboard: NSPasteboard = .general) {
-        guard let hit=hit ?? selected, validateResult(hit,for:action,snapshot:snapshot) else { return }
+        guard let hit=hit ?? (browsingRecent && !showsFileSelectionFeedback ? nil : selected), validateResult(hit,for:action,snapshot:snapshot) else { return }
         let url=URL(fileURLWithPath:hit.path)
         switch action {
         case .copyPath:
@@ -668,6 +746,8 @@ final class MijiSearchModel: ObservableObject {
         case .reveal: onDismiss(); onReveal(url)
         case .revealInFinder: NSWorkspace.shared.activateFileViewerSelecting([url])
         case .open, .openAtLine:
+            let history = service.engine?.names.openHistory
+            searchQueue.async { history?.record(hit.id) }
             if hit.file.kind == .code, let line=line ?? (hit.id == selectedID ? previewLine : nil), MijiCodeFileOpener.open(url,line:line) { onDismiss(); return }
             onDismiss(); FileOpenRouter.open(url)
         case .quickLook: NotificationCenter.default.post(name:.dirDeskShowSuperPreview,object:url)

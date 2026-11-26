@@ -56,18 +56,23 @@ struct InteractivePreview: View {
     var body: some View {
         PreviewContent(item: item, compact: true, openLocation: openLocation)
             .frame(height: height)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(showsCard ? 0.04 : 0)))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(showsCard ? 0.04 : 0)))
             .overlay(alignment: .topTrailing) {
-                if let enlarge, hovering {
+                if let enlarge {
                     Button(action: enlarge) {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 24, height: 24)
-                            .background(Circle().fill(.regularMaterial))
+                            .frame(width: 28, height: 28)
+                            .wumiGlass(in: Circle(), interactive: true)
+                            .shadow(color: .black.opacity(0.14), radius: 3, y: 1)
                     }
-                    .buttonStyle(.plain)
-                    .padding(6)
+                    .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 14, hoverOpacity: 0.06, pressOpacity: 0.14, pressScale: 0.91))
+                    .padding(7)
+                    .opacity(hovering ? 1 : 0)
+                    .scaleEffect(hovering ? 1 : 0.90)
+                    .allowsHitTesting(hovering)
+                    .animation(WumiMotion.micro, value: hovering)
                     .help(L("Enlarge Preview"))
                     .accessibilityIdentifier("Inspector.EnlargePreview")
                 }
@@ -126,8 +131,10 @@ struct ZoomableImagePreview: View {
     var showsRotate = false
     @State private var image: NSImage?
     @State private var scale: CGFloat = 1
+    @State private var gestureStartScale: CGFloat?
     @State private var fit = true
     @State private var rotation = 0.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isAnimated: Bool { ["gif", "apng"].contains(url.pathExtension.lowercased()) }
 
@@ -148,18 +155,45 @@ struct ZoomableImagePreview: View {
                         ProgressView().frame(width: geometry.size.width, height: geometry.size.height)
                     }
                 }
-                .gesture(MagnificationGesture().onChanged { value in
-                    fit = false
-                    scale = min(max(value, 0.05), 16)
-                })
+                .gesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            if gestureStartScale == nil {
+                                if fit, let image, image.size.width > 0, image.size.height > 0 {
+                                    let fitScale = min(geometry.size.width / image.size.width, geometry.size.height / image.size.height)
+                                    gestureStartScale = max(fitScale, 0.05)
+                                } else {
+                                    gestureStartScale = scale
+                                }
+                            }
+                            fit = false
+                            let base = gestureStartScale ?? 1
+                            scale = min(max(base * value, 0.05), 16)
+                        }
+                        .onEnded { _ in
+                            gestureStartScale = nil
+                        }
+                )
             }
             // Tools and identifiers as in the original: (rotate left,) fit, actual size, zoom out, zoom in.
-            HStack(spacing: 14) {
-                if showsRotate { button("rotate.left", L("Rotate Left"), id: "RotateLeft") { rotation -= 90 } }
-                button("arrow.down.right.and.arrow.up.left", L("Fit to Window"), id: "Fit") { fit = true }
-                button("viewfinder", L("Actual Size"), id: "ActualSize") { fit = false; scale = 1 }
-                button("minus.magnifyingglass", L("Zoom Out"), id: "ZoomOut") { fit = false; scale = max(scale / 1.25, 0.05) }
-                button("plus.magnifyingglass", L("Zoom In"), id: "ZoomIn") { fit = false; scale = min(scale * 1.25, 16) }
+            HStack(spacing: 8) {
+                if showsRotate {
+                    button("rotate.left", L("Rotate Left"), id: "RotateLeft") {
+                        WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) { rotation -= 90 }
+                    }
+                }
+                button("arrow.down.right.and.arrow.up.left", L("Fit to Window"), id: "Fit") {
+                    WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) { fit = true }
+                }
+                button("viewfinder", L("Actual Size"), id: "ActualSize") {
+                    WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) { fit = false; scale = 1 }
+                }
+                button("minus.magnifyingglass", L("Zoom Out"), id: "ZoomOut") {
+                    WumiMotion.withPreferredAnimation(WumiMotion.quick, reduceMotion: reduceMotion) { fit = false; scale = max(scale / 1.25, 0.05) }
+                }
+                button("plus.magnifyingglass", L("Zoom In"), id: "ZoomIn") {
+                    WumiMotion.withPreferredAnimation(WumiMotion.quick, reduceMotion: reduceMotion) { fit = false; scale = min(scale * 1.25, 16) }
+                }
             }
             // The tools sit on a 32 pt band under the image card, one every 32 pt, as in the original.
             .frame(maxWidth: .infinity)
@@ -175,7 +209,9 @@ struct ZoomableImagePreview: View {
     }
 
     private func button(_ symbol: String, _ title: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: symbol).frame(width: 18) }.buttonStyle(.borderless).help(title).accessibilityLabel(title)
+        Button(action: action) { Image(systemName: symbol).font(.system(size: 12.5)).frame(width: 24, height: 24) }
+            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 6, hoverOpacity: 0.08, pressOpacity: 0.15, pressScale: 0.93))
+            .help(title).accessibilityLabel(title)
             .accessibilityIdentifier("InteractivePreview.Image." + id)
     }
 

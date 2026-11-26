@@ -69,6 +69,7 @@ private struct InspectorContent: View {
     @State private var thumbnail: NSImage?
     @State private var folderSize: FolderSizeState?
     @State private var repositoryPath: String?
+    @State private var hoveringResize = false
 
     private struct RepositoryRequest: Equatable {
         let url: URL?
@@ -153,13 +154,19 @@ private struct InspectorContent: View {
     }
 
     private var resizeHandle: some View {
-        Capsule().fill(Color.primary.opacity(0.18)).frame(width: 38, height: 3)
+        Capsule()
+            .fill(Color.primary.opacity(hoveringResize ? 0.36 : 0.18))
+            .frame(width: hoveringResize ? 44 : 38, height: 3.5)
             .frame(maxWidth: .infinity)
+            .animation(WumiMotion.micro, value: hoveringResize)
             .contentShape(Rectangle().inset(by: -6))
             .gesture(DragGesture().onChanged { value in
                 previewHeight = min(max(previewHeight + value.translation.height / 8, 120), 640)
             })
-            .onHover { inside in if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() } }
+            .onHover { inside in
+                hoveringResize = inside
+                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
             .padding(.top, 4.5)
             .padding(.bottom, 5)
             .help(L("Drag to resize the preview. File information moves below it."))
@@ -261,20 +268,22 @@ private struct InspectorContent: View {
     /// Icon and title; the narrow multi-pane inspector keeps only the icon (the title stays as tooltip and label).
     private func actionButton(_ title: String, _ symbol: String, _ identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            InspectorActionLabel(title: title, symbol: symbol, compact: stacksLabels)
+            InspectorActionLabel(title: title, symbol: symbol, compact: stacksLabels, drawsSurface: false)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(WumiPillButtonStyle(cornerRadius: 14, pressScale: 0.965))
         .help(title)
         .accessibilityLabel(title)
         .accessibilityIdentifier(identifier)
     }
 }
 
-/// Label of an inspector action button: glyph and title on a soft rounded fill.
+/// Label of an inspector action button: glyph and title on a soft capsule fill aligned with Miji's preview controls.
 struct InspectorActionLabel: View {
     let title: String
     let symbol: String
     let compact: Bool
+    var drawsSurface = true
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 6) {
@@ -283,11 +292,16 @@ struct InspectorActionLabel: View {
                 Text(title).font(.system(size: 11, weight: .semibold))
             }
         }
-        .padding(.leading, compact ? 10 : 12.5)
-        .padding(.trailing, compact ? 10 : 13)
+        .padding(.horizontal, compact ? 10 : 12.5)
         .frame(height: 28)
-        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.primary.opacity(0.075)))
-        .contentShape(Rectangle())
+        .background {
+            if drawsSurface {
+                Capsule()
+                    .fill(Color.primary.opacity(colorScheme == .dark ? 0.095 : 0.07))
+                    .overlay(Capsule().strokeBorder(Theme.hairline(dark: colorScheme == .dark), lineWidth: 0.5))
+            }
+        }
+        .contentShape(Capsule())
     }
 }
 

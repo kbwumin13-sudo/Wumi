@@ -4,6 +4,7 @@ import MijiCore
 /// Query conditions and a monotonic input epoch; background executions share this identity.
 struct MijiSearchSnapshot: Equatable {
     let generation: UInt64
+    let mode: SearchMode
     let query: String
     let kind: FileKind?
     let rootID: String?

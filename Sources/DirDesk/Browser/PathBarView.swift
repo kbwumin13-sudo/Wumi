@@ -12,12 +12,15 @@ struct PathBarView: View {
     @State private var hoveringField = false
     @State private var editText = ""
     @State private var editError: String?
+    @State private var reloadTick = 0
+    @State private var copiedPath = false
     @StateObject private var crumbPopover = CrumbPopoverState()
     @FocusState private var fieldFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // Measured on the original: 30 pt button slots, 13 pt glyphs, crumbs 12.75 pt after the up button.
-        HStack(spacing: 0) {
+        HStack(spacing: 1) {
             navButton("chevron.left", L("Back"), enabled: pane.history.canGoBack) { pane.goBack() }
             navButton("chevron.right", L("Forward"), enabled: pane.history.canGoForward) { pane.goForward() }
             navButton("chevron.up", L("Up One Level"), enabled: pane.canGoUp) { pane.goUp() }
@@ -28,13 +31,14 @@ struct PathBarView: View {
                     .font(.system(size: 12))
                     .focused($fieldFocused)
                     .onSubmit(commitEdit)
-                    .onExitCommand { editing = false }
-                    .onChange(of: fieldFocused) { _, focused in if !focused { editing = false } }
+                    .onExitCommand { endEdit() }
+                    .onChange(of: fieldFocused) { _, focused in if !focused { endEdit() } }
                     .popover(isPresented: Binding(get: { editError != nil }, set: { if !$0 { editError = nil } })) {
                         Text(editError ?? "").padding(10).font(.system(size: 12))
                     }
+                    .transition(.opacity)
             } else {
-                // Breadcrumbs and the copy button share one field that outlines on hover, as in the original.
+                // Breadcrumbs and the copy button share one field that subtly elevates on hover.
                 HStack(spacing: 2) {
                     // Crumbs take the room they need first; only when the pane is too narrow do they shorten.
                     breadcrumb.layoutPriority(1)
@@ -48,41 +52,78 @@ struct PathBarView: View {
                         .accessibilityAction { beginEdit() }
                     // Tag and recent views have no folder to copy; the original shows only Reload there.
                     if pane.currentDirectory != nil {
-                        Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1, height: 16).padding(.trailing, -4)
-                        navButton("doc.on.doc", L("Copy Folder Path"), enabled: true, size: 11.5, primary: true) {
+                        Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1, height: 15).padding(.trailing, -2)
+                        Button {
                             controller.copyPaths([pane.currentDirectory].compactMap { $0 }, folderOnly: true)
+                            copiedPath = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copiedPath = false }
+                        } label: {
+                            Image(systemName: copiedPath ? "checkmark" : "doc.on.doc")
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundStyle(copiedPath ? Color.accentColor : Color.secondary)
+                                .contentTransition(.symbolEffect(.replace))
+                                .frame(width: 28, height: 22)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 6, hoverOpacity: 0.07, pressOpacity: 0.14, pressScale: 0.94))
+                        .animation(WumiMotion.micro, value: copiedPath)
+                        .help(L("Copy Folder Path"))
+                        .accessibilityLabel(L("Copy Folder Path"))
                     }
                 }
-                .padding(.leading, 4)
+                .padding(.leading, 6)
+                .padding(.trailing, 2)
                 .frame(height: 26)
-                .background(RoundedRectangle(cornerRadius: 7).strokeBorder(Color.accentColor.opacity(hoveringField ? 0.7 : 0), lineWidth: 1))
+                .background(
+                    Capsule()
+                        .fill(Color.primary.opacity(hoveringField ? 0.05 : 0.02))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(hoveringField ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.06), lineWidth: hoveringField ? 1 : 0.5)
+                )
+                .animation(WumiMotion.micro, value: hoveringField)
                 .onHover { hoveringField = $0 }
                 .layoutPriority(-1)
+                .transition(.opacity)
             }
-            navButton("arrow.clockwise", L("Reload"), enabled: true) { pane.reload() }
+            Button {
+                reloadTick &+= 1
+                pane.reload()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12.5, weight: .medium))
+                    .symbolEffect(.rotate, value: reduceMotion ? 0 : reloadTick)
+                    .frame(width: 28, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 6, hoverOpacity: 0.07, pressOpacity: 0.14, pressScale: 0.94))
+            .foregroundStyle(.secondary)
+            .help(L("Reload"))
+            .accessibilityLabel(L("Reload"))
             if let close {
                 navButton("xmark", L("Close Pane"), enabled: true, action: close)
                     .accessibilityIdentifier("Pane.Close.\(pane.id.uuidString)")
             }
         }
-        .padding(.leading, 4)
+        .padding(.leading, 5)
         .padding(.trailing, 5)
-        .frame(height: 39)
+        .frame(height: 38)
+        .animation(WumiMotion.quick, value: editing)
         .onReceive(NotificationCenter.default.publisher(for: .dirDeskEditPath)) { note in
             if (note.object as? UUID) == pane.id { beginEdit() }
         }
     }
 
-    private func navButton(_ symbol: String, _ title: String, enabled: Bool, size: CGFloat = 13, primary: Bool = false,
+    private func navButton(_ symbol: String, _ title: String, enabled: Bool, size: CGFloat = 12.5, primary: Bool = false,
                            action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: size, weight: .medium))
-                .frame(width: 30, height: 22)
-                .contentShape(Rectangle())
+                .frame(width: 28, height: 24)
+                .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 12, hoverOpacity: 0.07, pressOpacity: 0.14, pressScale: 0.94))
         .foregroundStyle(enabled ? (primary ? .primary : .secondary) : .tertiary)
         .disabled(!enabled)
         .help(title)
@@ -130,8 +171,12 @@ struct PathBarView: View {
 
     private func beginEdit() {
         editText = pane.currentDirectory?.path ?? ""
-        editing = true
+        withAnimation(WumiMotion.quick) { editing = true }
         DispatchQueue.main.async { fieldFocused = true }
+    }
+
+    private func endEdit() {
+        withAnimation(WumiMotion.quick) { editing = false }
     }
 
     private func commitEdit() {
@@ -214,15 +259,13 @@ private struct CrumbButton: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(minWidth: 28)
-                    .font(.system(size: 13, weight: isLast ? .semibold : .regular))
+                    .font(.system(size: 12.5, weight: isLast ? .semibold : .regular))
                     .foregroundStyle(isLast ? .primary : .secondary)
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 5)
                     .frame(height: 22)
-                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(hovering ? 0.07 : 0)))
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .onHover { hovering = $0 }
+            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 5, hoverOpacity: 0.07, pressOpacity: 0.13, pressScale: 0.97))
             .help(url.path)
             .accessibilityIdentifier("Path.Crumb.\(index)")
             Button {
@@ -230,11 +273,13 @@ private struct CrumbButton: View {
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 8.5, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 14, height: 22)
+                    .foregroundStyle(popover.openIndex == index ? Color.accentColor : Color(nsColor: .tertiaryLabelColor))
+                    .rotationEffect(.degrees(popover.openIndex == index ? 90 : 0))
+                    .frame(width: 15, height: 22)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 4, hoverOpacity: 0.07, pressOpacity: 0.14, pressScale: 0.92))
+            .animation(WumiMotion.quick, value: popover.openIndex == index)
             .onHover { inside in
                 guard opensOnHover else { return }
                 popover.hover(index, inside: inside) { showChildren() }

@@ -94,6 +94,7 @@ public struct SearchOptions: Sendable {
     public var sort: SearchSort
     public var onlineOnly: Bool
     public var limit: Int
+    public var excludedKind: FileKind? = nil
     public init(kind: FileKind? = nil, rootID: String? = nil, scope: SearchScope = .all, sort: SearchSort = .relevance, onlineOnly: Bool = false, limit: Int = 300) { self.kind=kind; self.rootID=rootID; self.scope=scope; self.sort=sort; self.onlineOnly=onlineOnly; self.limit=limit }
 }
 public struct SearchHit: Identifiable, Sendable {

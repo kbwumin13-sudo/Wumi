@@ -22,9 +22,11 @@ final class FloatingFilesController: NSObject, NSWindowDelegate, BrowserActionHa
     static let shared = FloatingFilesController()
 
     private var panel: FloatingFilesPanel?
+    private var springAnimator: WumiWindowSpringAnimator?
     let pane: PaneRuntime
     weak var appDelegate: AppDelegate?
     private var cancellables: Set<AnyCancellable> = []
+    private var visibilityGeneration = 0
     /// "Keep Open": when off, the window hides as soon as another window or app takes focus.
     @Published var keepsOpen = false
 
@@ -59,23 +61,51 @@ final class FloatingFilesController: NSObject, NSWindowDelegate, BrowserActionHa
         isVisible ? hide() : show()
     }
 
-    /// Opens with the window's top-left just under `anchor` (the menu bar icon), like the original.
+    /// Opens with the window's top-left just under `anchor` (the menu bar icon), emerging downward.
     func show(below anchor: NSRect) {
-        show()
-        guard let panel, let screen = NSScreen.screens.first(where: { $0.frame.intersects(anchor) }) ?? NSScreen.main else { return }
+        if panel == nil { buildPanel() }
+        guard let panel, let screen = NSScreen.screens.first(where: { $0.frame.intersects(anchor) }) ?? NSScreen.main else {
+            show()
+            return
+        }
         let visible = screen.visibleFrame
         var origin = NSPoint(x: anchor.minX, y: min(anchor.minY, visible.maxY) - panel.frame.height)
         origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - panel.frame.width - 8)
-        panel.setFrameOrigin(origin)
+        presentPanel(panel, at: origin, slideOffset: NSPoint(x: 0, y: 14))
     }
 
     func show() {
         if panel == nil { buildPanel() }
         guard let panel else { return }
+        let origin = restingOrigin(for: panel)
+        presentPanel(panel, at: origin, slideOffset: edgeSlideOffset())
+    }
+
+    private func presentPanel(_ panel: FloatingFilesPanel, at targetOrigin: NSPoint, slideOffset: NSPoint) {
+        visibilityGeneration &+= 1
         if pane.loadState == .idle { pane.load() }
-        position(panel)
-        panel.alphaValue = 1
+        let targetAlpha = resolvedOpacity()
+        let targetFrame = NSRect(origin: targetOrigin, size: panel.frame.size)
+        let wasVisible = panel.isVisible && panel.alphaValue > 0.05
+        let animator = springAnimator ?? {
+            let created = WumiWindowSpringAnimator(window: panel)
+            springAnimator = created
+            return created
+        }()
+        if !wasVisible {
+            animator.stop()
+            let startOrigin = WumiMotion.systemReduceMotion
+                ? targetOrigin
+                : NSPoint(x: targetOrigin.x + slideOffset.x, y: targetOrigin.y + slideOffset.y)
+            panel.setFrame(NSRect(origin: startOrigin, size: targetFrame.size), display: true)
+        }
+        // Order a visible panel first. Ordering a fully transparent panel can
+        // leave it outside the compositor on its first presentation.
+        panel.alphaValue = targetAlpha
+        panel.ignoresMouseEvents = false
+        NSApp.unhideWithoutActivation()
         panel.makeKeyAndOrderFront(nil)
+        animator.animate(to: targetFrame, alpha: targetAlpha, response: 0.27, dampingRatio: 0.84)
         updateSizeObservation()
         activateApp()
         appDelegate?.watcherHub.refresh()
@@ -84,8 +114,48 @@ final class FloatingFilesController: NSObject, NSWindowDelegate, BrowserActionHa
     }
 
     func hide() {
-        panel?.orderOut(nil)
-        updateSizeObservation()
+        guard let panel, panel.isVisible, !panel.ignoresMouseEvents else {
+            updateSizeObservation()
+            return
+        }
+        visibilityGeneration &+= 1
+        let generation = visibilityGeneration
+        let offset = edgeSlideOffset()
+        let endOrigin = WumiMotion.systemReduceMotion
+            ? panel.frame.origin
+            : NSPoint(x: panel.frame.origin.x + offset.x, y: panel.frame.origin.y + offset.y)
+        let endFrame = NSRect(origin: endOrigin, size: panel.frame.size)
+        let animator = springAnimator ?? {
+            let created = WumiWindowSpringAnimator(window: panel)
+            springAnimator = created
+            return created
+        }()
+        panel.ignoresMouseEvents = true
+        animator.animate(
+            to: endFrame,
+            alpha: 0,
+            alphaDuration: 0.10,
+            response: 0.17,
+            dampingRatio: 1.0
+        ) { [weak self, weak panel] in
+            guard let self, let panel, self.visibilityGeneration == generation else { return }
+            panel.ignoresMouseEvents = false
+            panel.orderOut(nil)
+            self.updateSizeObservation()
+        }
+    }
+
+    private func edgeSlideOffset() -> NSPoint {
+        switch AppModel.shared.preferences.fileTransitDockEdge {
+        case .top: NSPoint(x: 0, y: 16)
+        case .left: NSPoint(x: -20, y: 0)
+        case .right: NSPoint(x: 20, y: 0)
+        }
+    }
+
+    private func resolvedOpacity() -> CGFloat {
+        let opacity = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency ? 1 : AppModel.shared.preferences.fileTransitPanelOpacity
+        return CGFloat(max(0.4, opacity))
     }
 
     /// Borderless dark rounded window (the original has no title bar: its own tabs and Close button sit on top).
@@ -122,15 +192,17 @@ final class FloatingFilesController: NSObject, NSWindowDelegate, BrowserActionHa
 
     /// Window opacity follows the File Transit setting (Reduce Transparency keeps it opaque).
     private func applyOpacity() {
-        let opacity = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency ? 1 : AppModel.shared.preferences.fileTransitPanelOpacity
-        panel?.alphaValue = CGFloat(max(0.4, opacity))
+        guard let panel, panel.isVisible else { return }
+        panel.alphaValue = resolvedOpacity()
     }
 
     func windowDidResignKey(_ notification: Notification) {
         // Sheets (settings) and open panels keep it visible; otherwise an unpinned window steps aside.
         guard !keepsOpen, let panel, panel.attachedSheet == nil, NSApp.modalWindow == nil else { return }
+        let generation = visibilityGeneration
         DispatchQueue.main.async { [weak self] in
-            guard let self, let panel = self.panel, !panel.isKeyWindow, panel.attachedSheet == nil, NSApp.modalWindow == nil else { return }
+            guard let self, self.visibilityGeneration == generation, !self.keepsOpen,
+                  let panel = self.panel, !panel.isKeyWindow, panel.attachedSheet == nil, NSApp.modalWindow == nil else { return }
             if NSApp.keyWindow?.identifier?.rawValue == "SuperPreview.Window" { return }
             // Quick Look opened from this window (Staging or the folder browser) keeps it open.
             if NSApp.keyWindow is QLPreviewPanel { return }
@@ -207,7 +279,7 @@ final class FloatingFilesController: NSObject, NSWindowDelegate, BrowserActionHa
     }
 
     /// Opens below the menu bar near the top center of the screen under the pointer.
-    private func position(_ panel: NSWindow) {
+    private func restingOrigin(for panel: NSWindow) -> NSPoint {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main ?? NSScreen.screens[0]
         let visible = screen.visibleFrame
@@ -219,7 +291,7 @@ final class FloatingFilesController: NSObject, NSWindowDelegate, BrowserActionHa
         case .left: origin = NSPoint(x: visible.minX + 8, y: visible.midY - size.height / 2)
         case .right: origin = NSPoint(x: visible.maxX - size.width - 8, y: visible.midY - size.height / 2)
         }
-        panel.setFrameOrigin(origin)
+        return origin
     }
 
     func windowDidEndLiveResize(_ notification: Notification) { persistPanelSize() }

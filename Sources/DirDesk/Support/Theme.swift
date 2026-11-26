@@ -8,6 +8,45 @@ enum Theme {
     static let content = Color(nsColor: .controlBackgroundColor)
     static let separator = Color(nsColor: .separatorColor)
     static let selectedTab = Color.primary.opacity(0.085)
+    static let hoverFill = Color.primary.opacity(0.055)
+    static let pressedFill = Color.primary.opacity(0.11)
+
+    /// Elevated surface for active tabs and floating controls (crisp lifted card in light mode, subtle lift in dark).
+    static func elevatedSurface(dark: Bool) -> Color {
+        dark ? Color.white.opacity(0.105) : Color(nsColor: .controlBackgroundColor)
+    }
+
+    /// Delicate top/inner light catch on raised macOS surfaces.
+    static func hairlineHighlight(dark: Bool) -> Color {
+        dark ? Color.white.opacity(0.12) : Color.white.opacity(0.75)
+    }
+
+    /// Crisp 0.5–1 pt structural outline for elevated pills, cards, and inputs.
+    static func subtleBorder(dark: Bool) -> Color {
+        dark ? Color.white.opacity(0.10) : Color.black.opacity(0.09)
+    }
+
+    /// Miji-aligned hairline divider color for translucent and glass panels.
+    static func hairline(dark: Bool) -> Color {
+        dark ? Color.white.opacity(0.10) : Color.black.opacity(0.09)
+    }
+
+    /// Miji Spotlight-aligned capsule chip fill for bookmark pills, filter chips, and floating tabs.
+    static func chipFill(dark: Bool, hovered: Bool, selected: Bool) -> Color {
+        if selected {
+            return dark ? Color.white.opacity(0.24) : Color(nsColor: .controlAccentColor).opacity(0.16)
+        }
+        if dark {
+            return Color.white.opacity(hovered ? 0.16 : 0.095)
+        } else {
+            return Color.black.opacity(hovered ? 0.10 : 0.055)
+        }
+    }
+
+    /// Subtle ambient drop shadow for active pills and raised controls.
+    static func pillShadow(dark: Bool) -> Color {
+        dark ? Color.black.opacity(0.28) : Color.black.opacity(0.08)
+    }
 
     /// Soft background and text colors for date-age pills. Strength follows the date color theme.
     static func dateAgeColors(_ bucket: DateAgeBucket, theme: DateColorTheme, dark: Bool) -> (background: NSColor, text: NSColor) {

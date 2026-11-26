@@ -22,6 +22,10 @@ struct FloatingFilesView: View {
     @State private var bookmarkFolder: UUID?
     @State private var browsingBookmark: URL?
     @State private var tabBeforeSearch: FloatingTab = .staging
+    @Namespace private var tabNamespace
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     static var downloads: URL { FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0] }
 
@@ -62,81 +66,116 @@ struct FloatingFilesView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(white: 0.135)))
-        .overlay(alignment: .bottomLeading) { ResizeGrip(controller: controller).padding(6) }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background {
+            WumiGlassSurface(shape: RoundedRectangle(cornerRadius: 24, style: .continuous), fallbackMaterial: .hudWindow)
+        }
+        .overlay(alignment: .bottomLeading) { ResizeGrip(controller: controller).padding(8) }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Theme.hairline(dark: colorScheme == .dark), lineWidth: 0.6)
+                .allowsHitTesting(false)
+        )
         .sheet(isPresented: $showingSettings) { FloatingFilesSettingsSheet { showingSettings = false } }
         .onChange(of: tab) { _, newValue in
             if case .folder(let root) = newValue, !(pane.currentDirectory?.path.hasPrefix(root.path) ?? false) { pane.open(root) }
         }
     }
 
-    /// Measured from the original: 30 pt tab capsules 4.5 pt apart from 18 pt in, the four tools 22.5 pt apart on
-    /// the right, all centred in a 56 pt row.
+    /// Liquid Glass tab capsules and circular controls matching macOS 26/27 & Miji's floating surface rhythm.
     private var header: some View {
-        HStack(spacing: 4.5) {
-            tabButton(.staging, title: L("Staging"), symbol: "tray")
-            ForEach(folderTabs, id: \.self) { url in
-                tabButton(.folder(url), title: url == Self.downloads ? L("Downloads") : PathUtilities.displayName(for: url),
-                          symbol: url == Self.downloads ? "arrow.down.to.line" : "folder")
-                    .contextMenu {
-                        if url != Self.downloads {
-                            Button(L("Remove")) {
-                                store.configuration.pinnedDirectories.removeAll { $0 == url }
-                                if tab == .folder(url) { tab = .staging }
+        WumiGlassContainer(spacing: 8) {
+            HStack(spacing: 5) {
+                tabButton(.staging, title: L("Staging"), symbol: "tray")
+                ForEach(folderTabs, id: \.self) { url in
+                    tabButton(.folder(url), title: url == Self.downloads ? L("Downloads") : PathUtilities.displayName(for: url),
+                              symbol: url == Self.downloads ? "arrow.down.to.line" : "folder")
+                        .contextMenu {
+                            if url != Self.downloads {
+                                Button(L("Remove")) {
+                                    store.configuration.pinnedDirectories.removeAll { $0 == url }
+                                    if tab == .folder(url) { tab = .staging }
+                                }
                             }
                         }
+                }
+                tabButton(.bookmarks, title: L("Bookmarks"), symbol: "bookmark")
+                Spacer(minLength: 8)
+                HStack(spacing: 3) {
+                    headerButton("magnifyingglass", L("Miji Search"), identifier: "FileFloating.Search", active: tab == .search) {
+                        WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) {
+                            if tab == .search { tab = tabBeforeSearch }
+                            else { tabBeforeSearch = tab; tab = .search }
+                        }
                     }
-            }
-            tabButton(.bookmarks, title: L("Bookmarks"), symbol: "bookmark")
-            Spacer(minLength: 8)
-            HStack(spacing: 0) {
-                headerButton("magnifyingglass", L("Miji Search"), identifier: "FileFloating.Search") {
-                    if tab == .search { tab = tabBeforeSearch }
-                    else { tabBeforeSearch = tab; tab = .search }
+                    headerButton("plus", L("Add Folder"), identifier: "FileFloating.AddFolder") { addFolder() }
+                    headerButton(controller.keepsOpen ? "pin.fill" : "pin", L("Keep Open"), identifier: "FileFloating.KeepOpen", active: controller.keepsOpen) {
+                        WumiMotion.withPreferredAnimation(WumiMotion.quick, reduceMotion: reduceMotion) {
+                            controller.keepsOpen.toggle()
+                        }
+                    }
+                    .accessibilityValue(controller.keepsOpen ? L("On") : L("Off"))
+                    headerButton("ellipsis", L("File Floating Settings"), identifier: "FileFloating.Settings") { showingSettings = true }
+                    headerButton("xmark", L("Close"), identifier: "FileTransit.Collapse") { controller.hide() }
                 }
-                headerButton("plus", L("Add Folder"), identifier: "FileFloating.AddFolder") { addFolder() }
-                headerButton(controller.keepsOpen ? "pin.fill" : "pin", L("Keep Open"), identifier: "FileFloating.KeepOpen") {
-                    controller.keepsOpen.toggle()
-                }
-                .accessibilityValue(controller.keepsOpen ? L("On") : L("Off"))
-                headerButton("ellipsis", L("File Floating Settings"), identifier: "FileFloating.Settings") { showingSettings = true }
-                headerButton("xmark", L("Close"), identifier: "FileTransit.Collapse") { controller.hide() }
             }
         }
         .padding(.leading, 18)
-        .padding(.trailing, 13.5)
-        .frame(height: 56)
+        .padding(.trailing, 14)
+        .frame(height: 54)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.hairline(dark: colorScheme == .dark)).frame(height: 0.5).padding(.horizontal, 16)
+        }
     }
 
     private func tabButton(_ value: FloatingTab, title: String, symbol: String) -> some View {
         let selected = tab == value
+        let dark = colorScheme == .dark
         return Button {
-            tab = value
-            if value == .bookmarks { browsingBookmark = nil }
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: symbol).font(.system(size: 13))
-                Text(title).font(.system(size: 11, weight: .semibold)).lineLimit(1)
+            WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) {
+                tab = value
+                if value == .bookmarks { browsingBookmark = nil }
             }
-            .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-            .padding(.leading, 13.5)
-            .padding(.trailing, 13)
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: symbol).font(.system(size: 12.5, weight: selected ? .semibold : .regular))
+                Text(title).font(.system(size: 12, weight: selected ? .semibold : .medium)).lineLimit(1)
+            }
+            .foregroundStyle(selected ? (dark ? Color.white : Color.accentColor) : Color.primary.opacity(0.76))
+            .padding(.horizontal, 12.5)
             .frame(height: 30)
-            .background(Capsule().fill(selected ? Color.accentColor.opacity(0.16) : .clear))
+            .background {
+                if selected {
+                    Capsule()
+                        .fill(Theme.chipFill(dark: dark, hovered: false, selected: true))
+                        .overlay(Capsule().strokeBorder(dark ? Color.white.opacity(0.22) : Color.accentColor.opacity(0.25), lineWidth: 0.6))
+                        .matchedGeometryEffect(id: "floating.activeTab", in: tabNamespace)
+                }
+            }
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 15, hoverOpacity: selected ? 0 : 0.08, pressOpacity: 0.14, pressScale: 0.97))
         .accessibilityIdentifier(value == .staging ? "FileFloating.Staging" : (value == .bookmarks ? "FileFloating.Bookmarks" : "FileFloating.Folder"))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func headerButton(_ symbol: String, _ title: String, identifier: String, action: @escaping () -> Void) -> some View {
+    private func headerButton(_ symbol: String, _ title: String, identifier: String, active: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 12.5)).frame(width: 22.5, height: 26).contentShape(Rectangle())
+            Image(systemName: symbol)
+                .font(.system(size: 12.5, weight: active ? .semibold : .regular))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 28, height: 28)
+                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .buttonStyle(WumiInteractiveButtonStyle(
+            cornerRadius: 14,
+            restingFill: active ? Color.accentColor.opacity(0.18) : .clear,
+            hoverOpacity: active ? 0 : 0.09,
+            pressOpacity: 0.17,
+            pressScale: 0.92
+        ))
+        .foregroundStyle(active ? Color.accentColor : Color.secondary)
+        .animation(WumiMotion.micro, value: active)
         .help(title)
         .accessibilityLabel(title)
         .accessibilityIdentifier(identifier)
@@ -190,6 +229,8 @@ private struct FloatingFolderView: View {
     let root: URL
     let controller: FloatingFilesController
     var leave: (() -> Void)? = nil
+    @State private var reloadTick = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -217,7 +258,18 @@ private struct FloatingFolderView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 120)
-                Button { pane.reload() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.plain).foregroundStyle(.secondary).help(L("Reload"))
+                Button {
+                    reloadTick &+= 1
+                    pane.reload()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12.5, weight: .medium))
+                        .symbolEffect(.rotate, value: reduceMotion ? 0 : reloadTick)
+                        .frame(width: 26, height: 24)
+                }
+                .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 12, hoverOpacity: 0.08, pressOpacity: 0.15, pressScale: 0.92))
+                .foregroundStyle(.secondary)
+                .help(L("Reload"))
             }
             .padding(.horizontal, 16)
             .frame(height: 36)

@@ -41,16 +41,33 @@ final class HotZoneController {
         }
     }
 
-    /// "Preview Hot Zone": briefly outlines every active trigger zone.
+    /// "Preview Hot Zone": smoothly fades in and out a rounded blue indicator on every active trigger zone.
     func previewZones() {
         for window in windows {
-            let marker = NSWindow(contentRect: window.frame.insetBy(dx: 0, dy: -2), styleMask: .borderless, backing: .buffered, defer: false)
+            let rect = window.frame.insetBy(dx: 0, dy: -2)
+            let marker = NSWindow(contentRect: rect, styleMask: .borderless, backing: .buffered, defer: false)
             marker.isOpaque = false
-            marker.backgroundColor = NSColor.systemBlue.withAlphaComponent(0.55)
+            marker.backgroundColor = .clear
             marker.level = .statusBar
             marker.ignoresMouseEvents = true
+            let badge = NSView(frame: NSRect(origin: .zero, size: rect.size))
+            badge.wantsLayer = true
+            badge.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.65).cgColor
+            badge.layer?.cornerRadius = min(rect.width, rect.height) / 2
+            badge.layer?.cornerCurve = .continuous
+            marker.contentView = badge
+            marker.alphaValue = 0
             marker.orderFrontRegardless()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { marker.orderOut(nil) }
+            WumiMotion.runAppKit(duration: 0.18, timingFunction: WumiMotion.easeOutCurve) {
+                marker.animator().alphaValue = 1
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.35) {
+                WumiMotion.runAppKit(duration: 0.28, timingFunction: WumiMotion.easeOutCurve) {
+                    marker.animator().alphaValue = 0
+                } completion: {
+                    marker.orderOut(nil)
+                }
+            }
         }
     }
 

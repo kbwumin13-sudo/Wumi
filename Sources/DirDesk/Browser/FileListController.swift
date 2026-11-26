@@ -33,6 +33,7 @@ final class FileListController: NSViewController, NSTableViewDataSource, NSTable
     private var renamingRow: Int?
     private var springRow: Int?
     private var springTimer: Timer?
+    private var springPulseTimer: Timer?
     private var sizeRequests: [String: AnyCancellable] = [:]
     private var sizeStates: [String: FolderSizeState] = [:]
     private var sizesScheduled = false
@@ -305,14 +306,27 @@ final class FileListController: NSViewController, NSTableViewDataSource, NSTable
 
     // MARK: Data
 
+    private static func sameRow(_ first: PaneRuntime.Row, _ second: PaneRuntime.Row) -> Bool {
+        switch (first, second) {
+        case let (.group(id, _, _), .group(otherID, _, _)): id == otherID
+        case let (.item(item, depth), .item(otherItem, otherDepth)): item.id == otherItem.id && depth == otherDepth
+        default: false
+        }
+    }
+
     private func apply(rows newRows: [PaneRuntime.Row]) {
-        if representedContentRevision != pane.directoryContentRevision {
+        let sameRevision = (representedContentRevision == pane.directoryContentRevision)
+        if !sameRevision {
             sizeRequests.removeAll()
             sizeStates.removeAll()
         }
         scheduleVisibleSizes()
         if applyCloudStatusChanges(newRows) { return }
         representedContentRevision = pane.directoryContentRevision
+        if sameRevision, renamingRow == nil, applyAnimatedRowDiff(to: newRows) {
+            applySelection(pane.selectedIDs)
+            return
+        }
         // Keep an inline rename going when the folder reloads (for example after a change on disk).
         let renamingID = renamingRow.flatMap { rows.indices.contains($0) ? rows[$0].item?.id : nil }
         rows = newRows
@@ -330,6 +344,65 @@ final class FileListController: NSViewController, NSTableViewDataSource, NSTable
         }
         applySelection(pane.selectedIDs)
         restoreScrollAnchor()
+    }
+
+    /// Animates inline folder expansion/collapse and small same-directory additions/deletions like Finder,
+    /// while leaving directory switches and large reloads instant.
+    private func applyAnimatedRowDiff(to newRows: [PaneRuntime.Row]) -> Bool {
+        let delta = newRows.count - rows.count
+        guard !rows.isEmpty, !newRows.isEmpty, delta != 0, abs(delta) <= 60 else { return false }
+        let shorter = delta > 0 ? rows : newRows
+        let longer = delta > 0 ? newRows : rows
+        var changes = IndexSet()
+        var matched = 0
+        for (index, row) in longer.enumerated() {
+            if matched < shorter.count, Self.sameRow(shorter[matched], row) {
+                matched += 1
+            } else {
+                changes.insert(index)
+                if changes.count > abs(delta) { return false }
+            }
+        }
+        guard matched == shorter.count else { return false }
+        let removed = delta < 0 ? changes : IndexSet()
+        let inserted = delta > 0 ? changes : IndexSet()
+        rows = newRows
+        let removeAnimation: NSTableView.AnimationOptions = WumiMotion.systemReduceMotion ? .effectFade : [.slideUp, .effectFade]
+        let insertAnimation: NSTableView.AnimationOptions = WumiMotion.systemReduceMotion ? .effectFade : [.slideDown, .effectFade]
+        WumiMotion.runAppKit(duration: 0.22, timingFunction: WumiMotion.easeOutCurve) {
+            tableView.beginUpdates()
+            if !removed.isEmpty { tableView.removeRows(at: removed, withAnimation: removeAnimation) }
+            if !inserted.isEmpty { tableView.insertRows(at: inserted, withAnimation: insertAnimation) }
+            tableView.endUpdates()
+        }
+        syncVisibleRowChrome()
+        return true
+    }
+
+    private func syncVisibleRowChrome() {
+        let visible = tableView.rows(in: tableView.visibleRect)
+        guard visible.length > 0 else { return }
+        let nameColumn = tableView.tableColumns.firstIndex { $0.identifier.rawValue == FileListColumn.name.rawValue }
+        for row in visible.location..<(visible.location + visible.length) where rows.indices.contains(row) {
+            if let rowView = tableView.rowView(atRow: row, makeIfNecessary: false) as? FileTableRowView {
+                rowView.striped = row % 2 == 1 && rows[row].item != nil
+            }
+            if let nameColumn, let item = rows[row].item, item.isBrowsableFolder,
+               let cell = tableView.view(atColumn: nameColumn, row: row, makeIfNecessary: false) as? FileNameCellView {
+                cell.setDisclosureExpanded(pane.isExpanded(item), itemName: item.name, animated: true)
+            }
+        }
+    }
+
+    /// Screen-coordinate rectangle of the primary selected row, for Quick Look-style zoom anchoring.
+    func selectedItemScreenRect() -> NSRect? {
+        guard let window = tableView.window else { return nil }
+        let row = tableView.selectedRowIndexes.first ?? -1
+        guard row >= 0, rows.indices.contains(row) else { return nil }
+        let rowRect = tableView.rect(ofRow: row)
+        guard tableView.visibleRect.intersects(rowRect) else { return nil }
+        let inWindow = tableView.convert(rowRect, to: nil)
+        return window.convertToScreen(inWindow)
     }
 
     /// A resource-only cloud refresh changes neither row geometry nor preview contents. Update the visible badges
@@ -478,7 +551,12 @@ final class FileListController: NSViewController, NSTableViewDataSource, NSTable
             // The rename field covers the name of the row being renamed; reused cells must show theirs.
             cell.nameField.alphaValue = row == renamingRow ? 0 : 1
             if row == renamingRow { renamingCell = cell }
-            cell.onToggle = { [weak self] in self?.pane.toggleExpansion(item) }
+            cell.onToggle = { [weak self, weak cell] in
+                guard let self else { return }
+                let willExpand = !self.pane.isExpanded(item)
+                cell?.setDisclosureExpanded(willExpand, itemName: item.name, animated: true)
+                self.pane.toggleExpansion(item)
+            }
             return cell
         case .modificationDate, .creationDate, .addedDate, .lastOpenedDate:
             let cell = tableView.makeView(withIdentifier: .init("date"), owner: self) as? FileDateCellView ?? FileDateCellView()
@@ -703,12 +781,21 @@ final class FileListController: NSViewController, NSTableViewDataSource, NSTable
         return !urls.allSatisfy { $0.deletingLastPathComponent().standardizedFileURL.path == destination.standardizedFileURL.path }
     }
 
-    /// Spring-loaded folders: hovering a dragged item over a folder expands it inline after the configured delay.
+    /// Spring-loaded folders: hovering a dragged item over a folder blinks like Finder, then expands inline.
     private func scheduleSpringLoad(row: Int, item: FileItem) {
         guard springRow != row else { return }
         cancelSpringLoad()
         springRow = row
         let delay = AppModel.shared.preferences.dragHoverExpansionDelay
+        if delay > 0.30 {
+            springPulseTimer = Timer.scheduledTimer(withTimeInterval: delay - 0.28, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, self.springRow == row, !self.pane.isExpanded(item),
+                          let rowView = self.tableView.rowView(atRow: row, makeIfNecessary: false) else { return }
+                    WumiMotion.pulseSpringLoadFeedback(on: rowView)
+                }
+            }
+        }
         springTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.springRow == row, !self.pane.isExpanded(item) else { return }
@@ -718,6 +805,8 @@ final class FileListController: NSViewController, NSTableViewDataSource, NSTable
     }
 
     private func cancelSpringLoad() {
+        springPulseTimer?.invalidate()
+        springPulseTimer = nil
         springTimer?.invalidate()
         springTimer = nil
         springRow = nil

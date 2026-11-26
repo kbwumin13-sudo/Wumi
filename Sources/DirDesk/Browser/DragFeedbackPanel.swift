@@ -12,6 +12,7 @@ final class DragFeedbackPanel {
     private let titleLabel = NSTextField(labelWithString: "")
     private let hintLabel = NSTextField(labelWithString: "")
     private var expiry: Timer?
+    private var hideGeneration = 0
 
     private init() {
         panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 200, height: 44), styleMask: [.borderless, .nonactivatingPanel],
@@ -30,8 +31,11 @@ final class DragFeedbackPanel {
         background.blendingMode = .behindWindow
         background.state = .active
         background.wantsLayer = true
-        background.layer?.cornerRadius = 8
+        background.layer?.cornerRadius = 12
+        background.layer?.cornerCurve = .continuous
         background.layer?.masksToBounds = true
+        background.layer?.borderWidth = 0.6
+        background.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
         titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         hintLabel.font = .systemFont(ofSize: 11)
         hintLabel.textColor = .secondaryLabelColor
@@ -82,8 +86,14 @@ final class DragFeedbackPanel {
         let size = panel.contentView?.fittingSize ?? NSSize(width: 200, height: 44)
         let width = min(max(size.width, 120), 360)
         let mouse = NSEvent.mouseLocation
+        hideGeneration &+= 1
         panel.setFrame(NSRect(x: mouse.x + 18, y: mouse.y - size.height - 20, width: width, height: size.height), display: true)
-        if !panel.isVisible { panel.orderFrontRegardless() }
+        if !panel.isVisible || panel.alphaValue < 0.95 {
+            if !panel.isVisible { panel.alphaValue = 0; panel.orderFrontRegardless() }
+            WumiMotion.runAppKit(duration: 0.12, timingFunction: WumiMotion.easeOutCurve) {
+                panel.animator().alphaValue = 1
+            }
+        }
         expiry?.invalidate()
         expiry = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { _ in
             MainActor.assumeIsolated { DragFeedbackPanel.shared.hide() }
@@ -93,6 +103,16 @@ final class DragFeedbackPanel {
     func hide() {
         expiry?.invalidate()
         expiry = nil
-        if panel.isVisible { panel.orderOut(nil) }
+        guard panel.isVisible else { return }
+        hideGeneration &+= 1
+        let generation = hideGeneration
+        WumiMotion.runAppKit(duration: 0.12, timingFunction: WumiMotion.easeOutCurve) {
+            panel.animator().alphaValue = 0
+        } completion: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.hideGeneration == generation else { return }
+                self.panel.orderOut(nil)
+            }
+        }
     }
 }

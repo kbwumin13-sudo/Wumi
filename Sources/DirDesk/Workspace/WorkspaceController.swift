@@ -252,6 +252,18 @@ final class WorkspaceController: NSWindowController, NSWindowDelegate, BrowserAc
         }
     }
 
+    /// Screen-coordinate rectangle of the active pane's primary selected item, if visible.
+    func selectedItemScreenRect() -> NSRect? {
+        let pane = model.activePane
+        if let list = lists[pane.id]?.value, list.view.window != nil, let rect = list.selectedItemScreenRect() {
+            return rect
+        }
+        if let grid = grids[pane.id]?.value, grid.view.window != nil, let rect = grid.selectedItemScreenRect() {
+            return rect
+        }
+        return nil
+    }
+
     // MARK: BrowserActionHandler
 
     func activate(pane: PaneRuntime) {

@@ -7,47 +7,63 @@ struct TabStripView: View {
     @ObservedObject var model: WorkspaceModel
     @ObservedObject var controller: WorkspaceController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var dropTargetedTabID: UUID?
 
     var body: some View {
         HStack(spacing: 4) {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 5) {
-                        ForEach(Array(model.tabs.enumerated()), id: \.element.id) { index, tab in
-                            if index > 0, tab.id != model.activeTabID, model.tabs[index - 1].id != model.activeTabID {
-                                Rectangle().fill(Color.primary.opacity(0.10)).frame(width: 1, height: 14)
-                            }
-                            // The original shows the close button even on a lone tab; closing it closes the window.
-                            TabChip(tab: tab, isActive: tab.id == model.activeTabID,
-                                    select: { model.selectTab(tab.id) },
-                                    close: { controller.closeTab(tab.id) })
-                                .id(tab.id)
-                                .contextMenu { tabMenu(tab) }
-                                .onDrag {
-                                    NSItemProvider(object: tab.id.uuidString as NSString)
+                    WumiGlassContainer(spacing: 8) {
+                        HStack(spacing: 6) {
+                            ForEach(Array(model.tabs.enumerated()), id: \.element.id) { index, tab in
+                                if index > 0, tab.id != model.activeTabID, model.tabs[index - 1].id != model.activeTabID {
+                                    Rectangle().fill(Color.primary.opacity(0.10)).frame(width: 1, height: 14)
+                                        .transition(.opacity)
                                 }
-                                .onDrop(of: [.plainText, .fileURL], delegate: TabDropDelegate(tab: tab, model: model, controller: controller,
-                                                                                         reorder: { reorder($0, onto: tab) }))
+                                // The original shows the close button even on a lone tab; closing it closes the window.
+                                TabChip(tab: tab, isActive: tab.id == model.activeTabID,
+                                        isDropTargeted: dropTargetedTabID == tab.id,
+                                        select: { model.selectTab(tab.id) },
+                                        close: { controller.closeTab(tab.id) })
+                                    .id(tab.id)
+                                    .transition(reduceMotion
+                                        ? .opacity
+                                        : .opacity.combined(with: .scale(scale: 0.94)))
+                                    .contextMenu { tabMenu(tab) }
+                                    .onDrag {
+                                        NSItemProvider(object: tab.id.uuidString as NSString)
+                                    }
+                                    .onDrop(of: [.plainText, .fileURL], delegate: TabDropDelegate(
+                                        tab: tab, model: model, controller: controller,
+                                        setDropTargeted: { targeted in
+                                            if targeted { dropTargetedTabID = tab.id }
+                                            else if dropTargetedTabID == tab.id { dropTargetedTabID = nil }
+                                        },
+                                        reorder: { reorder($0, onto: tab) }))
+                            }
+                            Button(action: { controller.newTab() }) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .frame(width: 28, height: 28)
+                                    .wumiGlass(in: Circle(), interactive: true)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 14, hoverOpacity: 0.06, pressOpacity: 0.14, pressScale: 0.93))
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 2)
+                            .help(L("New Tab"))
+                            .accessibilityIdentifier("Tabs.New")
+                            .accessibilityLabel(L("New Tab"))
                         }
-                        Button(action: { controller.newTab() }) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 12, weight: .medium))
-                                .frame(width: 24, height: 24)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                        .padding(.leading, 2)
-                        .help(L("New Tab"))
-                        .accessibilityIdentifier("Tabs.New")
-                        .accessibilityLabel(L("New Tab"))
                     }
                     .padding(.horizontal, 2)
+                    .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .animation(WumiMotion.resolve(WumiMotion.snappy, reduceMotion: reduceMotion), value: model.tabs.map(\.id))
                 }
                 .onChange(of: model.activeTabID) { _, id in
                     if reduceMotion { proxy.scrollTo(id) }
-                    else { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
+                    else { withAnimation(WumiMotion.quick) { proxy.scrollTo(id) } }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -99,6 +115,7 @@ private struct TabDropDelegate: DropDelegate {
     let tab: TabRuntime
     let model: WorkspaceModel
     let controller: WorkspaceController
+    let setDropTargeted: (Bool) -> Void
     let reorder: ([NSItemProvider]) -> Bool
 
     @MainActor private static var switchTimer: Timer?
@@ -110,6 +127,7 @@ private struct TabDropDelegate: DropDelegate {
     }
 
     func dropEntered(info: DropInfo) {
+        setDropTargeted(true)
         guard info.hasItemsConforming(to: [.fileURL]), tab.id != model.activeTabID else { return }
         let id = tab.id
         MainActor.assumeIsolated {
@@ -121,6 +139,7 @@ private struct TabDropDelegate: DropDelegate {
     }
 
     func dropExited(info: DropInfo) {
+        setDropTargeted(false)
         MainActor.assumeIsolated {
             Self.switchTimer?.invalidate()
             Self.switchTimer = nil
@@ -144,31 +163,35 @@ private struct TabDropDelegate: DropDelegate {
     }
 }
 
-/// Quiet, rounded tabs retain pinning, closing, drag destinations and full-path help.
+/// Elevated Liquid Glass capsule tabs aligned with macOS 26/27 and Miji's pill grammar.
 private struct TabChip: View {
     @ObservedObject var tab: TabRuntime
     let isActive: Bool
+    let isDropTargeted: Bool
     let select: () -> Void
     let close: () -> Void
     @State private var hovering = false
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 7, style: .continuous) }
+    private var shape: Capsule { Capsule() }
+    private var dark: Bool { colorScheme == .dark }
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 5.5) {
             Group {
                 if tab.isPinned {
-                    Image(systemName: "pin.fill").font(.system(size: 11)).foregroundStyle(Color.accentColor)
+                    Image(systemName: "pin.fill").font(.system(size: 10.5)).foregroundStyle(Color.accentColor)
                 } else {
                     Image(systemName: tab.panes.count > 1 ? "rectangle.split.2x1" : "folder")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 11.5)
-                        .foregroundStyle(isActive ? Color.primary.opacity(0.75) : Color.secondary.opacity(0.8))
+                        .foregroundStyle(isActive ? Color.accentColor : Color.secondary.opacity(0.85))
                 }
             }
-            .frame(width: 12)
+            .frame(width: 13)
             Text(tab.title)
                 .font(.system(size: 12, weight: isActive ? .semibold : .regular))
                 .foregroundStyle(isActive ? .primary : .secondary)
@@ -178,36 +201,85 @@ private struct TabChip: View {
             if !tab.isPinned {
                 Button(action: close) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .frame(width: 16, height: 16)
-                        .background(Circle().fill(Color.primary.opacity(hovering ? 0.08 : 0)))
-                        .contentShape(Rectangle())
+                        .font(.system(size: 8.5, weight: .bold))
+                        .frame(width: 17, height: 17)
+                        .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.primary)
+                .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 8.5, hoverOpacity: 0.11, pressOpacity: 0.19, pressScale: 0.90))
+                .foregroundStyle(.secondary)
                 .opacity(isActive || hovering ? 1 : 0)
+                .allowsHitTesting(isActive || hovering)
+                .animation(WumiMotion.micro, value: isActive || hovering)
                 .help(L("Close Tab"))
                 .accessibilityIdentifier("Tabs.Close.\(tab.id.uuidString)")
                 .accessibilityLabel(L("Close Tab"))
             }
         }
-        .padding(.leading, 9)
-        .padding(.trailing, 10)
-        .frame(width: 180, height: 30)
-        .background(shape.fill(fill))
-        .overlay(shape.strokeBorder(isActive && contrast == .increased ? Color.primary.opacity(0.45) : .clear, lineWidth: 1))
-        .contentShape(Rectangle())
+        .padding(.leading, 11)
+        .padding(.trailing, 8)
+        .frame(width: 180, height: 29)
+        .modifier(TabChipSurfaceModifier(
+            isActive: isActive,
+            isDropTargeted: isDropTargeted,
+            hovering: hovering,
+            isPinned: tab.isPinned
+        ))
+        .contentShape(shape)
         .onTapGesture(perform: select)
         .onHover { hovering = $0 }
+        .animation(WumiMotion.micro, value: hovering)
+        .animation(WumiMotion.micro, value: isActive)
+        .animation(WumiMotion.micro, value: isDropTargeted)
         .help(tab.activePane.currentDirectory?.path ?? tab.title)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("Tab.\(tab.id.uuidString)")
         .accessibilityLabel(LF(tab.isPinned ? "Pinned tab %@" : "Tab %@", tab.title))
     }
+}
+
+private struct TabChipSurfaceModifier: ViewModifier {
+    let isActive: Bool
+    let isDropTargeted: Bool
+    let hovering: Bool
+    let isPinned: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var dark: Bool { colorScheme == .dark }
+
+    func body(content: Content) -> some View {
+        let shape = Capsule()
+        if isActive && !isDropTargeted && !reduceTransparency {
+            content
+                .wumiGlass(in: shape, interactive: true)
+                .overlay(
+                    shape.strokeBorder(contrast == .increased ? Color.primary.opacity(0.45) : .clear, lineWidth: 1)
+                )
+        } else {
+            content
+                .background(
+                    shape
+                        .fill(fill)
+                        .shadow(color: isActive ? Theme.pillShadow(dark: dark) : .clear, radius: isActive ? 2.5 : 0, y: isActive ? 1 : 0)
+                )
+                .overlay(
+                    shape.strokeBorder(borderColor, lineWidth: isDropTargeted ? 1.5 : (isActive && contrast == .increased ? 1 : 0.5))
+                )
+        }
+    }
 
     private var fill: Color {
-        if isActive { return Theme.selectedTab }
-        if tab.isPinned { return Color.primary.opacity(0.035) }
-        return hovering ? Color.primary.opacity(0.05) : .clear
+        if isDropTargeted { return Color.accentColor.opacity(0.16) }
+        if isActive { return Theme.elevatedSurface(dark: dark) }
+        if hovering { return Theme.chipFill(dark: dark, hovered: true, selected: false) }
+        if isPinned { return Color.primary.opacity(0.03) }
+        return .clear
+    }
+
+    private var borderColor: Color {
+        if isDropTargeted { return Color.accentColor.opacity(0.75) }
+        if isActive { return contrast == .increased ? Color.primary.opacity(0.45) : Theme.hairline(dark: dark) }
+        return .clear
     }
 }

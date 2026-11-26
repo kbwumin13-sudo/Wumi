@@ -1,0 +1,64 @@
+{
+  "repository": "https://github.com/kbwumin13-sudo/miji",
+  "tag": "v1.4.0",
+  "commit": "117d3657efdc9eee3b9aaa0473f6ff5c4a485571",
+  "license": "MIT",
+  "licenseSHA256": "a126ce4fff084b047a92ce4872e7a77a688b6632affd02cb22ccc45c6bb125e3",
+  "sources": {
+    "Sources/MijiCore/Models.swift": {
+      "sha256": "ca4664c9c03794b4803d70f3eb23ee3760ff0944a6ae9b101675eb911e7c82de",
+      "wumiPath": "Vendor/Miji/Sources/MijiCore/Models.swift",
+      "wumiSHA256": "df54520e71550924314c0ea2a41d955d585f0e064356786c9ce62755dd936965"
+    },
+    "Sources/MijiCore/NameSearchEngine.swift": {
+      "sha256": "eed78f23226ac436d23943c1e2bd7ec60097c81aeb4864d102169b4f44876abc",
+      "wumiPath": "Vendor/Miji/Sources/MijiCore/NameSearchEngine.swift",
+      "wumiSHA256": "299eb3d831f1f4bcbea4d59e173c28052ebca61bb10ad9b230c69b27d8593774"
+    },
+    "Sources/MijiCore/SearchDatabase.swift": {
+      "sha256": "596303094c42f909e6d529d61a66fd86c79f9e023a4203b56e330ed845553196",
+      "wumiPath": "Vendor/Miji/Sources/MijiCore/SearchDatabase.swift",
+      "wumiSHA256": "b4a29cbddbd0cfeebea38341ecd5749b7b21882ad7924a5b7bdd7c8bbdb881bd"
+    },
+    "Sources/MijiCore/OpenHistory.swift": {
+      "sha256": "0f8a2176bf4bab0f2ec34d70e224a53321492ec9dab6df2cf6d0aa99d25e3d2c",
+      "wumiPath": "Vendor/Miji/Sources/MijiCore/OpenHistory.swift",
+      "wumiSHA256": "0f8a2176bf4bab0f2ec34d70e224a53321492ec9dab6df2cf6d0aa99d25e3d2c"
+    },
+    "Sources/MijiApp/MainView.swift": {
+      "sha256": "d978b2ee7e5d608cb17f6ff0393ad058f039f325fcba08d9805d51adcd707c6e",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/MainView.swift",
+      "wumiSHA256": "6b8dc787aca2bb262762626dac7b23b89473f89d33b502bfab95f47c15bc5069"
+    },
+    "Sources/MijiApp/SearchAppearance.swift": {
+      "sha256": "e6d92cae1cb88f623177315ae5ddb22692bba84c919e8788c5b6fed3e2d063c6",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/SearchAppearance.swift",
+      "wumiSHA256": "5376b145b0be1192bbf3d02893220604b85f1774c3b5b3fb37a3f35d3e9868b4"
+    },
+    "Sources/MijiApp/SearchKeyAction.swift": {
+      "sha256": "625ea53a22a45a4e98dacad1d95aa8854d345663094ece0fb43e724aab0e8191",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/SearchKeyAction.swift",
+      "wumiSHA256": "625ea53a22a45a4e98dacad1d95aa8854d345663094ece0fb43e724aab0e8191"
+    },
+    "Sources/MijiApp/SearchPanel.swift": {
+      "sha256": "d8a47e38f197e8ffa16ad8aae2f9fa4c19021dc7b2c2be7a4a3038937ae80fbd",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/SearchPanel.swift",
+      "wumiSHA256": "574bf356a99e85fc8c1196a894322ada5892b6329c0bd74f5be56e76a7d554dd"
+    },
+    "Sources/MijiApp/ResultPreviewPane.swift": {
+      "sha256": "86da52aca46e97241b8c711b09c0695d1f80046467e086b5d44b32a3b73b9e99",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/ResultPreviewPane.swift",
+      "wumiSHA256": "7a1a0b28a75606abda2043e0bc4e9b14323820470ba34649032a6c47e7f77967"
+    },
+    "Sources/MijiApp/BrowseContent.swift": {
+      "sha256": "d57874dbdcebc084d78529ca22f0404dd5a58be79a93adaea6b1edf086c05827",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/BrowseContent.swift",
+      "wumiSHA256": "d57874dbdcebc084d78529ca22f0404dd5a58be79a93adaea6b1edf086c05827"
+    },
+    "Sources/MijiApp/BrowseViews.swift": {
+      "sha256": "2ce2ae993a6e59806851468c71a2685405ab778625683822f7299cf394709556",
+      "wumiPath": "Sources/DirDesk/Search/Miji140/BrowseViews.swift",
+      "wumiSHA256": "2ce2ae993a6e59806851468c71a2685405ab778625683822f7299cf394709556"
+    }
+  }
+}

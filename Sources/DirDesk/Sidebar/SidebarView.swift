@@ -15,55 +15,84 @@ struct SidebarView: View {
     @State private var collapsed: Set<SidebarModule> = []
     @State private var initialized = false
     @State private var transitCount = FileTransitStore.shared.items.count
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         let preferences = app.preferences
+        let dark = colorScheme == .dark
+        let cardShape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         VStack(spacing: 0) {
-            // Traffic lights and the sidebar toggle sit on the window background above the sidebar panel.
-            Color.clear.frame(height: 28)
-            // The panel (4 pt from the window edges) holds the modules on the opaque chrome and, below a hairline,
-            // the Settings row on the window background, as in the original.
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 5) {
-                            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 19, height: 19)
-                            Text("Wumi").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color(nsColor: .labelColor))
-                        }
-                        .padding(.leading, 24)
-                        .frame(height: 22)
-                        .padding(.top, 22)
-                        .padding(.bottom, 12)
-                        .accessibilityIdentifier("Sidebar.Brand")
-                        ForEach(preferences.sidebarModuleOrder.filter { !preferences.hiddenSidebarModules.contains($0) }, id: \.self) { module in
-                            section(module, preferences: preferences)
-                        }
+            // Traffic lights and the sidebar toggle sit cleanly inside the top of the floating glass sidebar.
+            Color.clear.frame(height: WorkspaceWindow.titleRowHeight - 6)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 6.5) {
+                        Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 19, height: 19)
+                            .shadow(color: .black.opacity(0.16), radius: 2, y: 0.8)
+                        Text("Wumi").font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Color(nsColor: .labelColor))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 12)
-                }
-                .background(Theme.chrome)
-                Divider()
-                Button { controller.showSettings(section: nil) } label: {
-                    HStack(spacing: 9) {
-                        Image(systemName: "gearshape").font(.system(size: 13.5))
-                        Text(L("Settings…")).font(.system(size: 13, weight: .semibold))
-                        Spacer()
+                    .padding(.leading, 12)
+                    .frame(height: 24)
+                    .padding(.top, 4)
+                    .padding(.bottom, 10)
+                    .accessibilityIdentifier("Sidebar.Brand")
+                    ForEach(preferences.sidebarModuleOrder.filter { !preferences.hiddenSidebarModules.contains($0) }, id: \.self) { module in
+                        section(module, preferences: preferences)
                     }
-                    .padding(.leading, 17)
-                    .frame(height: 35)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color(nsColor: .labelColor))
-                .accessibilityIdentifier("Sidebar.Settings")
+                .padding(.horizontal, 8)
+                .padding(.bottom, 12)
             }
-            .clipShape(UnevenRoundedRectangle(cornerRadii: .init(topLeading: 6, bottomLeading: 10, bottomTrailing: 10, topTrailing: 6),
-                                              style: .continuous))
-            .padding(.horizontal, 4)
-            .padding(.bottom, 4)
+            Rectangle()
+                .fill(Theme.hairline(dark: dark))
+                .frame(height: 0.5)
+                .padding(.horizontal, 12)
+            Button { controller.showSettings(section: nil) } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "gearshape").font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Text(L("Settings…")).font(.system(size: 12.5, weight: .medium))
+                    Spacer()
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(WumiInteractiveButtonStyle(cornerRadius: 9, hoverOpacity: 0.07, pressOpacity: 0.14, pressScale: 0.985))
+            .foregroundStyle(Color(nsColor: .labelColor))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
+            .accessibilityIdentifier("Sidebar.Settings")
         }
-        .background(Theme.content)
+        .background {
+            if reduceTransparency {
+                cardShape.fill(Theme.elevatedSurface(dark: dark))
+                    .overlay(cardShape.strokeBorder(Theme.subtleBorder(dark: dark), lineWidth: 0.75))
+            } else {
+                // Single-layer tinted floating surface over unified Theme.chrome so the sidebar
+                // stays within one gentle tonal step of the workspace even over bright desktops.
+                ZStack {
+                    if #available(macOS 26.0, *) {
+                        WumiGlassSurface(
+                            shape: cardShape,
+                            tint: dark ? Color(white: 0.28).opacity(0.36) : Color.white.opacity(0.46),
+                            fallbackMaterial: .sidebar
+                        )
+                    } else {
+                        cardShape.fill(dark ? Color.white.opacity(0.045) : Color.white.opacity(0.62))
+                    }
+                    cardShape.strokeBorder(Theme.hairline(dark: dark), lineWidth: 0.5)
+                }
+            }
+        }
+        .clipShape(cardShape)
+        .shadow(color: Color.black.opacity(dark ? 0.20 : 0.06), radius: 6, y: 2)
+        .padding(.leading, 6)
+        .padding(.trailing, 5)
+        .padding(.vertical, 6)
+        .background(Theme.chrome)
         .onAppear {
             guard !initialized else { return }
             initialized = true
@@ -82,21 +111,22 @@ struct SidebarView: View {
         let isCollapsed = collapsed.contains(module)
         HStack(spacing: 4) {
             Button {
-                withAnimation(.easeOut(duration: 0.12)) {
+                WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) {
                     if isCollapsed { collapsed.remove(module) } else { collapsed.insert(module) }
                     UserDefaults.standard.set(collapsed.map(\.rawValue).sorted(), forKey: DefaultsKey.sidebarCollapsedSections)
                 }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 9, weight: .bold))
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                         .frame(width: 12)
                         .foregroundStyle(Color(nsColor: .tertiaryLabelColor))
-                    Text(Self.title(module)).font(.system(size: 12, weight: .semibold))
+                    Text(Self.title(module)).font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                     Spacer()
                 }
+                .padding(.vertical, 3)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -104,9 +134,10 @@ struct SidebarView: View {
             .accessibilityValue(isCollapsed ? L("Collapsed") : L("Expanded"))
             addControl(module)
         }
-        .padding(.leading, 6)
-        .padding(.trailing, 20)
-        .frame(height: 32)
+        .padding(.leading, 8)
+        .padding(.trailing, 10)
+        .frame(height: 28)
+        .padding(.top, 4)
         // Folders dropped on the Common Paths heading are added to it.
         .onDrop(of: module == .commonPaths ? [.fileURL] : [], isTargeted: nil) { providers in
             controller.loadURLs(from: providers) { urls in
@@ -115,13 +146,16 @@ struct SidebarView: View {
             return true
         }
         if !isCollapsed {
-            switch module {
-            case .builtIn: builtInRows(preferences)
-            case .commonPaths: commonPathRows
-            case .locations: locationRows(preferences)
-            case .bookmarks: BookmarkSidebarRows(parent: nil, depth: 0, model: model, controller: controller)
-            case .tags: tagRows
+            VStack(alignment: .leading, spacing: 1) {
+                switch module {
+                case .builtIn: builtInRows(preferences)
+                case .commonPaths: commonPathRows
+                case .locations: locationRows(preferences)
+                case .bookmarks: BookmarkSidebarRows(parent: nil, depth: 0, model: model, controller: controller)
+                case .tags: tagRows
+                }
             }
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
         }
     }
 
@@ -426,45 +460,46 @@ struct SidebarRow: View {
     let selected: Bool
     var badge: String? = nil
     let action: () -> Void
-    @State private var hovering = false
+    @Environment(\.colorScheme) private var colorScheme
 
     /// Blue glyphs follow the accent color, as the original's sidebar icons do.
     private var iconTint: Color { tint == .blue ? Color.accentColor : tint }
 
-    /// Metrics from the original: 13 pt glyphs centred 21 pt from the panel edge, 13 pt titles, and a 24 pt
-    /// rounded highlight inset 10 pt from the panel; the selected row turns accent blue and semibold.
+    /// Native macOS sidebar row: crisp continuous pill selection, immediate pointer-down press, and smooth hover.
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6.5) {
+            HStack(spacing: 7) {
                 Group {
                     if symbol == ApplicationsGlyph.name {
-                        ApplicationsGlyph().frame(width: 11, height: 11)
+                        ApplicationsGlyph().frame(width: 11.5, height: 11.5)
                     } else {
-                        // Plain folders (custom common paths) use a larger glyph, 18 × 14.5 pt in the original.
-                        Image(systemName: symbol).font(.system(size: symbol == "folder" ? 16 : 13))
+                        Image(systemName: symbol).font(.system(size: symbol == "folder" ? 15 : 13, weight: selected ? .semibold : .regular))
                     }
                 }
                 .foregroundStyle(selected ? Color.accentColor : (colored ? iconTint : Color(nsColor: .secondaryLabelColor)))
                 .frame(width: 18)
-                Text(title).font(.system(size: 13, weight: selected ? .semibold : .regular)).lineLimit(1).truncationMode(.middle)
+                Text(title).font(.system(size: 13, weight: selected ? .medium : .regular)).lineLimit(1).truncationMode(.middle)
                     .foregroundStyle(selected ? Color.accentColor : Color(nsColor: .labelColor))
                 Spacer(minLength: 4)
                 if let badge {
-                    Text(badge).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 5).background(Capsule().fill(Color.primary.opacity(0.08)))
+                    Text(badge).font(.system(size: 10, weight: .semibold)).foregroundStyle(selected ? Color.accentColor : .secondary)
+                        .padding(.horizontal, 5.5).padding(.vertical, 1)
+                        .background(Capsule().fill(selected ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.08)))
+                        .contentTransition(.numericText())
                 }
             }
-            .padding(.leading, 12)
-            .padding(.trailing, 10)
-            .frame(height: 32)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(selected ? Color.primary.opacity(0.05) : (hovering ? Color.primary.opacity(0.03) : .clear))
-                .padding(.horizontal, 2)
-                .padding(.vertical, 4))
+            .padding(.horizontal, 10)
+            .frame(height: 28)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(WumiInteractiveButtonStyle(
+            cornerRadius: 9,
+            restingFill: selected ? Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.135) : .clear,
+            hoverOpacity: selected ? 0.0 : 0.06,
+            pressOpacity: selected ? 0.18 : 0.12,
+            pressScale: 0.985
+        ))
+        .animation(WumiMotion.micro, value: selected)
         .accessibilityLabel(title)
     }
 }
@@ -497,16 +532,19 @@ private struct BookmarkSidebarRows: View {
     let controller: WorkspaceController
     @ObservedObject var library = LibraryModel.shared
     @State private var expanded: Set<UUID> = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ForEach(library.bookmarks.children(of: parent)) { node in
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 1) {
                 SidebarRow(title: node.displayTitle,
                            symbol: node.isFolder ? (expanded.contains(node.id) ? "folder.fill" : "folder") : (node.target?.kind == .folder ? "folder" : "doc"),
                            tint: .blue, colored: AppModel.shared.preferences.usesColoredSidebarIcons,
                            selected: node.target.map { model.activePane.currentDirectory?.hasSamePath(as: $0.url) == true } ?? false) {
                     if node.isFolder {
-                        if expanded.contains(node.id) { expanded.remove(node.id) } else { expanded.insert(node.id) }
+                        WumiMotion.withPreferredAnimation(WumiMotion.snappy, reduceMotion: reduceMotion) {
+                            if expanded.contains(node.id) { expanded.remove(node.id) } else { expanded.insert(node.id) }
+                        }
                     } else {
                         controller.openBookmark(node)
                     }
@@ -516,6 +554,7 @@ private struct BookmarkSidebarRows: View {
                 .accessibilityIdentifier("Sidebar.Bookmark.\(node.id.uuidString)")
                 if node.isFolder && expanded.contains(node.id) {
                     BookmarkSidebarRows(parent: node.id, depth: depth + 1, model: model, controller: controller)
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
                 }
             }
         }

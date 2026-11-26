@@ -28,11 +28,13 @@ struct PaneView: View {
                         .padding(.top, pane.viewConfiguration.mode == .list ? 28 : 0)
                 }
         }
-        // The active pane of a split carries a 1 pt accent outline.
+        // The active pane of a split carries a refined accent outline with smooth focus transition.
         .overlay {
-            if tab.panes.count > 1 && isActive {
-                Rectangle().strokeBorder(Color.accentColor, lineWidth: 1).allowsHitTesting(false)
-            }
+            Rectangle()
+                .strokeBorder(Color.accentColor.opacity(0.85), lineWidth: 1.5)
+                .opacity(tab.panes.count > 1 && isActive ? 1 : 0)
+                .animation(WumiMotion.micro, value: tab.panes.count > 1 && isActive)
+                .allowsHitTesting(false)
         }
         .background(Theme.content)
         .onAppear { pane.setSizeObservationActive(true) }
@@ -209,16 +211,22 @@ private struct SplitDivider: View {
     let axis: Axis
     let onDrag: (CGFloat) -> Void
     @State private var last: CGFloat = 0
+    @State private var hovering = false
+    @State private var dragging = false
+
+    private var active: Bool { hovering || dragging }
 
     var body: some View {
         Rectangle()
-            .fill(Color(nsColor: .separatorColor))
+            .fill(active ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor))
             .frame(width: axis == .horizontal ? 1 : nil, height: axis == .vertical ? 1 : nil)
+            .animation(WumiMotion.micro, value: active)
             .overlay(
                 Color.clear
                     .frame(width: axis == .horizontal ? 7 : nil, height: axis == .vertical ? 7 : nil)
                     .contentShape(Rectangle())
                     .onHover { inside in
+                        hovering = inside
                         if inside {
                             (axis == .horizontal ? NSCursor.resizeLeftRight : NSCursor.resizeUpDown).push()
                         } else {
@@ -227,11 +235,15 @@ private struct SplitDivider: View {
                     }
                     .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
                         .onChanged { value in
+                            dragging = true
                             let current = axis == .horizontal ? value.translation.width : value.translation.height
                             onDrag(current - last)
                             last = current
                         }
-                        .onEnded { _ in last = 0 })
+                        .onEnded { _ in
+                            dragging = false
+                            last = 0
+                        })
             )
             .accessibilityLabel(L("Resize Panes"))
     }

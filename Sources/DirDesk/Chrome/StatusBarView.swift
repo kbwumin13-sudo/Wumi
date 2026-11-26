@@ -26,15 +26,23 @@ private struct StatusBarContent: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(itemCountText).accessibilityIdentifier("Status.ItemCount")
+            Text(itemCountText)
+                .contentTransition(.numericText())
+                .accessibilityIdentifier("Status.ItemCount")
             if !pane.selectedIDs.isEmpty {
                 Text(LF("%@ selected", pane.selectedIDs.count.formatted(.number.locale(Localizer.shared.locale))))
+                    .contentTransition(.numericText())
+                    .transition(.opacity)
             }
             if preferences.showsOperationTips, let message = pane.operationMessage {
-                Text(message).foregroundStyle(.secondary).accessibilityIdentifier("Status.OperationTip")
+                Text(message)
+                    .foregroundStyle(.secondary)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("Status.OperationTip")
             }
             if let result = pane.operationResult {
                 OperationResultChip(result: result) { pane.operationResult = nil }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
             if pane.truncated {
                 Text(L("Truncated for performance")).foregroundStyle(.orange)
@@ -65,7 +73,10 @@ private struct StatusBarContent: View {
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
-        .frame(height: 23)
+        .frame(height: 24)
+        .animation(WumiMotion.quick, value: pane.selectedIDs.count)
+        .animation(WumiMotion.quick, value: pane.operationMessage)
+        .animation(WumiMotion.quick, value: pane.operationResult != nil)
         .task(id: pane.currentDirectory) { updateFreeSpace() }
         .onChange(of: pane.items.count) { _, _ in updateFreeSpace() }
     }

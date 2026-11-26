@@ -115,17 +115,20 @@ final class FileNameCellView: NSTableCellView {
     private var iconHeight: NSLayoutConstraint!
     var onToggle: (() -> Void)?
     private(set) var representedPath: String?
+    private(set) var isDisclosureExpanded = false
     var assetRevision: UInt64 = 0
     var hasContentThumbnail = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        // A thin grey chevron (› collapsed, ⌄ expanded), 6.5 × 11 pt in the original's captures.
+        // A thin grey chevron (› collapsed, ⌄ expanded), rotated smoothly via Core Animation.
         disclosure.isBordered = false
         disclosure.setButtonType(.momentaryChange)
         disclosure.title = ""
         disclosure.imagePosition = .imageOnly
+        disclosure.image = Self.collapsedChevron
         disclosure.contentTintColor = .secondaryLabelColor
+        disclosure.wantsLayer = true
         disclosure.target = self
         disclosure.action = #selector(toggle)
         disclosure.translatesAutoresizingMaskIntoConstraints = false
@@ -178,14 +181,62 @@ final class FileNameCellView: NSTableCellView {
 
     @objc private func toggle() { onToggle?() }
 
+    override func layout() {
+        super.layout()
+        applyDisclosureTransform(expanded: isDisclosureExpanded, animated: false)
+    }
+
+    private func disclosureTransform(expanded: Bool) -> CATransform3D {
+        guard expanded, disclosure.bounds.width > 0, disclosure.bounds.height > 0 else { return CATransform3DIdentity }
+        let angle: CGFloat = (disclosure.layer?.isGeometryFlipped ?? true) ? (.pi / 2) : (-.pi / 2)
+        let cx = disclosure.bounds.midX
+        let cy = disclosure.bounds.midY
+        var t = CATransform3DMakeTranslation(cx, cy, 0)
+        t = CATransform3DRotate(t, angle, 0, 0, 1)
+        t = CATransform3DTranslate(t, -cx, -cy, 0)
+        return t
+    }
+
+    func setDisclosureExpanded(_ expanded: Bool, itemName: String? = nil, animated: Bool) {
+        let changed = isDisclosureExpanded != expanded
+        isDisclosureExpanded = expanded
+        if let itemName {
+            disclosure.setAccessibilityLabel((expanded ? L("Collapse Folder") : L("Expand Folder")) + ": " + itemName)
+        }
+        applyDisclosureTransform(expanded: expanded, animated: animated && changed)
+    }
+
+    private func applyDisclosureTransform(expanded: Bool, animated: Bool) {
+        disclosure.wantsLayer = true
+        guard let layer = disclosure.layer else { return }
+        let target = disclosureTransform(expanded: expanded)
+        if animated && !WumiMotion.systemReduceMotion && disclosure.bounds.width > 0 {
+            let from = layer.presentation()?.transform ?? layer.transform
+            layer.removeAnimation(forKey: "wumi.disclosureRotate")
+            let spring = WumiMotion.springLayerAnimation(
+                keyPath: "transform",
+                from: NSValue(caTransform3D: from),
+                to: NSValue(caTransform3D: target),
+                response: 0.24,
+                dampingRatio: 0.92
+            )
+            layer.transform = target
+            layer.add(spring, forKey: "wumi.disclosureRotate")
+        } else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.removeAnimation(forKey: "wumi.disclosureRotate")
+            layer.transform = target
+            CATransaction.commit()
+        }
+    }
+
     /// Leading inset of a top-level row and the indentation per outline level (13 pt in the original).
     static let baseIndent: CGFloat = 3
     static let levelIndent: CGFloat = 13
 
     private static let chevronConfiguration = NSImage.SymbolConfiguration(pointSize: 12.5, weight: .regular)
     private static let collapsedChevron = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)?
-        .withSymbolConfiguration(chevronConfiguration)
-    private static let expandedChevron = NSImage(systemSymbolName: "chevron.down", accessibilityDescription: nil)?
         .withSymbolConfiguration(chevronConfiguration)
 
     /// Orange rounded square with a white branch mark, drawn on the lower right of a repository's folder icon.
@@ -214,8 +265,8 @@ final class FileNameCellView: NSTableCellView {
         representedPath = item.url.path
         leadingConstraint.constant = Self.baseIndent + CGFloat(depth) * Self.levelIndent
         disclosure.isHidden = !item.isBrowsableFolder
-        disclosure.image = expanded ? Self.expandedChevron : Self.collapsedChevron
-        disclosure.setAccessibilityLabel((expanded ? L("Collapse Folder") : L("Expand Folder")) + ": " + item.name)
+        disclosure.image = Self.collapsedChevron
+        setDisclosureExpanded(expanded, itemName: item.name, animated: false)
         iconWidth.constant = iconSize
         iconHeight.constant = iconSize
         iconView.image = image
@@ -315,8 +366,8 @@ final class FileTableRowView: NSTableRowView {
 
     override func drawSelection(in dirtyRect: NSRect) {
         guard selectionHighlightStyle != .none else { return }
-        let rect = bounds.insetBy(dx: 10, dy: 0)
-        let radius: CGFloat = 5
+        let rect = bounds.insetBy(dx: 10, dy: 0.5)
+        let radius: CGFloat = 6
         let path = NSBezierPath()
         let topSquare = isPreviousRowSelected, bottomSquare = isNextRowSelected
         // Flipped view: minY is the top edge.

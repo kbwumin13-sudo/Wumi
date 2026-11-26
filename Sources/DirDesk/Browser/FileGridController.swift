@@ -14,26 +14,46 @@ final class FileGridController: NSViewController, NSCollectionViewDataSource, NS
     private let scrollView = NSScrollView()
     private var items: [FileItem] = []
     private var sections: [(title: String?, items: [FileItem])] = []
+    private var representedContentRevision = -1
     private var cancellables: Set<AnyCancellable> = []
     private var applyingSelection = false
     private var springTimer: Timer?
+    private var springPulseTimer: Timer?
     private var springTarget: URL?
     private var sizesEnabled = true
     var allowsSpringLoading = true
 
-    /// Spring-loaded folders: hovering a drag over a folder opens it after the configured delay.
-    private func scheduleSpringLoad(_ folder: FileItem) {
+    /// Spring-loaded folders: hovering a drag over a folder blinks like Finder, then opens it.
+    private func scheduleSpringLoad(_ folder: FileItem, at indexPath: IndexPath) {
         guard allowsSpringLoading else { return }
         guard springTarget != folder.url else { return }
-        springTimer?.invalidate()
+        cancelSpringLoad()
         springTarget = folder.url
-        springTimer = Timer.scheduledTimer(withTimeInterval: AppModel.shared.preferences.dragHoverExpansionDelay, repeats: false) { [weak self] _ in
+        let delay = AppModel.shared.preferences.dragHoverExpansionDelay
+        if delay > 0.30 {
+            springPulseTimer = Timer.scheduledTimer(withTimeInterval: delay - 0.28, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, self.allowsSpringLoading, self.springTarget == folder.url,
+                          let itemView = self.collectionView.item(at: indexPath)?.view else { return }
+                    WumiMotion.pulseSpringLoadFeedback(on: itemView)
+                }
+            }
+        }
+        springTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.allowsSpringLoading, self.springTarget == folder.url else { return }
-                self.springTarget = nil
+                self.cancelSpringLoad()
                 self.pane.open(folder.url)
             }
         }
+    }
+
+    private func cancelSpringLoad() {
+        springPulseTimer?.invalidate()
+        springPulseTimer = nil
+        springTimer?.invalidate()
+        springTimer = nil
+        springTarget = nil
     }
 
     init(pane: PaneRuntime, handler: BrowserActionHandler?, gallery: Bool) {
@@ -89,19 +109,61 @@ final class FileGridController: NSViewController, NSCollectionViewDataSource, NS
     }
 
     private func reload() {
+        let sameRevision = (representedContentRevision == pane.directoryContentRevision)
+        representedContentRevision = pane.directoryContentRevision
+        let oldSections = sections
+        let newSections: [(title: String?, items: [FileItem])]
         if gallery || pane.viewConfiguration.groupingMode == .none {
-            items = pane.displayItems
-            sections = [(nil, items)]
+            newSections = [(nil, pane.displayItems)]
         } else {
-            sections = pane.groups.map { ($0.isLiteral ? $0.title : L($0.title), $0.items) }
-            items = sections.flatMap(\.items)
+            newSections = pane.groups.map { ($0.isLiteral ? $0.title : L($0.title), $0.items) }
         }
         if let layout = collectionView.collectionViewLayout as? NSCollectionViewFlowLayout {
-            layout.headerReferenceSize = sections.count > 1 || sections.first?.title != nil ? NSSize(width: 100, height: 26) : .zero
+            layout.headerReferenceSize = newSections.count > 1 || newSections.first?.title != nil ? NSSize(width: 100, height: 26) : .zero
         }
+        // Animate pure reorders (e.g. changing sort) within a single section of reasonable size, like Finder's icon grid.
+        if sameRevision, !WumiMotion.systemReduceMotion,
+           oldSections.count == 1, newSections.count == 1,
+           oldSections[0].title == newSections[0].title {
+            let oldList = oldSections[0].items
+            let newList = newSections[0].items
+            if !oldList.isEmpty, oldList.count == newList.count, oldList.count <= 200 {
+                let oldIDs = oldList.map(\.id)
+                let newIDs = newList.map(\.id)
+                if oldIDs != newIDs, Set(oldIDs) == Set(newIDs), Set(oldIDs).count == oldIDs.count {
+                    let oldIndexByID = Dictionary(uniqueKeysWithValues: oldIDs.enumerated().map { ($1, $0) })
+                    sections = newSections
+                    items = newList
+                    WumiMotion.runAppKit(duration: 0.26, timingFunction: WumiMotion.easeOutCurve) {
+                        collectionView.animator().performBatchUpdates({
+                            for (newIndex, id) in newIDs.enumerated() {
+                                if let oldIndex = oldIndexByID[id], oldIndex != newIndex {
+                                    collectionView.moveItem(at: IndexPath(item: oldIndex, section: 0),
+                                                            to: IndexPath(item: newIndex, section: 0))
+                                }
+                            }
+                        }, completionHandler: nil)
+                    }
+                    selectGalleryDefaultIfNeeded()
+                    applySelection(pane.selectedIDs)
+                    return
+                }
+            }
+        }
+        sections = newSections
+        items = newSections.flatMap(\.items)
         collectionView.reloadData()
         selectGalleryDefaultIfNeeded()
         applySelection(pane.selectedIDs)
+    }
+
+    /// Screen-coordinate rectangle of the primary selected grid cell, for Quick Look-style zoom anchoring.
+    func selectedItemScreenRect() -> NSRect? {
+        guard let window = collectionView.window, let first = collectionView.selectionIndexPaths.min(),
+              let frame = collectionView.layoutAttributesForItem(at: first)?.frame else { return nil }
+        guard collectionView.visibleRect.intersects(frame) else { return nil }
+        let inWindow = collectionView.convert(frame, to: nil)
+        return window.convertToScreen(inWindow)
     }
 
     private func selectGalleryDefaultIfNeeded() {
@@ -219,10 +281,9 @@ final class FileGridController: NSViewController, NSCollectionViewDataSource, NS
         guard let urls = FileListController.fileURLs(from: draggingInfo), let destination = dropDestination(proposedDropIndexPath.pointee as IndexPath, proposedDropOperation.pointee) else { return [] }
         if proposedDropOperation.pointee == .before { proposedDropOperation.pointee = .on }
         if proposedDropOperation.pointee == .on, let folder = item(at: proposedDropIndexPath.pointee as IndexPath), folder.isBrowsableFolder {
-            scheduleSpringLoad(folder)
+            scheduleSpringLoad(folder, at: proposedDropIndexPath.pointee as IndexPath)
         } else {
-            springTimer?.invalidate()
-            springTarget = nil
+            cancelSpringLoad()
         }
         let operation = FileListController.allowsDrop(urls, into: destination)
             ? FileListController.dropOperation(for: urls, destination: destination, info: draggingInfo) : []
@@ -339,6 +400,7 @@ final class FileGridItem: NSCollectionViewItem {
         let root = NSView()
         root.wantsLayer = true
         root.layer?.cornerRadius = 8
+        root.layer?.cornerCurve = .continuous
         icon.imageScaling = .scaleProportionallyUpOrDown
         icon.translatesAutoresizingMaskIntoConstraints = false
         badge.imageScaling = .scaleProportionallyUpOrDown
@@ -558,7 +620,9 @@ private struct GalleryPreview: View {
             if let item {
                 PreviewContent(item: item, showsImageRotation: true)
                     .id(item.url)
+                    .transition(.opacity)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .animation(WumiMotion.micro, value: item.url)
                 VStack(spacing: 2.5) {
                     HStack(spacing: 5) {
                         Text(item.name).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.middle)

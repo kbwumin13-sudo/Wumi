@@ -109,8 +109,12 @@ final class ColumnBrowserController: NSViewController {
         while keep < min(columns.count, newTrail.count), columns[keep].directory == newTrail[keep] { keep += 1 }
         for column in columns[keep...] { column.removeFromSuperview() }
         columns.removeLast(columns.count - keep)
+        let appendedCount = newTrail.count - keep
         for directory in newTrail[keep...] {
             let column = ColumnTable(directory: directory, controller: self)
+            if appendedCount > 0 && keep > 0 && !WumiMotion.systemReduceMotion {
+                column.alphaValue = 0
+            }
             columns.append(column)
             stack.addArrangedSubview(column)
             let width = pane.viewConfiguration.columnBrowserWidths[directory.path] ?? pane.viewConfiguration.columnWidth
@@ -126,7 +130,28 @@ final class ColumnBrowserController: NSViewController {
         refreshCurrentColumn()
         cloudObservation.refresh()
         if let last = columns.last {
-            DispatchQueue.main.async { [weak self] in self?.scrollView.contentView.scrollToVisible(last.frame) }
+            let newlyAdded = appendedCount > 0 && keep > 0 ? Array(columns[keep...]) : []
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.scrollView.documentView?.layoutSubtreeIfNeeded()
+                let clipView = self.scrollView.contentView
+                let targetX = max(0, last.frame.maxX - clipView.bounds.width)
+                let needsScroll = last.frame.maxX > clipView.bounds.maxX || last.frame.minX < clipView.bounds.minX
+                let originX = last.frame.minX < clipView.bounds.minX ? last.frame.minX : targetX
+                if !WumiMotion.systemReduceMotion && (needsScroll || !newlyAdded.isEmpty) {
+                    WumiMotion.runAppKit(duration: 0.22, timingFunction: WumiMotion.easeOutCurve) {
+                        if needsScroll {
+                            clipView.animator().setBoundsOrigin(NSPoint(x: originX, y: clipView.bounds.origin.y))
+                        }
+                        for column in newlyAdded { column.animator().alphaValue = 1 }
+                    } completion: {
+                        self.scrollView.reflectScrolledClipView(clipView)
+                    }
+                } else {
+                    for column in newlyAdded { column.alphaValue = 1 }
+                    clipView.scrollToVisible(last.frame)
+                }
+            }
         }
     }
 

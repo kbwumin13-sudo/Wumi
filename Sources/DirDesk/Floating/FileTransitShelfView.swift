@@ -37,6 +37,7 @@ private enum TransitShelfRow: Identifiable {
 struct TransitShelfContent: View {
     @ObservedObject var store = FileTransitStore.shared
     @AppStorage("dirdesk-file-transit-thumbnail-scale-v1") private var scale = 0.67
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Card icon size, 14…32 pt (26 pt at the default slider position, as in the original).
     private var iconSize: CGFloat { (14 + 18 * scale).rounded() }
@@ -48,19 +49,26 @@ struct TransitShelfContent: View {
                     if store.items.isEmpty { emptyState } else { list }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if store.isDropTargeted { dropHighlight }
+                if store.isDropTargeted {
+                    dropHighlight
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+                }
                 VStack(spacing: 6) {
                     if let notice = store.notice {
                         TransitNoticeBanner(notice: notice) { store.dismissNotice() }
+                            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                     }
                     if let progress = store.exportProgress {
                         TransitExportBanner(progress: progress) { store.cancelExport() }
+                            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                     }
                 }
                 .padding(.top, 8)
                 .padding(.horizontal, 16)
-                .animation(.easeOut(duration: 0.15), value: store.notice)
+                .animation(WumiMotion.resolve(WumiMotion.snappy, reduceMotion: reduceMotion), value: store.notice)
+                .animation(WumiMotion.resolve(WumiMotion.snappy, reduceMotion: reduceMotion), value: store.exportProgress != nil)
             }
+            .animation(WumiMotion.resolve(WumiMotion.quick, reduceMotion: reduceMotion), value: store.isDropTargeted)
             if !store.items.isEmpty { actionRow }
             statusRow
         }
@@ -141,6 +149,7 @@ struct TransitShelfContent: View {
             .padding(.horizontal, 18)
             .padding(.top, 20)
             .padding(.bottom, 12)
+            .animation(WumiMotion.resolve(WumiMotion.snappy, reduceMotion: reduceMotion), value: rows.map(\.id))
         }
         .accessibilityIdentifier("FileTransit.Content")
     }
@@ -199,6 +208,8 @@ struct TransitShelfContent: View {
     private var statusRow: some View {
         HStack(spacing: 0) {
             Text(LF("%@ items", store.items.count.formatted())).font(.system(size: 10)).foregroundStyle(.secondary)
+                .contentTransition(.numericText())
+                .animation(WumiMotion.quick, value: store.items.count)
                 .accessibilityIdentifier("FileTransit.Count")
             Image(systemName: "photo.on.rectangle").font(.system(size: 12)).foregroundStyle(.secondary)
                 .padding(.leading, 14)
@@ -237,18 +248,39 @@ struct TransitShelfContent: View {
     }
 }
 
-/// Rounded, lightly filled buttons of the action row.
+/// Rounded, lightly filled buttons of the action row with smooth hover and pointer-down press feedback.
 private struct TransitBarButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
     func makeBody(configuration: Configuration) -> some View {
+        TransitBarButtonBody(configuration: configuration)
+    }
+}
+
+private struct TransitBarButtonBody: View {
+    let configuration: ButtonStyle.Configuration
+    @State private var hovering = false
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var fillOpacity: Double {
+        guard isEnabled else { return 0.05 }
+        if configuration.isPressed { return 0.18 }
+        if hovering { return 0.13 }
+        return 0.08
+    }
+
+    var body: some View {
+        let shape = Capsule()
         configuration.label
-            .foregroundStyle(isEnabled ? Color.primary.opacity(0.85) : Color.secondary.opacity(0.5))
-            .padding(.horizontal, 4)
+            .foregroundStyle(isEnabled ? Color.primary.opacity(0.88) : Color.secondary.opacity(0.5))
+            .padding(.horizontal, 7)
             .padding(.vertical, 4)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.primary.opacity(configuration.isPressed ? 0.16 : 0.08)))
-            .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .background(shape.fill(Color.primary.opacity(fillOpacity)))
+            .overlay(shape.strokeBorder(Color.primary.opacity(0.09), lineWidth: 0.5))
+            .scaleEffect(configuration.isPressed && isEnabled && !reduceMotion ? 0.96 : 1.0)
+            .contentShape(shape)
+            .animation(WumiMotion.micro, value: hovering)
+            .animation(WumiMotion.micro, value: configuration.isPressed)
+            .onHover { hovering = $0 }
     }
 }
 
@@ -343,9 +375,10 @@ private struct TransitItemCard: View {
         .padding(.trailing, 8)
         .padding(.vertical, 8)
         .frame(minHeight: max(iconSize, 34) + 16)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(selected ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.035)))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.09), lineWidth: selected ? 1.5 : 1))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(selected ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.045)))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(selected ? Color.accentColor.opacity(0.85) : Color.primary.opacity(0.09), lineWidth: selected ? 1.25 : 0.6))
+        .animation(WumiMotion.micro, value: selected)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(shownName(item))
         .accessibilityValue(item.isLocked ? L("Locked") : kindLabel)

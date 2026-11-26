@@ -655,6 +655,7 @@ public final class SearchDatabase: @unchecked Sendable {
             var filterValues: [Value] = []
             if let rootID = options.rootID { filters.append("f.root_id=?"); filterValues.append(.string(rootID)) }
             if let kind = options.kind { filters.append("f.kind=?"); filterValues.append(.string(kind.rawValue)) }
+            if let kind = options.excludedKind { filters.append("f.kind!=?"); filterValues.append(.string(kind.rawValue)) }
             if options.onlineOnly { filters.append("r.online=1") }
             for term in terms where term.field != .text {
                 let predicate: String
