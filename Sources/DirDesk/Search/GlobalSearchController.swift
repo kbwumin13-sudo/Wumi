@@ -256,7 +256,15 @@ final class GlobalSearchPanel: Miji140SearchPanel {
                 }
             case .all, .files: model.openSelected()
             }
-        case nil: super.sendEvent(event)
+        case nil:
+            let editor = firstResponder as? NSTextView
+            let startsEditingSelection = ((model.mode == .apps && model.browse.appSelection != nil)
+                || model.showsFileSelectionFeedback) && editor?.isFieldEditor == true && editor?.hasMarkedText() == false
+            super.sendEvent(event)
+            // Marked text appears before SwiftUI publishes a new query.
+            if startsEditingSelection, let editor, firstResponder === editor, editor.hasMarkedText() {
+                model.focusSearch = UUID()
+            }
         }
     }
 

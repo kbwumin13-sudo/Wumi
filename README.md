@@ -4,7 +4,7 @@
 </picture>
 
 <p align="center">
-  <a href="https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.3.0/Wumi-1.3.0-arm64.dmg"><strong>下载 Wumi 1.3.0</strong></a> ·
+  <a href="https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.3.1/Wumi-1.3.1-arm64.dmg"><strong>下载 Wumi 1.3.1</strong></a> ·
   <a href="#上手">安装</a> ·
   <a href="https://github.com/kbwumin13-sudo/Wumi/releases/latest">最新版本</a> ·
   <a href="https://github.com/kbwumin13-sudo/Wumi/issues">反馈</a>
@@ -37,13 +37,13 @@ Wumi 是一款用 Swift、AppKit 和 SwiftUI 构建的原生 macOS 文件管理�
 
 ## 上手
 
-[下载 Wumi-1.3.0-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.3.0/Wumi-1.3.0-arm64.dmg)，适用于 **macOS 15 或更新版本及 Apple Silicon**。
+[下载 Wumi-1.3.1-arm64.dmg](https://github.com/kbwumin13-sudo/Wumi/releases/download/v1.3.1/Wumi-1.3.1-arm64.dmg)，适用于 **macOS 15 或更新版本及 Apple Silicon**。
 
 1. 打开 DMG，将 Wumi 拖到「应用程序」。
 2. 从「应用程序」打开 Wumi。首次若被 Gatekeeper 拦截，可在「系统设置 → 隐私与安全性」里选择「仍要打开」。
 3. 按需要在 Wumi 的「设置 → 隐私与权限」授权受保护目录。
 
-下载包使用 ad-hoc 签名，未经 Apple 公证。校验文件与安装包一并提供。验证范围、改动和校验命令见 [1.3.0 发布说明](docs/releases/v1.3.0.md)。
+下载包使用 ad-hoc 签名，未经 Apple 公证。校验文件与安装包一并提供。验证范围、改动和校验命令见 [1.3.1 发布说明](docs/releases/v1.3.1.md)。
 
 <details>
 <summary><strong>构建与开发</strong></summary>

@@ -287,7 +287,8 @@ struct Miji140SearchView: View {
                 .accessibilityHidden(true)
 
             ZStack(alignment: .leading) {
-                TextField("", text: $model.query)
+                TextField("", text: $model.query,
+                          prompt: Text(placeholder).foregroundStyle(Color.primary.opacity(0.46)))
                     .accessibilityIdentifier("Wumi.MijiSearch.Field")
                     .font(.system(size: 24, weight: .regular))
                     .textFieldStyle(.plain)
@@ -295,15 +296,6 @@ struct Miji140SearchView: View {
                     .opacity(selection == nil ? 1 : 0.02)
                     .accessibilityLabel(model.mode == .all ? "搜索文件" : "搜索\(model.mode.title)")
                     .simultaneousGesture(TapGesture().onEnded { restoreQueryDisplay() })
-
-                if model.query.isEmpty && selection == nil {
-                    Text(placeholder)
-                        .font(.system(size: 24, weight: .regular))
-                        .foregroundStyle(Color.primary.opacity(0.46))
-                        .padding(.leading, 2)
-                        .accessibilityHidden(true)
-                        .allowsHitTesting(false)
-                }
 
                 if let selection {
                     HStack(spacing: 0) {

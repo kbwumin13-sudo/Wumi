@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 
 /// Spotlight-style circular Liquid Glass category buttons that emerge from the right of the search pill.
@@ -285,6 +286,14 @@ struct BrowseClipboardView: View {
                     }
                     .onChange(of: browse.clipboardSelection) { if let id = browse.clipboardSelection { proxy.scrollTo(id) } }
                 }
+
+                if let selected = entries.first(where: { $0.id == browse.clipboardSelection }),
+                   case .image(let data, _) = selected.payload {
+                    ClipboardImagePreview(data: data)
+                        .id(selected.id)
+                        .padding(.horizontal, PanelMetrics.edge)
+                        .padding(.bottom, 12)
+                }
             }
         }
     }
@@ -326,5 +335,58 @@ struct BrowseClipboardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityAction { copy(entry) }
+        .accessibilityActions {
+            if case .image = entry.payload {
+                Button("预览图片") { browse.clipboardSelection = entry.id }
+            }
+        }
+    }
+}
+
+struct ClipboardImagePreview: View {
+    let data: Data
+    @State private var state = State.loading
+
+    private enum State {
+        case loading, ready(CGImage), unavailable
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PanelMetrics.rowRadius)
+                .fill(Color.primary.opacity(0.055))
+                .accessibilityHidden(true)
+            switch state {
+            case .loading:
+                ProgressView().controlSize(.small)
+            case .ready(let image):
+                Image(image, scale: 1, label: Text("剪贴板图片预览"))
+                    .resizable()
+                    .scaledToFit()
+                    .padding(10)
+            case .unavailable:
+                Text("无法预览这张图片")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 246)
+        .task {
+            let image = await Task.detached(priority: .userInitiated) { Self.makeImage(from: data) }.value
+            guard !Task.isCancelled else { return }
+            state = image.map(State.ready) ?? .unavailable
+        }
+    }
+
+    nonisolated static func makeImage(from data: Data) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
+        else { return nil }
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 1280,
+            kCGImageSourceShouldCacheImmediately: true
+        ] as CFDictionary)
     }
 }
